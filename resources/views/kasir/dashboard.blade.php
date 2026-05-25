@@ -24,6 +24,7 @@
             pendingDeleteExpenseId: null,
             
             cart: [],
+            discount: '',
             showReceipt: false,
             showQtyModal: false,
             qtyProduct: null,
@@ -44,9 +45,65 @@
                 }
             },
 
+            levenshteinDistance(s1, s2) {
+                const len1 = s1.length;
+                const len2 = s2.length;
+                const matrix = [];
+                
+                for (let i = 0; i <= len1; i++) {
+                    matrix[i] = [i];
+                }
+                for (let j = 0; j <= len2; j++) {
+                    matrix[0][j] = j;
+                }
+                
+                for (let i = 1; i <= len1; i++) {
+                    for (let j = 1; j <= len2; j++) {
+                        const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j] + 1,      // Deletion
+                            matrix[i][j - 1] + 1,      // Insertion
+                            matrix[i - 1][j - 1] + cost // Substitution
+                        );
+                    }
+                }
+                
+                return matrix[len1][len2];
+            },
+
+            fuzzyMatch(text, query) {
+                if (!query) return true;
+                text = text.toLowerCase().trim();
+                query = query.toLowerCase().trim();
+                
+                // If exact substring, match immediately (high performance)
+                if (text.includes(query)) return true;
+                
+                const queryWords = query.split(/\s+/);
+                const textWords = text.split(/\s+/);
+                
+                // Ensure all query words match at least one word in name/sku with typo tolerance
+                return queryWords.every(qWord => {
+                    if (!qWord) return true;
+                    if (text.includes(qWord)) return true;
+                    
+                    return textWords.some(tWord => {
+                        const distance = this.levenshteinDistance(qWord, tWord);
+                        
+                        // Adaptive threshold: 1 typo for short queries, 2 for longer queries
+                        let threshold = 1;
+                        if (qWord.length > 4) {
+                            threshold = 2;
+                        }
+                        
+                        return distance <= threshold;
+                    });
+                });
+            },
+
             get filteredProducts() {
                 return this.products.filter(p => {
-                    const matchesSearch = p.name.toLowerCase().includes(this.search.toLowerCase()) || p.sku.toLowerCase().includes(this.search.toLowerCase());
+                    const matchesSearch = this.fuzzyMatch(p.name, this.search) || this.fuzzyMatch(p.sku, this.search);
                     const matchesCategory = this.activeCategory === 'Semua' || p.category === this.activeCategory;
                     return matchesSearch && matchesCategory;
                 });
@@ -113,12 +170,21 @@
                 return this.cart.reduce((sum, item) => sum + Math.round(item.price * item.qty), 0);
             },
 
+            get discountAmount() {
+                const val = parseFloat(this.discount);
+                return isNaN(val) ? 0 : Math.max(0, Math.min(val, this.subtotal));
+            },
+
+            get discountedSubtotal() {
+                return Math.max(0, this.subtotal - this.discountAmount);
+            },
+
             get tax() {
-                return Math.round(this.subtotal * 0.11); // PPN 11%
+                return 0; // PPN dihapus
             },
 
             get total() {
-                return this.subtotal + this.tax;
+                return this.discountedSubtotal;
             },
 
             get changeAmount() {
@@ -177,6 +243,7 @@
                         },
                         body: JSON.stringify({
                             total_price: this.total,
+                            discount: this.discountAmount,
                             payment_method: this.paymentMethod,
                             items: this.cart.map(item => ({
                                 id: item.id,
@@ -196,7 +263,8 @@
                                 transaction_code: data.transaction.transaction_code,
                                 items_summary: data.transaction.items_summary,
                                 payment_method: data.transaction.payment_method,
-                                total_price: data.transaction.total_price
+                                total_price: data.transaction.total_price,
+                                discount: data.transaction.discount
                             });
                             
                             // Save latest transaction details for receipt screen
@@ -225,6 +293,7 @@
 
             resetPOS() {
                 this.cart = [];
+                this.discount = '';
                 this.showReceipt = false;
                 this.checkoutStage = 0;
                 this.cashReceived = '';
@@ -325,18 +394,18 @@
                     <!-- Total Penjualan -->
                     <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0;" class="p-4 rounded-2xl flex flex-col gap-1 shadow-sm relative overflow-hidden select-none">
                         <span class="text-[9px] font-black text-emerald-700 uppercase tracking-wider">Omset Hari Ini</span>
-                        <h4 class="text-base sm:text-lg font-black text-slate-800 leading-tight truncate" x-text="formatRupiah(todaySalesTotal)">Rp 0</h4>
+                        <h4 class="text-base sm:text-lg font-black text-slate-800 leading-tight whitespace-nowrap" x-text="formatRupiah(todaySalesTotal)">Rp 0</h4>
                     </div>
                     <!-- Total Pengeluaran -->
                     <div style="background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%); border: 1px solid #fecdd3;" class="p-4 rounded-2xl flex flex-col gap-1 shadow-sm relative overflow-hidden select-none">
                         <span class="text-[9px] font-black text-rose-700 uppercase tracking-wider">Total Pengeluaran</span>
-                        <h4 class="text-base sm:text-lg font-black text-slate-800 leading-tight truncate" x-text="formatRupiah(todayExpensesTotal)">Rp 0</h4>
+                        <h4 class="text-base sm:text-lg font-black text-slate-800 leading-tight whitespace-nowrap" x-text="formatRupiah(todayExpensesTotal)">Rp 0</h4>
                     </div>
                     <!-- Uang di Laci / Kas Bersih -->
                     <div :style="todayNetCash >= 0 ? 'background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%); border: 1px solid #a5f3fc;' : 'background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 1px solid #fde68a;'"
                          class="p-4 rounded-2xl flex flex-col gap-1 shadow-sm relative overflow-hidden select-none transition-all duration-300">
                         <span class="text-[9px] font-black uppercase tracking-wider" :class="todayNetCash >= 0 ? 'text-cyan-700' : 'text-amber-700'">Uang di Laci / Kas Bersih</span>
-                        <h4 class="text-base sm:text-lg font-black text-slate-800 leading-tight truncate" x-text="formatRupiah(todayNetCash)">Rp 0</h4>
+                        <h4 class="text-base sm:text-lg font-black text-slate-800 leading-tight whitespace-nowrap" x-text="formatRupiah(todayNetCash)">Rp 0</h4>
                     </div>
                 </div>
                 
@@ -483,10 +552,19 @@
                             <span>Subtotal</span>
                             <span class="text-slate-800" x-text="formatRupiah(subtotal)"></span>
                         </div>
-                        <div class="flex justify-between">
-                            <span>PPN (11%)</span>
-                            <span class="text-slate-800" x-text="formatRupiah(tax)"></span>
+
+                        
+                        <!-- Input Diskon Langsung -->
+                        <div class="flex justify-between items-center bg-rose-50/40 border border-rose-100 p-2.5 rounded-xl gap-2 mt-1">
+                            <span class="text-xs font-bold text-rose-700 uppercase shrink-0">Diskon (Rp)</span>
+                            <input type="number" 
+                                   x-model="discount" 
+                                   placeholder="Masukkan nominal..." 
+                                   min="0"
+                                   :max="subtotal"
+                                   class="w-full text-right py-1 px-2 border-slate-200 rounded-lg text-xs font-extrabold text-slate-800 focus:border-rose-500 focus:ring-rose-500 shadow-inner">
                         </div>
+                        
                         <div class="flex justify-between border-t border-slate-100 pt-2 text-base font-extrabold">
                             <span class="text-slate-800">Total Harga</span>
                             <span class="text-emerald-700 text-lg" x-text="formatRupiah(total)"></span>
@@ -690,6 +768,12 @@
                                     <span class="text-slate-400 font-bold uppercase tracking-wider text-[9px]">Ringkasan Belanja</span>
                                     <span class="text-slate-800 font-semibold" x-text="latestTransaction.items_summary"></span>
                                 </div>
+                                <template x-if="latestTransaction && latestTransaction.discount > 0">
+                                    <div class="flex justify-between border-b border-slate-50 pb-1.5 text-rose-600 font-bold">
+                                        <span>Potongan Diskon:</span>
+                                        <span x-text="'-' + formatRupiah(latestTransaction.discount)"></span>
+                                    </div>
+                                </template>
                                 <div class="flex justify-between font-extrabold text-sm text-slate-800 pt-1 border-b border-slate-50 pb-1.5">
                                     <span>Total Tagihan:</span>
                                     <span class="text-emerald-800" x-text="formatRupiah(latestTransaction.total_price)"></span>
@@ -713,7 +797,7 @@
                             <!-- Printing & New Checkout Actions -->
                             <div class="flex flex-col gap-2 pt-2 border-t border-slate-100">
                                 <button type="button" 
-                                    @click="showToast('Mencetak struk belanja...', 'info')" 
+                                    @click="printReceipt(latestTransaction.id)" 
                                     class="w-full py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-2xl font-bold text-xs tracking-wide uppercase transition duration-150 flex items-center justify-center gap-1.5 shadow-sm">
                                     <svg class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.821V7.5a.75.75 0 0 1 .75-.75h9a.75.75 0 0 1 .75.75v6.321m-10.5 0h10.5m-10.5 0-1.755-.351A1.25 1.25 0 0 1 3 12.25v-2.5a1.25 1.25 0 0 1 1.25-1.25h15.5c.69 0 1.25.56 1.25 1.25v2.5a1.25 1.25 0 0 1-1.025 1.22l-1.725.345m-12 0a1.25 1.25 0 1 0 2.5 0m9.5 0a1.25 1.25 0 1 0 2.5 0" />
@@ -922,4 +1006,36 @@
 
 
         </div>
+
+        <script>
+            function printReceipt(transactionId) {
+                if (!transactionId) return;
+                const iframeId = 'receipt-print-iframe';
+                let iframe = document.getElementById(iframeId);
+                if (!iframe) {
+                    iframe = document.createElement('iframe');
+                    iframe.id = iframeId;
+                    iframe.style.position = 'fixed';
+                    iframe.style.right = '-1000px';
+                    iframe.style.bottom = '-1000px';
+                    iframe.style.width = '0';
+                    iframe.style.height = '0';
+                    iframe.style.border = 'none';
+                    document.body.appendChild(iframe);
+                }
+                
+                iframe.onload = function() {
+                    setTimeout(() => {
+                        try {
+                            iframe.contentWindow.focus();
+                            iframe.contentWindow.print();
+                        } catch (e) {
+                            console.error('Print failed:', e);
+                        }
+                    }, 300);
+                };
+                
+                iframe.src = '/kasir/transactions/' + transactionId + '/print';
+            }
+        </script>
     </x-app-layout>

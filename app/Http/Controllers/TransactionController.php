@@ -229,6 +229,7 @@ class TransactionController extends Controller
     {
         $validated = $request->validate([
             'total_price' => 'required|integer|min:0',
+            'discount' => 'nullable|integer|min:0',
             'payment_method' => 'required|string',
             'items' => 'required|array|min:1',
             'items.*.id' => 'nullable|integer',
@@ -263,6 +264,7 @@ class TransactionController extends Controller
             'transaction_code' => 'TRX-' . Carbon::now()->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6)),
             'items_summary'    => $itemsSummary,
             'total_price'      => $request->total_price,
+            'discount'         => $request->input('discount', 0),
             'total_cost'       => $totalCost,
             'payment_method'   => $request->payment_method,
             'branch'           => $cashierBranch,
@@ -278,6 +280,7 @@ class TransactionController extends Controller
                 'items_summary'    => $transaction->items_summary,
                 'payment_method'   => $transaction->payment_method,
                 'total_price'      => $transaction->total_price,
+                'discount'         => $transaction->discount,
             ]
         ]);
     }
@@ -453,5 +456,55 @@ class TransactionController extends Controller
             'Pragma'        => 'no-cache',
             'Expires'       => '0',
         ]);
+    }
+
+    /**
+     * Print transaction receipt for Kasir.
+     */
+    public function print(Transaction $transaction)
+    {
+        // Security check: Only cashier who made the transaction or admin can print
+        if (!auth()->user()->isAdmin() && $transaction->cashier_id !== auth()->id()) {
+            abort(403, 'Anda tidak memiliki akses untuk mencetak struk ini.');
+        }
+
+        // Parse items from items_summary and lookup prices dynamically from database
+        $items = [];
+        if (!empty($transaction->items_summary)) {
+            $parts = explode(', ', $transaction->items_summary);
+            foreach ($parts as $part) {
+                if (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*(\w+)\)$/', $part, $matches)) {
+                    $name = trim($matches[1]);
+                    $qty = floatval($matches[2]);
+                    $unit = $matches[3];
+                    
+                    // Attempt to fetch current product details for unit price estimation
+                    $product = \App\Models\Product::where('name', $name)->first();
+                    $unitPrice = $product ? (int) $product->selling_price : null;
+                    
+                    $items[] = [
+                        'name' => $name,
+                        'qty' => $qty,
+                        'unit' => $unit,
+                        'unit_price' => $unitPrice,
+                        'total_price' => $unitPrice ? round($unitPrice * $qty) : null,
+                    ];
+                } else {
+                    $name = trim($part);
+                    $product = \App\Models\Product::where('name', $name)->first();
+                    $unitPrice = $product ? (int) $product->selling_price : null;
+                    
+                    $items[] = [
+                        'name' => $name,
+                        'qty' => 1,
+                        'unit' => 'pcs',
+                        'unit_price' => $unitPrice,
+                        'total_price' => $unitPrice,
+                    ];
+                }
+            }
+        }
+
+        return view('kasir.receipt', compact('transaction', 'items'));
     }
 }

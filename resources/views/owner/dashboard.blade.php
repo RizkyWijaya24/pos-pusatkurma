@@ -97,17 +97,17 @@
                  x-on:click="toggleCard('omset')"
                  style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0;"
                  :class="activeCard === 'omset' ? 'ring-4 ring-emerald-500/40 scale-[1.03] shadow-xl border-emerald-500' : 'hover:scale-[1.02] shadow-md border-emerald-200/50'"
-                 class="p-5 sm:p-6 rounded-3xl flex justify-between items-center gap-4 group transition duration-300 cursor-pointer select-none relative overflow-hidden">
+                 class="p-5 sm:p-6 rounded-3xl flex flex-col justify-between gap-4 group transition duration-300 cursor-pointer select-none relative overflow-hidden">
                 <!-- Soft Glow Backdrop Decoration -->
                 <div class="absolute -right-10 -top-10 w-24 h-24 rounded-full bg-emerald-500/10 blur-2xl group-hover:bg-emerald-500/20 transition duration-300"></div>
-                <div class="flex flex-col gap-1 min-w-0 flex-1 z-10">
-                    <span class="text-[10px] font-black text-emerald-700 uppercase tracking-widest truncate">Total Omset</span>
-                    <h3 class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight truncate mt-0.5" x-text="formatRupiah({{ (int) $activeRevenue }})">Rp {{ number_format($activeRevenue, 0, ',', '.') }}</h3>
+                <div class="flex flex-col gap-1 min-w-0 flex-1 z-10 pr-10">
+                    <span class="text-[10px] font-black text-emerald-700 uppercase tracking-widest pr-10">Total Omset</span>
+                    <h3 class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight mt-0.5 whitespace-nowrap" x-text="formatRupiah({{ (int) $activeRevenue }})">Rp {{ number_format($activeRevenue, 0, ',', '.') }}</h3>
                     <div class="flex items-center gap-1 select-none whitespace-nowrap bg-emerald-100/50 border border-emerald-200/40 rounded-lg px-2 py-0.5 mt-1 self-start text-[10px] font-bold text-emerald-800">
                         <span>🛡️ Kas Bersih:</span>
                         <span class="font-extrabold" x-text="formatRupiah({{ (int) ($activeRevenue - $activeExpenses) }})">Rp {{ number_format($activeRevenue - $activeExpenses, 0, ',', '.') }}</span>
                     </div>
-                    <div class="flex items-center gap-1 text-[11px] font-extrabold {{ $revenueGrowthPercent >= 0 ? 'text-emerald-600' : 'text-rose-600' }} truncate mt-1">
+                    <div class="flex items-center gap-1 text-[11px] font-extrabold {{ $revenueGrowthPercent >= 0 ? 'text-emerald-600' : 'text-rose-600' }} mt-1">
                         @if($revenueGrowthPercent > 0)
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
@@ -115,7 +115,7 @@
                             <span class="truncate">+{{ number_format($revenueGrowthPercent, 1) }}% @if($activeFilter === 'today') vs kemarin @elseif($activeFilter === 'weekly') vs pekan lalu @else vs bulan lalu @endif</span>
                         @elseif($revenueGrowthPercent < 0)
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-15 15m0 0h11.25m-11.25 0V8.25" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-15 15m0 0H11.25m-11.25 0V8.25" />
                             </svg>
                             <span class="truncate">{{ number_format($revenueGrowthPercent, 1) }}% @if($activeFilter === 'today') vs kemarin @elseif($activeFilter === 'weekly') vs pekan lalu @else vs bulan lalu @endif</span>
                         @else
@@ -124,8 +124,8 @@
                         @endif
                     </div>
                 </div>
-                <div class="w-12 h-12 shrink-0 bg-white/80 text-emerald-600 border border-emerald-200 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition duration-300 z-10">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <div class="w-10 h-10 shrink-0 bg-white/80 text-emerald-600 border border-emerald-200 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition duration-300 absolute top-5 right-5 z-10">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
@@ -134,19 +134,19 @@
             <!-- Card 2: Total Profit Bersih -->
             <div id="card-profit"
                  x-on:click="toggleCard('profit')"
-                 style="background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%); border: 1px solid #99f6e4;"
+                 style="background: linear-gradient(135deg, #f0fdf4 0%, #ccfbf1 100%); border: 1px solid #99f6e4;"
                  :class="activeCard === 'profit' ? 'ring-4 ring-teal-500/40 scale-[1.03] shadow-xl border-teal-500' : 'hover:scale-[1.02] shadow-md border-teal-200/50'"
-                 class="p-5 sm:p-6 rounded-3xl flex justify-between items-center gap-4 group transition duration-300 cursor-pointer select-none relative overflow-hidden">
+                 class="p-5 sm:p-6 rounded-3xl flex flex-col justify-between gap-4 group transition duration-300 cursor-pointer select-none relative overflow-hidden">
                 <!-- Soft Glow Backdrop Decoration -->
                 <div class="absolute -right-10 -top-10 w-24 h-24 rounded-full bg-teal-500/10 blur-2xl group-hover:bg-teal-500/20 transition duration-300"></div>
 
-                <div class="flex flex-col gap-1 min-w-0 flex-1 z-10">
-                    <div class="flex items-center gap-1.5">
-                        <span class="text-[10px] font-black text-teal-700 uppercase tracking-widest truncate">Total Profit Bersih</span>
+                <div class="flex flex-col gap-1 min-w-0 flex-1 z-10 pr-10">
+                    <div class="flex items-center gap-1.5 pr-10">
+                        <span class="text-[10px] font-black text-teal-700 uppercase tracking-widest">Total Profit Bersih</span>
                         <span class="text-[8px] font-black text-teal-700 leading-none bg-teal-100/60 border border-teal-200 px-1 py-0.5 rounded tracking-wide shrink-0">NET</span>
                     </div>
-                    <h3 class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight truncate mt-0.5" x-text="formatRupiah({{ (int) $activeProfit }})">Rp {{ number_format($activeProfit, 0, ',', '.') }}</h3>
-                    <div class="flex items-center gap-1 text-[11px] font-extrabold {{ $profitGrowthPercent >= 0 ? 'text-teal-600' : 'text-rose-600' }} truncate mt-1">
+                    <h3 class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight mt-0.5 whitespace-nowrap" x-text="formatRupiah({{ (int) $activeProfit }})">Rp {{ number_format($activeProfit, 0, ',', '.') }}</h3>
+                    <div class="flex items-center gap-1 text-[11px] font-extrabold {{ $profitGrowthPercent >= 0 ? 'text-teal-600' : 'text-rose-600' }} mt-1">
                         @if($profitGrowthPercent > 0)
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
@@ -154,7 +154,7 @@
                             <span class="truncate">+{{ number_format($profitGrowthPercent, 1) }}% @if($activeFilter === 'today') vs kemarin @elseif($activeFilter === 'weekly') vs pekan lalu @else vs bulan lalu @endif</span>
                         @elseif($profitGrowthPercent < 0)
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-15 15m0 0h11.25m-11.25 0V8.25" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-15 15m0 0H11.25m-11.25 0V8.25" />
                             </svg>
                             <span class="truncate">{{ number_format($profitGrowthPercent, 1) }}% @if($activeFilter === 'today') vs kemarin @elseif($activeFilter === 'weekly') vs pekan lalu @else vs bulan lalu @endif</span>
                         @else
@@ -163,8 +163,8 @@
                         @endif
                     </div>
                 </div>
-                <div class="w-12 h-12 shrink-0 bg-white/80 text-teal-600 border border-teal-200 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-teal-600 group-hover:text-white transition duration-300 z-10">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <div class="w-10 h-10 shrink-0 bg-white/80 text-teal-600 border border-teal-200 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-teal-600 group-hover:text-white transition duration-300 absolute top-5 right-5 z-10">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.306a11.95 11.95 0 015.814-5.518l2.74-1.22m0 0l-5.94-2.281m5.94 2.28l-2.28 5.941" />
                     </svg>
                 </div>
@@ -175,14 +175,14 @@
                  x-on:click="toggleCard('transactions')"
                  style="background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%); border: 1px solid #fecdd3;"
                  :class="activeCard === 'transactions' ? 'ring-4 ring-rose-500/40 scale-[1.03] shadow-xl border-rose-500' : 'hover:scale-[1.02] shadow-md border-rose-200/50'"
-                 class="p-5 sm:p-6 rounded-3xl flex justify-between items-center gap-4 group transition duration-300 cursor-pointer select-none relative overflow-hidden">
+                 class="p-5 sm:p-6 rounded-3xl flex flex-col justify-between gap-4 group transition duration-300 cursor-pointer select-none relative overflow-hidden">
                 <!-- Soft Glow Backdrop Decoration -->
                 <div class="absolute -right-10 -top-10 w-24 h-24 rounded-full bg-rose-500/10 blur-2xl group-hover:bg-rose-500/20 transition duration-300"></div>
 
-                <div class="flex flex-col gap-1 min-w-0 flex-1 z-10">
-                    <span class="text-[10px] font-black text-rose-700 uppercase tracking-widest truncate">Total Transaksi</span>
-                    <h3 class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight truncate mt-0.5" x-text="transactions + ' Transaksi'">{{ $activeTransactionsCount }} Transaksi</h3>
-                    <div class="flex items-center gap-1 text-[11px] font-extrabold {{ $transactionGrowthPercent >= 0 ? 'text-emerald-600' : 'text-rose-600' }} truncate mt-1">
+                <div class="flex flex-col gap-1 min-w-0 flex-1 z-10 pr-10">
+                    <span class="text-[10px] font-black text-rose-700 uppercase tracking-widest pr-10">Total Transaksi</span>
+                    <h3 class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight mt-0.5 whitespace-nowrap" x-text="transactions + ' Transaksi'">{{ $activeTransactionsCount }} Transaksi</h3>
+                    <div class="flex items-center gap-1 text-[11px] font-extrabold {{ $transactionGrowthPercent >= 0 ? 'text-emerald-600' : 'text-rose-600' }} mt-1">
                         @if($transactionGrowthPercent > 0)
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
@@ -190,7 +190,7 @@
                             <span class="truncate">+{{ number_format($transactionGrowthPercent, 1) }}% @if($activeFilter === 'today') vs kemarin @elseif($activeFilter === 'weekly') vs pekan lalu @else vs bulan lalu @endif</span>
                         @elseif($transactionGrowthPercent < 0)
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-15 15m0 0h11.25m-11.25 0V8.25" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-15 15m0 0H11.25m-11.25 0V8.25" />
                             </svg>
                             <span class="truncate">{{ number_format($transactionGrowthPercent, 1) }}% @if($activeFilter === 'today') vs kemarin @elseif($activeFilter === 'weekly') vs pekan lalu @else vs bulan lalu @endif</span>
                         @else
@@ -199,8 +199,8 @@
                         @endif
                     </div>
                 </div>
-                <div class="w-12 h-12 shrink-0 bg-white/80 text-rose-600 border border-rose-200 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-rose-600 group-hover:text-white transition duration-300 z-10">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <div class="w-10 h-10 shrink-0 bg-white/80 text-rose-600 border border-rose-200 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-rose-600 group-hover:text-white transition duration-300 absolute top-5 right-5 z-10">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5h6.75M8.625 12.75h6.75" />
                     </svg>
                 </div>
@@ -211,14 +211,14 @@
                  x-on:click="toggleCard('expenses')"
                  style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 1px solid #fde68a;"
                  :class="activeCard === 'expenses' ? 'ring-4 ring-amber-500/40 scale-[1.03] shadow-xl border-amber-500' : 'hover:scale-[1.02] shadow-md border-amber-200/50'"
-                 class="p-5 sm:p-6 rounded-3xl flex justify-between items-center gap-4 group transition duration-300 cursor-pointer select-none relative overflow-hidden">
+                 class="p-5 sm:p-6 rounded-3xl flex flex-col justify-between gap-4 group transition duration-300 cursor-pointer select-none relative overflow-hidden">
                 <!-- Soft Glow Backdrop Decoration -->
                 <div class="absolute -right-10 -top-10 w-24 h-24 rounded-full bg-amber-500/10 blur-2xl group-hover:bg-amber-500/20 transition duration-300"></div>
 
-                <div class="flex flex-col gap-1 min-w-0 flex-1 z-10">
-                    <span class="text-[10px] font-black text-amber-700 uppercase tracking-widest truncate">Total Pengeluaran</span>
-                    <h3 class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight truncate mt-0.5" x-text="formatRupiah({{ (int) $activeExpenses }})">Rp {{ number_format($activeExpenses, 0, ',', '.') }}</h3>
-                    <div class="flex items-center gap-1 text-[11px] font-extrabold {{ $expenseGrowthPercent >= 0 ? 'text-rose-600' : 'text-emerald-600' }} truncate mt-1">
+                <div class="flex flex-col gap-1 min-w-0 flex-1 z-10 pr-10">
+                    <span class="text-[10px] font-black text-amber-700 uppercase tracking-widest pr-10">Total Pengeluaran</span>
+                    <h3 class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight mt-0.5 whitespace-nowrap" x-text="formatRupiah({{ (int) $activeExpenses }})">Rp {{ number_format($activeExpenses, 0, ',', '.') }}</h3>
+                    <div class="flex items-center gap-1 text-[11px] font-extrabold {{ $expenseGrowthPercent >= 0 ? 'text-rose-600' : 'text-emerald-600' }} mt-1">
                         @if($expenseGrowthPercent > 0)
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
@@ -226,7 +226,7 @@
                             <span class="truncate">+{{ number_format($expenseGrowthPercent, 1) }}% @if($activeFilter === 'today') vs kemarin @elseif($activeFilter === 'weekly') vs pekan lalu @else vs bulan lalu @endif</span>
                         @elseif($expenseGrowthPercent < 0)
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-15 15m0 0h11.25m-11.25 0V8.25" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-15 15m0 0H11.25m-11.25 0V8.25" />
                             </svg>
                             <span class="truncate">{{ number_format($expenseGrowthPercent, 1) }}% @if($activeFilter === 'today') vs kemarin @elseif($activeFilter === 'weekly') vs pekan lalu @else vs bulan lalu @endif</span>
                         @else
@@ -235,8 +235,8 @@
                         @endif
                     </div>
                 </div>
-                <div class="w-12 h-12 shrink-0 bg-white/80 text-amber-600 border border-amber-200 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-amber-600 group-hover:text-white transition duration-300 z-10">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                <div class="w-10 h-10 shrink-0 bg-white/80 text-amber-600 border border-amber-200 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-amber-600 group-hover:text-white transition duration-300 absolute top-5 right-5 z-10">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H3m0 0h-.375c-.621 0-1.125.504-1.125 1.125V18m0 0H3.375c.621 0 1.125-.504 1.125-1.125V18M3 18.75h-.375A1.125 1.125 0 011.5 17.625V6M2.25 18.75h2.25m-2.25 0v-4.5m18 4.5v-4.5m-18 4.5h18" />
                     </svg>
                 </div>
@@ -433,8 +433,16 @@
                                             <span class="text-slate-700">{{ $trx->cashier->name ?? 'N/A' }}</span>
                                         </span>
                                     </td>
-                                    <td class="px-5 py-4 text-slate-700 text-xs truncate max-w-[220px]" title="{{ $trx->items_summary }}">
-                                        {{ $trx->items_summary }}
+                                    <td class="px-5 py-4 text-slate-700 text-xs">
+                                        <div class="flex flex-wrap gap-1 max-w-[280px]">
+                                            @foreach(explode(', ', $trx->items_summary) as $itemStr)
+                                                @if(trim($itemStr))
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-50/60 text-emerald-800 border border-emerald-100/50">
+                                                        {{ trim($itemStr) }}
+                                                    </span>
+                                                @endif
+                                            @endforeach
+                                        </div>
                                     </td>
                                     <td class="px-5 py-4">
                                         <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase border

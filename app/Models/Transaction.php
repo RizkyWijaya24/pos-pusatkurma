@@ -14,6 +14,7 @@ class Transaction extends Model
         'transaction_code',
         'items_summary',
         'total_price',
+        'discount',
         'total_cost',
         'payment_method',
         'branch',

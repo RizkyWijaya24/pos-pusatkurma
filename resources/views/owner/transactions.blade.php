@@ -239,8 +239,16 @@
                                             {{ $trx->branch ?? 'Pusat Cianjur' }}
                                         </span>
                                     </td>
-                                    <td class="px-5 py-4 text-slate-700 text-xs truncate max-w-[220px]" title="{{ $trx->items_summary }}">
-                                        {{ $trx->items_summary }}
+                                    <td class="px-5 py-4 text-slate-700 text-xs">
+                                        <div class="flex flex-wrap gap-1 max-w-[280px]">
+                                            @foreach(explode(', ', $trx->items_summary) as $itemStr)
+                                                @if(trim($itemStr))
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-50/60 text-emerald-800 border border-emerald-100/50">
+                                                        {{ trim($itemStr) }}
+                                                    </span>
+                                                @endif
+                                            @endforeach
+                                        </div>
                                     </td>
                                     <td class="px-5 py-4">
                                         <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase border
