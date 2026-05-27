@@ -35,11 +35,13 @@ class DashboardController extends Controller
     /**
      * Display the Kasir Dashboard.
      */
-    public function kasir()
+    public function kasir(Request $request)
     {
+        $category = $request->input('category');
+
         // STRICT SECURITY: Exclude cost_price from the columns selected for Cashier view!
         // Also map selling_price as 'price' to ensure seamless integration with cashier frontend
-        $products = Product::select([
+        $query = Product::select([
             'id',
             'sku',
             'name',
@@ -48,7 +50,15 @@ class DashboardController extends Controller
             'price_unit',
             'image_path',
             'stock'
-        ])->get();
+        ]);
+
+        // Proteksi Strict Mode Database cPanel:
+        // Jika parameter kategori diisi dan nilainya bukan "Semua"/"all", lakukan filter WHERE
+        if ($category && !in_array(strtolower($category), ['semua', 'all', ''])) {
+            $query->where('category', $category);
+        }
+
+        $products = $query->get();
 
         // Fetch transactions created today matching the logged-in cashier's ID
         $todayTransactions = \App\Models\Transaction::where('cashier_id', auth()->id())
