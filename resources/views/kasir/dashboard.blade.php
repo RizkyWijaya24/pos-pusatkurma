@@ -112,16 +112,18 @@
                 });
             },
 
-            get filteredProducts() {
-                return this.products.filter(p => {
-                    const matchesCategory = this.activeCategory === 'Semua' || p.category === this.activeCategory;
-                    if (!matchesCategory) return false;
-                    
-                    const matchesName = p.name ? this.fuzzyMatch(p.name, this.search) : false;
-                    const matchesSku = p.sku ? this.fuzzyMatch(p.sku, this.search) : false;
-                    return matchesName || matchesSku;
-                });
-            },
+        get filteredProducts() {
+    if (!this.search && (!this.activeCategory || String(this.activeCategory).trim().toLowerCase() === 'semua')) {
+        return this.products;
+    }
+    return this.products.filter(p => {
+        const matchesSearch = this.fuzzyMatch(p.name, this.search) || this.fuzzyMatch(p.sku, this.search);
+        const currentActive = String(this.activeCategory).trim().toLowerCase();
+        const productCat = p.category ? String(p.category).trim().toLowerCase() : '';
+        const matchesCategory = currentActive === 'semua' || productCat === currentActive;
+        return matchesSearch && matchesCategory;
+    });
+},
 
             addToCart(product) {
                 if (product.price_unit === 'gram' || product.price_unit === 'kg') {
