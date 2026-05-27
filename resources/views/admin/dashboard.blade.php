@@ -32,6 +32,8 @@
 
         // Product Form State
         newProduct: { id: null, sku: '', name: '', category: 'Premium', cost_price: '', selling_price: '', price_unit: 'pcs', stock: '' },
+        costPriceMode: 'pct',   // 'pct' = persentase dari harga jual, 'manual' = isi sendiri
+        costPricePct: 50,       // default 50% dari harga jual
         
         // Cashier Form State
         newCashier: { name: '', email: '', password: '', branch: 'Pusat Cianjur' },
@@ -148,18 +150,45 @@
                 price_unit: product.price_unit,
                 stock: product.stock
             };
+            // When editing, pre-detect mode: check if cost_price is a round % of selling_price
+            if (product.selling_price > 0) {
+                const pct = Math.round((product.cost_price / product.selling_price) * 100);
+                if (pct > 0 && pct <= 99) {
+                    this.costPriceMode = 'pct';
+                    this.costPricePct  = pct;
+                } else {
+                    this.costPriceMode = 'manual';
+                }
+            } else {
+                this.costPriceMode = 'manual';
+            }
             this.showProductModal = true;
         },
 
         resetProductForm() {
             this.newProduct = { id: null, sku: '', name: '', category: 'Premium', cost_price: '', selling_price: '', price_unit: 'pcs', stock: '' };
+            this.costPriceMode = 'pct';
+            this.costPricePct  = 50;
             this.isEditing = false;
             this.showProductModal = false;
             const fileInput = document.getElementById('product_image');
             if (fileInput) fileInput.value = '';
         },
 
+        // Computed effective cost_price (used before submit)
+        get effectiveCostPrice() {
+            if (this.costPriceMode === 'pct') {
+                const sell = parseFloat(this.newProduct.selling_price) || 0;
+                return Math.round(sell * (parseFloat(this.costPricePct) || 0) / 100);
+            }
+            return parseFloat(this.newProduct.cost_price) || 0;
+        },
+
         saveProduct() {
+            // Sync cost_price from mode before validation
+            if (this.costPriceMode === 'pct') {
+                this.newProduct.cost_price = this.effectiveCostPrice;
+            }
             if (!this.newProduct.name || this.newProduct.cost_price === '' || this.newProduct.selling_price === '' || this.newProduct.stock === '') {
                 this.showToast('Silakan lengkapi semua kolom wajib!', 'warning');
                 return;
@@ -789,13 +818,64 @@
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block mb-1">Harga Modal (Rp)</label>
-                            <input type="number" x-model="newProduct.cost_price" placeholder="Modal..." class="w-full border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500">
-                        </div>
-                        <div>
+                        <div class="col-span-2">
                             <label class="block mb-1">Harga Jual (Rp)</label>
-                            <input type="number" x-model="newProduct.selling_price" placeholder="Jual..." class="w-full border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500">
+                            <input type="number" x-model="newProduct.selling_price" placeholder="Contoh: 150000"
+                                   class="w-full border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500"
+                                   @input="if(costPriceMode==='pct') { /* reactive via effectiveCostPrice */ }">
+                        </div>
+                    </div>
+                    {{-- Harga Modal: mode toggle --}}
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center justify-between">
+                            <label class="font-semibold text-slate-700">Harga Modal (Rp)</label>
+                            {{-- Toggle mode --}}
+                            <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                                <button type="button"
+                                        @click="costPriceMode = 'pct'"
+                                        :class="costPriceMode === 'pct' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-400 hover:text-slate-600'"
+                                        class="px-3 py-1 rounded-lg text-xs font-bold transition-all duration-150">
+                                    % Persen
+                                </button>
+                                <button type="button"
+                                        @click="costPriceMode = 'manual'"
+                                        :class="costPriceMode === 'manual' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-400 hover:text-slate-600'"
+                                        class="px-3 py-1 rounded-lg text-xs font-bold transition-all duration-150">
+                                    Manual
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Mode: Persentase --}}
+                        <div x-show="costPriceMode === 'pct'" class="flex flex-col gap-2">
+                            <div class="flex items-center gap-3">
+                                <input type="range" min="1" max="99" step="1"
+                                       x-model="costPricePct"
+                                       class="flex-1 h-2 accent-emerald-500 cursor-pointer">
+                                <div class="flex items-center gap-1">
+                                    <input type="number" min="1" max="99" step="1"
+                                           x-model="costPricePct"
+                                           class="w-16 text-center text-sm font-bold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 py-1.5 px-2">
+                                    <span class="text-sm font-bold text-slate-500">%</span>
+                                </div>
+                            </div>
+                            <div class="bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-2.5 flex items-center justify-between">
+                                <span class="text-xs font-semibold text-emerald-700">
+                                    Harga modal =
+                                    <span x-text="costPricePct"></span>% dari harga jual
+                                </span>
+                                <span class="text-sm font-extrabold text-emerald-700"
+                                      x-text="'Rp ' + effectiveCostPrice.toLocaleString('id-ID')">
+                                </span>
+                            </div>
+                            <p class="text-[10px] text-slate-400 font-semibold -mt-1">Harga jual belum diisi? Isi harga jual dulu agar kalkulasi akurat.</p>
+                        </div>
+
+                        {{-- Mode: Manual --}}
+                        <div x-show="costPriceMode === 'manual'">
+                            <input type="number" x-model="newProduct.cost_price"
+                                   placeholder="Masukkan harga modal..."
+                                   class="w-full border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500">
                         </div>
                     </div>
                     <div>
