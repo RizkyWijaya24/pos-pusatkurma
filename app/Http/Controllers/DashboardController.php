@@ -422,7 +422,42 @@ class DashboardController extends Controller
     }
 
     /**
-     * Export dynamic financial report as Excel-compatible CSV.
+     * Format a number as Indonesian Rupiah string for Excel export.
+     */
+    private function rupiah(int $amount): string
+    {
+        return 'Rp ' . number_format($amount, 0, ',', '.');
+    }
+
+    /**
+     * Shared CSS styles for all Excel exports.
+     */
+    private function excelStyles(): string
+    {
+        return implode('', [
+            'body{font-family:"Segoe UI",Arial,sans-serif;}',
+            'table{border-collapse:collapse;}',
+            'th{background-color:#059669;color:#ffffff;font-weight:bold;border:1px solid #047857;padding:10px 14px;font-size:11pt;white-space:nowrap;}',
+            'td{border:1px solid #d1fae5;padding:8px 12px;font-size:10pt;vertical-align:middle;}',
+            '.title{font-size:16pt;font-weight:bold;color:#064e3b;text-align:center;border:none !important;}',
+            '.subtitle{font-size:12pt;font-weight:bold;color:#10b981;text-align:center;border:none !important;}',
+            '.meta-label{font-weight:bold;color:#374151;background-color:#f0fdf4;width:180px;border:1px solid #d1fae5;}',
+            '.meta-value{color:#1f2937;border:1px solid #d1fae5;}',
+            '.text{mso-number-format:"\\@";text-align:left;}',
+            '.center{text-align:center;}',
+            '.right{text-align:right;}',
+            '.bold{font-weight:bold;}',
+            '.currency{text-align:right;font-weight:bold;color:#065f46;}',
+            '.percent{text-align:right;color:#6b7280;}',
+            '.total-row{background-color:#d1fae5;font-weight:bold;color:#064e3b;}',
+            '.avg-row{background-color:#ecfdf5;font-weight:bold;color:#065f46;}',
+            '.spacer{border:none !important;height:10px;}',
+            '.stripe{background-color:#f9fafb;}',
+        ]);
+    }
+
+    /**
+     * Export dynamic financial report as Excel-compatible file.
      */
     public function exportOwnerReport(Request $request)
     {
@@ -453,106 +488,78 @@ class DashboardController extends Controller
 
             return response()->streamDownload(function () use ($todayTransactions, $activeBranch, $printDate, $printedBy, $now) {
                 echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
-                echo '<head>';
-                echo '<meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
-                echo '<style>';
-                echo '  body { font-family: "Segoe UI", Arial, sans-serif; }';
-                echo '  table { border-collapse: collapse; }';
-                echo '  th { background-color: #059669; color: #ffffff; font-weight: bold; border: 1px solid #d1d5db; padding: 10px 8px; font-size: 11pt; }';
-                echo '  td { border: 1px solid #d1d5db; padding: 8px 6px; font-size: 10pt; vertical-align: middle; }';
-                echo '  .title { font-size: 16pt; font-weight: bold; color: #064e3b; text-align: center; }';
-                echo '  .meta-label { font-weight: bold; color: #374151; background-color: #f3f4f6; width: 150px; }';
-                echo '  .meta-value { color: #4b5563; }';
-                echo '  .number { mso-number-format:"\\#,##0"; text-align: right; }';
-                echo '  .currency { mso-number-format:"\\0022Rp \\0022\\#,##0"; text-align: right; }';
-                echo '  .text { mso-number-format:"\@"; text-align: left; }';
-                echo '  .center { text-align: center; }';
-                echo '  .bold { font-weight: bold; }';
-                echo '  .total-row { background-color: #ecfdf5; font-weight: bold; color: #065f46; }';
-                echo '  .bg-gray { background-color: #f9fafb; }';
-                echo '</style>';
-                echo '</head>';
-                echo '<body>';
+                echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
+                echo '<style>' . $this->excelStyles() . '</style></head><body>';
 
                 // Metadata
-                echo '<table>';
-                echo '  <tr><td colspan="9" class="title" style="height: 40px; text-align: center; font-size: 16pt; font-weight: bold;">LAPORAN PENJUALAN HARIAN POS</td></tr>';
-                echo '  <tr><td colspan="9" class="title" style="height: 25px; text-align: center; font-size: 12pt; font-weight: bold; color: #10b981;">PUSAT KURMA PREMIUM</td></tr>';
-                echo '  <tr><td colspan="9" style="height: 15px; border:none;"></td></tr>';
-                echo '  <tr><td class="meta-label">Filter Waktu</td><td colspan="8" class="meta-value">Hari Ini (' . $now->translatedFormat('d F Y') . ')</td></tr>';
-                echo '  <tr><td class="meta-label">Filter Cabang</td><td colspan="8" class="meta-value">' . htmlspecialchars($activeBranch ? $activeBranch : 'Semua Cabang') . '</td></tr>';
-                echo '  <tr><td class="meta-label">Tanggal Cetak</td><td colspan="8" class="meta-value">' . htmlspecialchars($printDate) . '</td></tr>';
-                echo '  <tr><td class="meta-label">Dicetak Oleh</td><td colspan="8" class="meta-value">' . htmlspecialchars($printedBy) . '</td></tr>';
-                echo '  <tr><td colspan="9" style="height: 20px; border:none;"></td></tr>';
+                echo '<table style="margin-bottom:16px;">';
+                echo '<tr><td colspan="9" class="title" style="height:45px;">LAPORAN PENJUALAN HARIAN POS</td></tr>';
+                echo '<tr><td colspan="9" class="subtitle" style="height:28px;">PUSAT KURMA PREMIUM</td></tr>';
+                echo '<tr><td colspan="9" class="spacer"></td></tr>';
+                echo '<tr><td class="meta-label">Filter Waktu</td><td colspan="8" class="meta-value">Hari Ini (' . $now->translatedFormat('d F Y') . ')</td></tr>';
+                echo '<tr><td class="meta-label">Filter Cabang</td><td colspan="8" class="meta-value">' . htmlspecialchars($activeBranch ? $activeBranch : 'Semua Cabang') . '</td></tr>';
+                echo '<tr><td class="meta-label">Tanggal Cetak</td><td colspan="8" class="meta-value">' . htmlspecialchars($printDate) . '</td></tr>';
+                echo '<tr><td class="meta-label">Dicetak Oleh</td><td colspan="8" class="meta-value">' . htmlspecialchars($printedBy) . '</td></tr>';
+                echo '<tr><td colspan="9" class="spacer"></td></tr>';
                 echo '</table>';
 
                 // Table
                 echo '<table>';
-                echo '  <thead>';
-                echo '    <tr>';
-                echo '      <th style="width: 50px;">No</th>';
-                echo '      <th style="width: 100px;">Waktu</th>';
-                echo '      <th style="width: 140px;">Kode Transaksi</th>';
-                echo '      <th style="width: 130px;">Kasir</th>';
-                echo '      <th style="width: 120px;">Cabang</th>';
-                echo '      <th style="width: 320px;">Ringkasan Item</th>';
-                echo '      <th style="width: 140px;">Metode Pembayaran</th>';
-                echo '      <th style="width: 180px;">Total Tagihan (Omset)</th>';
-                echo '      <th style="width: 180px;">Profit Bersih</th>';
-                echo '    </tr>';
-                echo '  </thead>';
-                echo '  <tbody>';
+                echo '<thead><tr>';
+                echo '<th style="width:45px;">No</th>';
+                echo '<th style="width:90px;">Waktu</th>';
+                echo '<th style="width:150px;">Kode Transaksi</th>';
+                echo '<th style="width:140px;">Kasir</th>';
+                echo '<th style="width:130px;">Cabang</th>';
+                echo '<th style="width:340px;">Ringkasan Item</th>';
+                echo '<th style="width:120px;">Metode Bayar</th>';
+                echo '<th style="width:200px;">Total Tagihan (Omset)</th>';
+                echo '<th style="width:200px;">Profit Bersih</th>';
+                echo '</tr></thead><tbody>';
 
-                $totalOmset = 0;
+                $totalOmset  = 0;
                 $totalProfit = 0;
                 $idx = 1;
 
                 foreach ($todayTransactions as $trx) {
-                    $omset = (int)$trx->total_price;
+                    $omset  = (int)$trx->total_price;
                     $profit = (int)($trx->total_price - $trx->total_cost);
-                    $totalOmset += $omset;
+                    $totalOmset  += $omset;
                     $totalProfit += $profit;
+                    $rowClass = $idx % 2 === 0 ? ' class="stripe"' : '';
 
-                    echo '    <tr>';
-                    echo '      <td class="center">' . $idx++ . '</td>';
-                    echo '      <td class="center">' . htmlspecialchars($trx->created_at->translatedFormat('H:i')) . '</td>';
-                    echo '      <td class="center bold text">' . htmlspecialchars($trx->transaction_code) . '</td>';
-                    echo '      <td>' . htmlspecialchars($trx->cashier->name ?? 'N/A') . '</td>';
-                    echo '      <td>' . htmlspecialchars($trx->branch ?? 'Pusat Cianjur') . '</td>';
-                    echo '      <td class="text">' . htmlspecialchars($trx->items_summary) . '</td>';
-                    echo '      <td class="center">' . htmlspecialchars($trx->payment_method) . '</td>';
-                    echo '      <td class="currency">' . $omset . '</td>';
-                    echo '      <td class="currency">' . $profit . '</td>';
-                    echo '    </tr>';
+                    echo '<tr' . $rowClass . '>';
+                    echo '<td class="center">' . $idx++ . '</td>';
+                    echo '<td class="center">' . htmlspecialchars($trx->created_at->translatedFormat('H:i')) . '</td>';
+                    echo '<td class="center bold text">' . htmlspecialchars($trx->transaction_code) . '</td>';
+                    echo '<td>' . htmlspecialchars($trx->cashier->name ?? 'N/A') . '</td>';
+                    echo '<td class="center">' . htmlspecialchars($trx->branch ?? 'Pusat Cianjur') . '</td>';
+                    echo '<td class="text">' . htmlspecialchars($trx->items_summary) . '</td>';
+                    echo '<td class="center">' . htmlspecialchars($trx->payment_method) . '</td>';
+                    echo '<td class="currency">' . $this->rupiah($omset) . '</td>';
+                    echo '<td class="currency">' . $this->rupiah($profit) . '</td>';
+                    echo '</tr>';
                 }
 
-                $count = count($todayTransactions);
-                $avgOmset = $count > 0 ? round($totalOmset / $count) : 0;
-                $avgProfit = $count > 0 ? round($totalProfit / $count) : 0;
+                $count     = count($todayTransactions);
+                $avgOmset  = $count > 0 ? (int)round($totalOmset / $count) : 0;
+                $avgProfit = $count > 0 ? (int)round($totalProfit / $count) : 0;
 
-                echo '    <tr><td colspan="9" style="height: 10px; border:none;"></td></tr>';
+                echo '<tr><td colspan="9" class="spacer"></td></tr>';
 
-                echo '    <tr class="total-row">';
-                echo '      <td colspan="7" class="center bold">GRAND TOTAL</td>';
-                echo '      <td class="currency">' . $totalOmset . '</td>';
-                echo '      <td class="currency">' . $totalProfit . '</td>';
-                echo '    </tr>';
+                echo '<tr class="total-row">';
+                echo '<td colspan="7" class="center bold" style="font-size:11pt;">GRAND TOTAL (' . $count . ' Transaksi)</td>';
+                echo '<td class="currency" style="font-size:11pt;">' . $this->rupiah($totalOmset) . '</td>';
+                echo '<td class="currency" style="font-size:11pt;">' . $this->rupiah($totalProfit) . '</td>';
+                echo '</tr>';
 
-                echo '    <tr class="total-row" style="background-color: #f0fdf4;">';
-                echo '      <td colspan="7" class="center bold">RATA-RATA</td>';
-                echo '      <td class="currency">' . $avgOmset . '</td>';
-                echo '      <td class="currency">' . $avgProfit . '</td>';
-                echo '    </tr>';
+                echo '<tr class="avg-row">';
+                echo '<td colspan="7" class="center bold">RATA-RATA PER TRANSAKSI</td>';
+                echo '<td class="currency">' . $this->rupiah($avgOmset) . '</td>';
+                echo '<td class="currency">' . $this->rupiah($avgProfit) . '</td>';
+                echo '</tr>';
 
-                echo '    <tr>';
-                echo '      <td colspan="3" class="bold bg-gray">JUMLAH DATA</td>';
-                echo '      <td colspan="6" class="bold">' . $count . ' Transaksi</td>';
-                echo '    </tr>';
-
-                echo '  </tbody>';
-                echo '</table>';
-                echo '</body>';
-                echo '</html>';
+                echo '</tbody></table></body></html>';
             }, $filename, [
                 'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
                 'Cache-Control' => 'no-cache, no-store, must-revalidate',
@@ -594,104 +601,81 @@ class DashboardController extends Controller
 
             return response()->streamDownload(function () use ($days, $startOfWeek, $endOfWeek, $activeBranch, $printDate, $printedBy) {
                 echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
-                echo '<head>';
-                echo '<meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
-                echo '<style>';
-                echo '  body { font-family: "Segoe UI", Arial, sans-serif; }';
-                echo '  table { border-collapse: collapse; }';
-                echo '  th { background-color: #059669; color: #ffffff; font-weight: bold; border: 1px solid #d1d5db; padding: 10px 8px; font-size: 11pt; }';
-                echo '  td { border: 1px solid #d1d5db; padding: 8px 6px; font-size: 10pt; vertical-align: middle; }';
-                echo '  .title { font-size: 16pt; font-weight: bold; color: #064e3b; text-align: center; }';
-                echo '  .meta-label { font-weight: bold; color: #374151; background-color: #f3f4f6; width: 150px; }';
-                echo '  .meta-value { color: #4b5563; }';
-                echo '  .number { mso-number-format:"\\#,##0"; text-align: right; }';
-                echo '  .currency { mso-number-format:"\\0022Rp \\0022\\#,##0"; text-align: right; }';
-                echo '  .percent { mso-number-format:"0%"; text-align: right; }';
-                echo '  .center { text-align: center; }';
-                echo '  .bold { font-weight: bold; }';
-                echo '  .total-row { background-color: #ecfdf5; font-weight: bold; color: #065f46; }';
-                echo '  .bg-gray { background-color: #f9fafb; }';
-                echo '</style>';
-                echo '</head>';
-                echo '<body>';
+                echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
+                echo '<style>' . $this->excelStyles() . '</style></head><body>';
 
                 // Metadata
-                echo '<table>';
-                echo '  <tr><td colspan="7" class="title" style="height: 40px; text-align: center; font-size: 16pt; font-weight: bold;">LAPORAN PENJUALAN MINGGUAN</td></tr>';
-                echo '  <tr><td colspan="7" class="title" style="height: 25px; text-align: center; font-size: 12pt; font-weight: bold; color: #10b981;">PUSAT KURMA PREMIUM</td></tr>';
-                echo '  <tr><td colspan="7" style="height: 15px; border:none;"></td></tr>';
-                echo '  <tr><td class="meta-label">Rentang Waktu</td><td colspan="6" class="meta-value">' . htmlspecialchars($startOfWeek->translatedFormat('d M Y') . ' s/d ' . $endOfWeek->translatedFormat('d M Y')) . '</td></tr>';
-                echo '  <tr><td class="meta-label">Filter Cabang</td><td colspan="6" class="meta-value">' . htmlspecialchars($activeBranch ? $activeBranch : 'Semua Cabang') . '</td></tr>';
-                echo '  <tr><td class="meta-label">Tanggal Cetak</td><td colspan="6" class="meta-value">' . htmlspecialchars($printDate) . '</td></tr>';
-                echo '  <tr><td class="meta-label">Dicetak Oleh</td><td colspan="6" class="meta-value">' . htmlspecialchars($printedBy) . '</td></tr>';
-                echo '  <tr><td colspan="7" style="height: 20px; border:none;"></td></tr>';
+                echo '<table style="margin-bottom:16px;">';
+                echo '<tr><td colspan="7" class="title" style="height:45px;">LAPORAN PENJUALAN MINGGUAN</td></tr>';
+                echo '<tr><td colspan="7" class="subtitle" style="height:28px;">PUSAT KURMA PREMIUM</td></tr>';
+                echo '<tr><td colspan="7" class="spacer"></td></tr>';
+                echo '<tr><td class="meta-label">Rentang Waktu</td><td colspan="6" class="meta-value">' . htmlspecialchars($startOfWeek->translatedFormat('d M Y') . ' s/d ' . $endOfWeek->translatedFormat('d M Y')) . '</td></tr>';
+                echo '<tr><td class="meta-label">Filter Cabang</td><td colspan="6" class="meta-value">' . htmlspecialchars($activeBranch ? $activeBranch : 'Semua Cabang') . '</td></tr>';
+                echo '<tr><td class="meta-label">Tanggal Cetak</td><td colspan="6" class="meta-value">' . htmlspecialchars($printDate) . '</td></tr>';
+                echo '<tr><td class="meta-label">Dicetak Oleh</td><td colspan="6" class="meta-value">' . htmlspecialchars($printedBy) . '</td></tr>';
+                echo '<tr><td colspan="7" class="spacer"></td></tr>';
                 echo '</table>';
 
                 // Table
                 echo '<table>';
-                echo '  <thead>';
-                echo '    <tr>';
-                echo '      <th style="width: 50px;">No</th>';
-                echo '      <th style="width: 180px;">Periode Tanggal</th>';
-                echo '      <th style="width: 120px;">Hari</th>';
-                echo '      <th style="width: 180px;">Total Omset</th>';
-                echo '      <th style="width: 180px;">Profit Bersih</th>';
-                echo '      <th style="width: 150px;">Margin Keuntungan</th>';
-                echo '      <th style="width: 150px;">Jumlah Transaksi</th>';
-                echo '    </tr>';
-                echo '  </thead>';
-                echo '  <tbody>';
+                echo '<thead><tr>';
+                echo '<th style="width:45px;">No</th>';
+                echo '<th style="width:190px;">Periode Tanggal</th>';
+                echo '<th style="width:130px;">Hari</th>';
+                echo '<th style="width:210px;">Total Omset</th>';
+                echo '<th style="width:210px;">Profit Bersih</th>';
+                echo '<th style="width:160px;">Margin</th>';
+                echo '<th style="width:160px;">Jml Transaksi</th>';
+                echo '</tr></thead><tbody>';
 
-                $totalOmset = 0;
+                $totalOmset  = 0;
                 $totalProfit = 0;
-                $totalCount = 0;
+                $totalCount  = 0;
                 $idx = 1;
 
                 foreach ($days as $dateStr => $day) {
-                    $omset = $day['omset'];
+                    $omset  = $day['omset'];
                     $profit = $day['profit'];
-                    $totalOmset += $omset;
+                    $totalOmset  += $omset;
                     $totalProfit += $profit;
-                    $totalCount += $day['count'];
+                    $totalCount  += $day['count'];
+                    $rowClass = $idx % 2 === 0 ? ' class="stripe"' : '';
 
-                    $margin = $omset > 0 ? ($profit / $omset) : 0;
+                    $marginPct = $omset > 0 ? round(($profit / $omset) * 100, 1) . '%' : '-';
 
-                    echo '    <tr>';
-                    echo '      <td class="center">' . $idx++ . '</td>';
-                    echo '      <td class="center">' . htmlspecialchars($day['sub_label']) . '</td>';
-                    echo '      <td class="center">' . htmlspecialchars($day['label']) . '</td>';
-                    echo '      <td class="currency">' . $omset . '</td>';
-                    echo '      <td class="currency">' . $profit . '</td>';
-                    echo '      <td class="percent">' . $margin . '</td>';
-                    echo '      <td class="center">' . $day['count'] . ' Trx</td>';
-                    echo '    </tr>';
+                    echo '<tr' . $rowClass . '>';
+                    echo '<td class="center">' . $idx++ . '</td>';
+                    echo '<td class="center">' . htmlspecialchars($day['sub_label']) . '</td>';
+                    echo '<td class="center">' . htmlspecialchars($day['label']) . '</td>';
+                    echo '<td class="currency">' . $this->rupiah($omset) . '</td>';
+                    echo '<td class="currency">' . $this->rupiah($profit) . '</td>';
+                    echo '<td class="percent center">' . $marginPct . '</td>';
+                    echo '<td class="center">' . $day['count'] . ' Trx</td>';
+                    echo '</tr>';
                 }
 
-                $overallMargin = $totalOmset > 0 ? ($totalProfit / $totalOmset) : 0;
-                $avgOmset = count($days) > 0 ? round($totalOmset / count($days)) : 0;
-                $avgProfit = count($days) > 0 ? round($totalProfit / count($days)) : 0;
+                $overallMarginPct = $totalOmset > 0 ? round(($totalProfit / $totalOmset) * 100, 1) . '%' : '-';
+                $avgOmset  = count($days) > 0 ? (int)round($totalOmset  / count($days)) : 0;
+                $avgProfit = count($days) > 0 ? (int)round($totalProfit / count($days)) : 0;
 
-                echo '    <tr><td colspan="7" style="height: 10px; border:none;"></td></tr>';
+                echo '<tr><td colspan="7" class="spacer"></td></tr>';
 
-                echo '    <tr class="total-row">';
-                echo '      <td colspan="3" class="center bold">GRAND TOTAL</td>';
-                echo '      <td class="currency">' . $totalOmset . '</td>';
-                echo '      <td class="currency">' . $totalProfit . '</td>';
-                echo '      <td class="percent">' . $overallMargin . '</td>';
-                echo '      <td class="center bold">' . $totalCount . ' Trx</td>';
-                echo '    </tr>';
+                echo '<tr class="total-row">';
+                echo '<td colspan="3" class="center bold" style="font-size:11pt;">GRAND TOTAL</td>';
+                echo '<td class="currency" style="font-size:11pt;">' . $this->rupiah($totalOmset) . '</td>';
+                echo '<td class="currency" style="font-size:11pt;">' . $this->rupiah($totalProfit) . '</td>';
+                echo '<td class="percent center bold">' . $overallMarginPct . '</td>';
+                echo '<td class="center bold">' . $totalCount . ' Trx</td>';
+                echo '</tr>';
 
-                echo '    <tr class="total-row" style="background-color: #f0fdf4;">';
-                echo '      <td colspan="3" class="center bold">RATA-RATA HARIAN</td>';
-                echo '      <td class="currency">' . $avgOmset . '</td>';
-                echo '      <td class="currency">' . $avgProfit . '</td>';
-                echo '      <td colspan="2" class="bg-gray"></td>';
-                echo '    </tr>';
+                echo '<tr class="avg-row">';
+                echo '<td colspan="3" class="center bold">RATA-RATA HARIAN</td>';
+                echo '<td class="currency">' . $this->rupiah($avgOmset) . '</td>';
+                echo '<td class="currency">' . $this->rupiah($avgProfit) . '</td>';
+                echo '<td colspan="2" class="center">-</td>';
+                echo '</tr>';
 
-                echo '  </tbody>';
-                echo '</table>';
-                echo '</body>';
-                echo '</html>';
+                echo '</tbody></table></body></html>';
             }, $filename, [
                 'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
                 'Cache-Control' => 'no-cache, no-store, must-revalidate',
@@ -737,104 +721,81 @@ class DashboardController extends Controller
 
             return response()->streamDownload(function () use ($weeksBreakdown, $startOfMonth, $activeBranch, $printDate, $printedBy) {
                 echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
-                echo '<head>';
-                echo '<meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
-                echo '<style>';
-                echo '  body { font-family: "Segoe UI", Arial, sans-serif; }';
-                echo '  table { border-collapse: collapse; }';
-                echo '  th { background-color: #059669; color: #ffffff; font-weight: bold; border: 1px solid #d1d5db; padding: 10px 8px; font-size: 11pt; }';
-                echo '  td { border: 1px solid #d1d5db; padding: 8px 6px; font-size: 10pt; vertical-align: middle; }';
-                echo '  .title { font-size: 16pt; font-weight: bold; color: #064e3b; text-align: center; }';
-                echo '  .meta-label { font-weight: bold; color: #374151; background-color: #f3f4f6; width: 150px; }';
-                echo '  .meta-value { color: #4b5563; }';
-                echo '  .number { mso-number-format:"\\#,##0"; text-align: right; }';
-                echo '  .currency { mso-number-format:"\\0022Rp \\0022\\#,##0"; text-align: right; }';
-                echo '  .percent { mso-number-format:"0%"; text-align: right; }';
-                echo '  .center { text-align: center; }';
-                echo '  .bold { font-weight: bold; }';
-                echo '  .total-row { background-color: #ecfdf5; font-weight: bold; color: #065f46; }';
-                echo '  .bg-gray { background-color: #f9fafb; }';
-                echo '</style>';
-                echo '</head>';
-                echo '<body>';
+                echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
+                echo '<style>' . $this->excelStyles() . '</style></head><body>';
 
                 // Metadata
-                echo '<table>';
-                echo '  <tr><td colspan="7" class="title" style="height: 40px; text-align: center; font-size: 16pt; font-weight: bold;">LAPORAN PENJUALAN BULANAN</td></tr>';
-                echo '  <tr><td colspan="7" class="title" style="height: 25px; text-align: center; font-size: 12pt; font-weight: bold; color: #10b981;">PUSAT KURMA PREMIUM</td></tr>';
-                echo '  <tr><td colspan="7" style="height: 15px; border:none;"></td></tr>';
-                echo '  <tr><td class="meta-label">Rentang Waktu</td><td colspan="6" class="meta-value">' . htmlspecialchars($startOfMonth->translatedFormat('F Y')) . '</td></tr>';
-                echo '  <tr><td class="meta-label">Filter Cabang</td><td colspan="6" class="meta-value">' . htmlspecialchars($activeBranch ? $activeBranch : 'Semua Cabang') . '</td></tr>';
-                echo '  <tr><td class="meta-label">Tanggal Cetak</td><td colspan="6" class="meta-value">' . htmlspecialchars($printDate) . '</td></tr>';
-                echo '  <tr><td class="meta-label">Dicetak Oleh</td><td colspan="6" class="meta-value">' . htmlspecialchars($printedBy) . '</td></tr>';
-                echo '  <tr><td colspan="7" style="height: 20px; border:none;"></td></tr>';
+                echo '<table style="margin-bottom:16px;">';
+                echo '<tr><td colspan="7" class="title" style="height:45px;">LAPORAN PENJUALAN BULANAN</td></tr>';
+                echo '<tr><td colspan="7" class="subtitle" style="height:28px;">PUSAT KURMA PREMIUM</td></tr>';
+                echo '<tr><td colspan="7" class="spacer"></td></tr>';
+                echo '<tr><td class="meta-label">Rentang Waktu</td><td colspan="6" class="meta-value">' . htmlspecialchars($startOfMonth->translatedFormat('F Y')) . '</td></tr>';
+                echo '<tr><td class="meta-label">Filter Cabang</td><td colspan="6" class="meta-value">' . htmlspecialchars($activeBranch ? $activeBranch : 'Semua Cabang') . '</td></tr>';
+                echo '<tr><td class="meta-label">Tanggal Cetak</td><td colspan="6" class="meta-value">' . htmlspecialchars($printDate) . '</td></tr>';
+                echo '<tr><td class="meta-label">Dicetak Oleh</td><td colspan="6" class="meta-value">' . htmlspecialchars($printedBy) . '</td></tr>';
+                echo '<tr><td colspan="7" class="spacer"></td></tr>';
                 echo '</table>';
 
                 // Table
                 echo '<table>';
-                echo '  <thead>';
-                echo '    <tr>';
-                echo '      <th style="width: 50px;">No</th>';
-                echo '      <th style="width: 150px;">Periode</th>';
-                echo '      <th style="width: 200px;">Rentang Tanggal</th>';
-                echo '      <th style="width: 180px;">Total Omset</th>';
-                echo '      <th style="width: 180px;">Profit Bersih</th>';
-                echo '      <th style="width: 150px;">Margin Keuntungan</th>';
-                echo '      <th style="width: 150px;">Jumlah Transaksi</th>';
-                echo '    </tr>';
-                echo '  </thead>';
-                echo '  <tbody>';
+                echo '<thead><tr>';
+                echo '<th style="width:45px;">No</th>';
+                echo '<th style="width:160px;">Periode</th>';
+                echo '<th style="width:220px;">Rentang Tanggal</th>';
+                echo '<th style="width:210px;">Total Omset</th>';
+                echo '<th style="width:210px;">Profit Bersih</th>';
+                echo '<th style="width:160px;">Margin</th>';
+                echo '<th style="width:160px;">Jml Transaksi</th>';
+                echo '</tr></thead><tbody>';
 
-                $totalOmset = 0;
+                $totalOmset  = 0;
                 $totalProfit = 0;
-                $totalCount = 0;
+                $totalCount  = 0;
                 $idx = 1;
 
                 foreach ($weeksBreakdown as $wNum => $w) {
-                    $omset = $w['omset'];
+                    $omset  = $w['omset'];
                     $profit = $w['profit'];
-                    $totalOmset += $omset;
+                    $totalOmset  += $omset;
                     $totalProfit += $profit;
-                    $totalCount += $w['count'];
+                    $totalCount  += $w['count'];
+                    $rowClass = $idx % 2 === 0 ? ' class="stripe"' : '';
 
-                    $margin = $omset > 0 ? ($profit / $omset) : 0;
+                    $marginPct = $omset > 0 ? round(($profit / $omset) * 100, 1) . '%' : '-';
 
-                    echo '    <tr>';
-                    echo '      <td class="center">' . $idx++ . '</td>';
-                    echo '      <td class="center">' . htmlspecialchars($w['label']) . '</td>';
-                    echo '      <td class="center">' . htmlspecialchars($w['sub_label']) . '</td>';
-                    echo '      <td class="currency">' . $omset . '</td>';
-                    echo '      <td class="currency">' . $profit . '</td>';
-                    echo '      <td class="percent">' . $margin . '</td>';
-                    echo '      <td class="center">' . $w['count'] . ' Trx</td>';
-                    echo '    </tr>';
+                    echo '<tr' . $rowClass . '>';
+                    echo '<td class="center">' . $idx++ . '</td>';
+                    echo '<td class="center">' . htmlspecialchars($w['label']) . '</td>';
+                    echo '<td class="center">' . htmlspecialchars($w['sub_label']) . '</td>';
+                    echo '<td class="currency">' . $this->rupiah($omset) . '</td>';
+                    echo '<td class="currency">' . $this->rupiah($profit) . '</td>';
+                    echo '<td class="percent center">' . $marginPct . '</td>';
+                    echo '<td class="center">' . $w['count'] . ' Trx</td>';
+                    echo '</tr>';
                 }
 
-                $overallMargin = $totalOmset > 0 ? ($totalProfit / $totalOmset) : 0;
-                $avgOmset = count($weeksBreakdown) > 0 ? round($totalOmset / count($weeksBreakdown)) : 0;
-                $avgProfit = count($weeksBreakdown) > 0 ? round($totalProfit / count($weeksBreakdown)) : 0;
+                $overallMarginPct = $totalOmset > 0 ? round(($totalProfit / $totalOmset) * 100, 1) . '%' : '-';
+                $avgOmset  = count($weeksBreakdown) > 0 ? (int)round($totalOmset  / count($weeksBreakdown)) : 0;
+                $avgProfit = count($weeksBreakdown) > 0 ? (int)round($totalProfit / count($weeksBreakdown)) : 0;
 
-                echo '    <tr><td colspan="7" style="height: 10px; border:none;"></td></tr>';
+                echo '<tr><td colspan="7" class="spacer"></td></tr>';
 
-                echo '    <tr class="total-row">';
-                echo '      <td colspan="3" class="center bold">GRAND TOTAL</td>';
-                echo '      <td class="currency">' . $totalOmset . '</td>';
-                echo '      <td class="currency">' . $totalProfit . '</td>';
-                echo '      <td class="percent">' . $overallMargin . '</td>';
-                echo '      <td class="center bold">' . $totalCount . ' Trx</td>';
-                echo '    </tr>';
+                echo '<tr class="total-row">';
+                echo '<td colspan="3" class="center bold" style="font-size:11pt;">GRAND TOTAL</td>';
+                echo '<td class="currency" style="font-size:11pt;">' . $this->rupiah($totalOmset) . '</td>';
+                echo '<td class="currency" style="font-size:11pt;">' . $this->rupiah($totalProfit) . '</td>';
+                echo '<td class="percent center bold">' . $overallMarginPct . '</td>';
+                echo '<td class="center bold">' . $totalCount . ' Trx</td>';
+                echo '</tr>';
 
-                echo '    <tr class="total-row" style="background-color: #f0fdf4;">';
-                echo '      <td colspan="3" class="center bold">RATA-RATA MINGGUAN</td>';
-                echo '      <td class="currency">' . $avgOmset . '</td>';
-                echo '      <td class="currency">' . $avgProfit . '</td>';
-                echo '      <td colspan="2" class="bg-gray"></td>';
-                echo '    </tr>';
+                echo '<tr class="avg-row">';
+                echo '<td colspan="3" class="center bold">RATA-RATA MINGGUAN</td>';
+                echo '<td class="currency">' . $this->rupiah($avgOmset) . '</td>';
+                echo '<td class="currency">' . $this->rupiah($avgProfit) . '</td>';
+                echo '<td colspan="2" class="center">-</td>';
+                echo '</tr>';
 
-                echo '  </tbody>';
-                echo '</table>';
-                echo '</body>';
-                echo '</html>';
+                echo '</tbody></table></body></html>';
             }, $filename, [
                 'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
                 'Cache-Control' => 'no-cache, no-store, must-revalidate',

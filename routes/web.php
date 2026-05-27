@@ -33,6 +33,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:kasir,admin')->prefix('kasir')->name('kasir.')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'kasir'])->name('dashboard');
         Route::get('/transactions', [\App\Http\Controllers\TransactionController::class, 'index'])->name('transactions.index');
+        Route::get('/transactions/export', [\App\Http\Controllers\TransactionController::class, 'exportKasir'])->name('transactions.export');
         Route::post('/transactions', [\App\Http\Controllers\TransactionController::class, 'store'])->name('transactions.store');
         Route::get('/transactions/{transaction}/print', [\App\Http\Controllers\TransactionController::class, 'print'])->name('transactions.print');
         
