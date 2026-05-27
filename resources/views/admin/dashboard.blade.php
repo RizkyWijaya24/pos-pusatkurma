@@ -5,6 +5,14 @@
         </h2>
     </x-slot>
 
+    <!-- Global JS Error Catcher to diagnose hosting issues -->
+    <script>
+        window.onerror = function(message, source, lineno, colno, error) {
+            alert("Admin JS Error: " + message + "\nSource: " + source + "\nLine: " + lineno + "\nCol: " + colno);
+            return false;
+        };
+    </script>
+
     <!-- JSON Data Islands for Security and HTML parsing safety -->
     <script type="application/json" id="products-data">@json($products)</script>
     <script type="application/json" id="cashiers-data">@json($cashiers)</script>
