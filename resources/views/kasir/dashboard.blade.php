@@ -483,12 +483,12 @@
                                 <template x-if="product.image_path">
                                     <img :src="'/storage/' + product.image_path" class="transition duration-300 group-hover:scale-105" style="width: 100%; height: 100%; object-fit: cover;" alt="Foto produk">
                                 </template>
-                                <template x-if="!product.image_path">
-                                    <div class="text-emerald-100 font-bold flex flex-col items-center justify-center gap-1 select-none" style="width: 100%; height: 100%; background-color: #1b4332;">
-                                        <span class="text-3xl tracking-widest uppercase" x-text="(product.name || '').split(' ').filter(w => w.trim() !== '').slice(0, 2).map(w => w[0]).join('').toUpperCase()"></span>
-                                        <span class="text-[9px] tracking-widest text-emerald-400/80 font-bold uppercase">Pusat Kurma</span>
-                                    </div>
-                                </template>
+                             <template x-if="!product.image_path">
+                              <div class="text-emerald-100 font-bold flex flex-col items-center justify-center gap-1 select-none" style="width: 100%; height: 100%; background-color: #1b4332;">
+                                <span class="text-3xl tracking-widest uppercase" x-text="product.name ? product.name.split(' ').filter(w => w.trim() !== '').slice(0, 2).map(w => w ? w[0] : '').join('').toUpperCase() : 'PK'"></span>
+                                 <span class="text-[9px] tracking-widest text-emerald-400/80 font-bold uppercase">Pusat Kurma</span>
+                                </div>
+                            </template>
                             </div>
 
                             <!-- Product Info -->
