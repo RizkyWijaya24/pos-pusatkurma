@@ -1,9 +1,15 @@
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-bold text-xl text-slate-800 leading-tight">
             {{ __('Analisis Kinerja Penjualan') }}
         </h2>
     </x-slot>
+
+    <!-- JSON Data Islands for Security and HTML parsing safety -->
+    <script type="application/json" id="weekly-trend-data">@json($weeklyTrend)</script>
+    <script type="application/json" id="monthly-trend-data">@json($monthlyTrend)</script>
 
     <!-- Alpine.js Owner State (Optional for interactivity) -->
     <div x-data="{
@@ -28,8 +34,124 @@
                 this.showTable = true;
                 localStorage.setItem('owner_active_card', card);
             }
+        },
+        chart: null,
+        initChart() {
+            this.$nextTick(() => {
+                const ctx = document.getElementById('trendChart').getContext('2d');
+                
+                // Generate beautiful gradient
+                const gradient = ctx.createLinearGradient(0, 0, 0, 220);
+                gradient.addColorStop(0, 'rgba(16, 185, 129, 0.35)'); // Emerald-500
+                gradient.addColorStop(1, 'rgba(16, 185, 129, 0.00)');
+                
+                const weeklyData = JSON.parse(document.getElementById('weekly-trend-data').textContent);
+                const monthlyData = JSON.parse(document.getElementById('monthly-trend-data').textContent);
+                
+                const datasets = {
+                    'Mingguan': {
+                        labels: weeklyData.map(d => d.day_name),
+                        fullLabels: weeklyData.map(d => d.full_day_name + ' (' + d.date + ')'),
+                        data: weeklyData.map(d => d.omset)
+                    },
+                    'Bulanan': {
+                        labels: monthlyData.map(w => w.label),
+                        fullLabels: monthlyData.map(w => w.full_name + ' (Tanggal ' + w.date + ')'),
+                        data: monthlyData.map(w => w.omset)
+                    }
+                };
+
+                this.chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: datasets['Mingguan'].labels,
+                        datasets: [{
+                            label: 'Omset',
+                            data: datasets['Mingguan'].data,
+                            borderColor: '#059669', // Emerald-600
+                            borderWidth: 3,
+                            pointBackgroundColor: '#ffffff',
+                            pointBorderColor: '#059669',
+                            pointBorderWidth: 2,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            pointHoverBackgroundColor: '#059669',
+                            pointHoverBorderColor: '#ffffff',
+                            pointHoverBorderWidth: 2,
+                            fill: true,
+                            backgroundColor: gradient,
+                            tension: 0.35
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                backgroundColor: '#0f172a',
+                                titleFont: { size: 11, weight: 'bold', family: 'Outfit, Segoe UI' },
+                                bodyFont: { size: 12, weight: 'bold', family: 'Outfit, Segoe UI' },
+                                padding: 10,
+                                cornerRadius: 12,
+                                displayColors: false,
+                                callbacks: {
+                                    title: (tooltipItems) => {
+                                        const index = tooltipItems[0].dataIndex;
+                                        return datasets[this.timeframe].fullLabels[index];
+                                    },
+                                    label: (context) => {
+                                        return 'Omset: Rp ' + context.raw.toLocaleString('id-ID');
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                grid: {
+                                    color: 'rgba(241, 245, 249, 0.8)',
+                                },
+                                ticks: {
+                                    font: { size: 10, weight: '600', family: 'Outfit, Segoe UI' },
+                                    color: '#94a3b8',
+                                    callback: function(value) {
+                                        if (value >= 1000000) {
+                                            return (value / 1000000) + 'jt';
+                                        }
+                                        if (value >= 1000) {
+                                            return (value / 1000) + 'rb';
+                                        }
+                                        return value;
+                                    }
+                                },
+                                border: {
+                                    dash: [5, 5]
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    font: { size: 11, weight: '700', family: 'Outfit, Segoe UI' },
+                                    color: '#64748b'
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Watch Alpine timeframe variable to update chart data
+                this.$watch('timeframe', (value) => {
+                    this.chart.data.labels = datasets[value].labels;
+                    this.chart.data.datasets[0].data = datasets[value].data;
+                    this.chart.update();
+                });
+            });
         }
-    }" class="flex flex-col gap-8 max-w-full overflow-hidden">
+    }" x-init="initChart()" class="flex flex-col gap-8 max-w-full overflow-hidden">
 
         <!-- Filter Toggles (Forest Green Brand Theme) -->
         <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-md">
@@ -260,62 +382,9 @@
                     </div>
                 </div>
 
-                <!-- Pure CSS/HTML Responsive Bar Chart -->
-                <div class="relative pt-4">
-                    <!-- Chart body -->
-                    <div class="flex items-end justify-between h-56 gap-2 sm:gap-4 md:gap-6 border-b border-slate-100 pb-1 px-2 relative z-10">
-                        
-                        <!-- Back gridlines -->
-                        <div class="absolute inset-0 flex flex-col justify-between pointer-events-none -z-10">
-                            <div class="w-full border-t border-slate-100"></div>
-                            <div class="w-full border-t border-slate-100"></div>
-                            <div class="w-full border-t border-slate-100"></div>
-                            <div class="w-full border-t border-slate-100"></div>
-                        </div>
-
-                        <!-- 1. WEEKLY TREND BARS -->
-                        <div x-show="timeframe === 'Mingguan'" class="flex items-end justify-between w-full h-full gap-2 sm:gap-4 md:gap-6 relative">
-                            @foreach($weeklyTrend as $day)
-                            <div class="flex-1 flex flex-col items-center gap-2 group">
-                                <!-- Tooltip showing the exact Omset -->
-                                <div class="text-[10px] font-bold opacity-0 group-hover:opacity-100 transition duration-150 bg-slate-900 text-white py-0.5 px-1.5 rounded shadow whitespace-nowrap z-30 pointer-events-none">
-                                    Rp {{ number_format($day['omset'], 0, ',', '.') }}
-                                </div>
-                                <!-- Bar -->
-                                <div class="w-full sm:w-10 rounded-t-lg transition-all duration-300 shadow-inner 
-                                    {{ $day['is_today'] ? 'bg-emerald-600 group-hover:bg-emerald-700 shadow-md shadow-emerald-500/20' : 'bg-emerald-100 group-hover:bg-emerald-600' }}" 
-                                    style="height: {{ max(6, $day['height_percent']) }}%">
-                                </div>
-                                <!-- Day Name -->
-                                <span class="text-xs {{ $day['is_today'] ? 'text-slate-800 font-extrabold' : 'text-slate-400 font-bold' }} mt-1" title="{{ $day['full_day_name'] }} ({{ $day['date'] }})">
-                                    {{ $day['day_name'] }}
-                                </span>
-                            </div>
-                            @endforeach
-                        </div>
-
-                        <!-- 2. MONTHLY TREND BARS -->
-                        <div x-show="timeframe === 'Bulanan'" class="flex items-end justify-between w-full h-full gap-2 sm:gap-4 md:gap-6 relative" style="display: none;">
-                            @foreach($monthlyTrend as $week)
-                            <div class="flex-1 flex flex-col items-center gap-2 group">
-                                <!-- Tooltip showing the exact Omset -->
-                                <div class="text-[10px] font-bold opacity-0 group-hover:opacity-100 transition duration-150 bg-slate-900 text-white py-0.5 px-1.5 rounded shadow whitespace-nowrap z-30 pointer-events-none">
-                                    Rp {{ number_format($week['omset'], 0, ',', '.') }}
-                                </div>
-                                <!-- Bar -->
-                                <div class="w-full sm:w-10 rounded-t-lg transition-all duration-300 shadow-inner 
-                                    {{ $week['is_today'] ? 'bg-emerald-600 group-hover:bg-emerald-700 shadow-md shadow-emerald-500/20' : 'bg-emerald-100 group-hover:bg-emerald-600' }}" 
-                                    style="height: {{ max(6, $week['height_percent']) }}%">
-                                </div>
-                                <!-- Week Name -->
-                                <span class="text-xs {{ $week['is_today'] ? 'text-slate-800 font-extrabold' : 'text-slate-400 font-bold' }} mt-1" title="{{ $week['full_name'] }} (Tanggal {{ $week['date'] }})">
-                                    {{ $week['label'] }}
-                                </span>
-                            </div>
-                            @endforeach
-                        </div>
-
-                    </div>
+                <!-- Live Chart.js Responsive Line Chart -->
+                <div class="relative w-full h-64">
+                    <canvas id="trendChart"></canvas>
                 </div>
             </div>
 

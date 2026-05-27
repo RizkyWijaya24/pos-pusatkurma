@@ -8,13 +8,18 @@
     <!-- JSON Data Islands for Security and HTML parsing safety -->
     <script type="application/json" id="products-data">@json($products)</script>
     <script type="application/json" id="cashiers-data">@json($cashiers)</script>
+    <script type="application/json" id="categories-data">@json($categories)</script>
 
     <!-- Alpine.js Admin State -->
     <div x-data="{
         activeTab: 'inventory',
         showProductModal: false,
         showCashierModal: false,
+        showCategoryModal: false,
         isEditing: false,
+        isEditingCategory: false,
+        search: '',
+        activeCategory: 'Semua',
         
         // Products list (fed dynamically from JSON Island)
         products: JSON.parse(document.getElementById('products-data').textContent),
@@ -22,11 +27,76 @@
         // Cashiers list (fed dynamically from JSON Island)
         cashiers: JSON.parse(document.getElementById('cashiers-data').textContent),
 
+        // Categories list (fed dynamically from JSON Island)
+        categories: JSON.parse(document.getElementById('categories-data').textContent),
+
         // Product Form State
         newProduct: { id: null, sku: '', name: '', category: 'Premium', cost_price: '', selling_price: '', price_unit: 'pcs', stock: '' },
         
         // Cashier Form State
         newCashier: { name: '', email: '', password: '', branch: 'Pusat Cianjur' },
+
+        // Category Form State
+        newCategory: { id: null, name: '' },
+
+        levenshteinDistance(s1, s2) {
+            const len1 = s1.length;
+            const len2 = s2.length;
+            const matrix = [];
+            
+            for (let i = 0; i <= len1; i++) {
+                matrix[i] = [i];
+            }
+            for (let j = 0; j <= len2; j++) {
+                matrix[0][j] = j;
+            }
+            
+            for (let i = 1; i <= len1; i++) {
+                for (let j = 1; j <= len2; j++) {
+                    const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j] + 1,      // Deletion
+                        matrix[i][j - 1] + 1,      // Insertion
+                        matrix[i - 1][j - 1] + cost // Substitution
+                    );
+                }
+            }
+            
+            return matrix[len1][len2];
+        },
+
+        fuzzyMatch(text, query) {
+            if (!query) return true;
+            text = text.toLowerCase().trim();
+            query = query.toLowerCase().trim();
+            
+            if (text.includes(query)) return true;
+            
+            const queryWords = query.split(/\s+/);
+            const textWords = text.split(/\s+/);
+            
+            return queryWords.every(qWord => {
+                if (!qWord) return true;
+                if (text.includes(qWord)) return true;
+                
+                return textWords.some(tWord => {
+                    const distance = this.levenshteinDistance(qWord, tWord);
+                    let threshold = 1;
+                    if (qWord.length > 4) {
+                        threshold = 2;
+                    }
+                    return distance <= threshold;
+                });
+            });
+        },
+
+        get filteredProducts() {
+            return this.products.filter(p => {
+                const matchesSearch = this.fuzzyMatch(p.name, this.search) || this.fuzzyMatch(p.sku, this.search);
+                const matchesCategory = this.activeCategory === 'Semua' || p.category === this.activeCategory;
+                return matchesSearch && matchesCategory;
+            });
+        },
 
         // Toast Helper
         showToast(message, type = 'success') {
@@ -263,6 +333,119 @@
             );
         },
 
+        editCategory(category) {
+            this.isEditingCategory = true;
+            this.newCategory = {
+                id: category.id,
+                name: category.name
+            };
+            this.showCategoryModal = true;
+        },
+
+        resetCategoryForm() {
+            this.newCategory = { id: null, name: '' };
+            this.isEditingCategory = false;
+            this.showCategoryModal = false;
+        },
+
+        saveCategory() {
+            if (!this.newCategory.name.trim()) {
+                this.showToast('Silakan masukkan nama kategori!', 'warning');
+                return;
+            }
+
+            this.showConfirm(
+                this.isEditingCategory ? 'Simpan Perubahan Kategori?' : 'Tambah Kategori Baru?',
+                this.isEditingCategory ? 'Apakah Anda yakin ingin menyimpan perubahan pada kategori ini?' : 'Apakah Anda yakin ingin menambahkan kategori baru ini?',
+                () => {
+                    const csrfToken = document.querySelector('meta[name=csrf-token]').getAttribute('content');
+                    const url = this.isEditingCategory ? `/admin/categories/${this.newCategory.id}` : '/admin/categories';
+                    const method = this.isEditingCategory ? 'PUT' : 'POST';
+
+                    fetch(url, {
+                        method: method,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ name: this.newCategory.name })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(err => { throw err; });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            if (this.isEditingCategory) {
+                                const idx = this.categories.findIndex(c => c.id === this.newCategory.id);
+                                if (idx !== -1) {
+                                    // Update products list locally to match renamed category
+                                    const oldName = this.categories[idx].name;
+                                    this.products.forEach(p => {
+                                        if (p.category === oldName) p.category = data.category.name;
+                                    });
+
+                                    this.categories[idx] = data.category;
+                                }
+                            } else {
+                                this.categories.push(data.category);
+                            }
+                            this.resetCategoryForm();
+                            this.showToast(data.message, 'success');
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        this.showToast(err.message || 'Gagal menyimpan kategori. Pastikan nama kategori unik.', 'error');
+                    });
+                },
+                'warning',
+                'Ya, Simpan'
+            );
+        },
+
+        deleteCategory(id) {
+            const category = this.categories.find(c => c.id === id);
+            if (!category) return;
+
+            this.showConfirm(
+                'Hapus Kategori?',
+                'Apakah Anda yakin ingin menghapus kategori \'' + category.name + '\'? Tindakan ini tidak dapat dibatalkan.',
+                () => {
+                    const csrfToken = document.querySelector('meta[name=csrf-token]').getAttribute('content');
+
+                    fetch(`/admin/categories/${id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(err => { throw err; });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            this.categories = this.categories.filter(c => c.id !== id);
+                            this.showToast(data.message, 'success');
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        this.showToast(err.message || 'Gagal menghapus kategori.', 'error');
+                    });
+                },
+                'danger',
+                'Ya, Hapus'
+            );
+        },
+
         formatRupiah(num) {
             if (num === null || num === undefined) return 'Rp 0';
             return 'Rp ' + Math.round(num).toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
@@ -289,6 +472,16 @@
                 </svg>
                 Kelola Kasir
             </button>
+            <button type="button" 
+                    @click="activeTab = 'categories'"
+                    :class="activeTab === 'categories' ? 'bg-emerald-700 text-white shadow-md shadow-emerald-700/10' : 'bg-transparent text-slate-600 hover:bg-slate-50'"
+                    class="px-5 py-3 text-sm font-bold rounded-xl transition duration-150 flex items-center gap-2">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581a1.125 1.125 0 001.591 0l7.1-7.1a1.125 1.125 0 000-1.591l-9.581-9.581A2.25 2.25 0 0010.74 3z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+                </svg>
+                Kelola Kategori
+            </button>
         </div>
 
         <!-- 1. INVENTORY TAB CONTENT -->
@@ -310,6 +503,34 @@
                 </button>
             </div>
 
+            <!-- Category and Search Panel -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row gap-4 justify-between items-center">
+                <!-- Category Selectors -->
+                <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full sm:w-auto">
+                    <template x-for="cat in ['Semua', ...categories.map(c => c.name)]">
+                        <button type="button" 
+                                @click="activeCategory = cat"
+                                :class="activeCategory === cat ? 'bg-emerald-700 text-white shadow-md shadow-emerald-700/10' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                                class="px-4 py-2 text-xs font-bold rounded-xl transition duration-150 whitespace-nowrap"
+                                x-text="cat">
+                        </button>
+                    </template>
+                </div>
+
+                <!-- Search box -->
+                <div class="relative w-full sm:w-64">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </span>
+                    <input type="text" 
+                        x-model="search"
+                        placeholder="Cari kurma atau SKU..." 
+                        class="w-full pl-9 pr-4 py-2 text-sm border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner">
+                </div>
+            </div>
+
             <!-- Responsive Table (Scrolls horizontally or turns into beautiful cards on Mobile) -->
             <div class="bg-white rounded-3xl border border-slate-100 shadow-md overflow-hidden">
                 <div class="overflow-x-auto w-full max-w-full">
@@ -328,7 +549,7 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 font-semibold text-slate-800">
-                            <template x-for="p in products" :key="p.id">
+                            <template x-for="p in filteredProducts" :key="p.id">
                                 <tr class="hover:bg-slate-50/50 transition duration-150">
                                     <td class="px-6 py-4">
                                         <template x-if="p.image_path">
@@ -344,7 +565,8 @@
                                         <span :class="{
                                             'bg-purple-50 text-purple-700 border-purple-100': p.category === 'Premium',
                                             'bg-blue-50 text-blue-700 border-blue-100': p.category === 'Basah',
-                                            'bg-amber-50 text-amber-700 border-amber-100': p.category === 'Kering'
+                                            'bg-amber-50 text-amber-700 border-amber-100': p.category === 'Kering',
+                                            'bg-emerald-50 text-emerald-700 border-emerald-100': p.category !== 'Premium' && p.category !== 'Basah' && p.category !== 'Kering'
                                         }" class="text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 rounded border" x-text="p.category"></span>
                                     </td>
                                     <td class="px-6 py-4 text-right text-slate-500" x-text="formatRupiah(p.cost_price)"></td>
@@ -449,6 +671,87 @@
             </div>
         </div>
 
+        <!-- 3. CATEGORIES TAB CONTENT -->
+        <div x-show="activeTab === 'categories'" class="flex flex-col gap-6">
+            
+            <!-- Tab Controls -->
+            <div class="flex justify-between items-center gap-4">
+                <div>
+                    <h3 class="font-extrabold text-slate-800 text-lg leading-tight">Daftar Kategori Produk</h3>
+                    <p class="text-sm text-slate-400 font-medium mt-1">Kelola kategori produk kurma dan lihat jumlah produk terkait</p>
+                </div>
+                <button type="button" 
+                        @click="resetCategoryForm(); showCategoryModal = true"
+                        class="px-5 py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-sm transition duration-150 flex items-center gap-2 shadow-md shadow-emerald-700/10 whitespace-nowrap">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Tambah Kategori
+                </button>
+            </div>
+
+            <!-- Responsive Table (Categories) -->
+            <div class="bg-white rounded-3xl border border-slate-100 shadow-md overflow-hidden">
+                <div class="overflow-x-auto w-full max-w-full">
+                    <table class="min-w-full divide-y divide-slate-100 text-left text-sm text-slate-700">
+                        <thead class="bg-slate-50 font-bold text-slate-500 uppercase tracking-wider text-xs">
+                            <tr>
+                                <th class="px-6 py-4">Nama Kategori</th>
+                                <th class="px-6 py-4 text-center">Jumlah Produk Terkait</th>
+                                <th class="px-6 py-4 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 font-semibold text-slate-800">
+                            <template x-for="cat in categories" :key="cat.id">
+                                <tr class="hover:bg-slate-50/50 transition duration-150">
+                                    <td class="px-6 py-4 text-slate-800" x-text="cat.name"></td>
+                                    <td class="px-6 py-4 text-center">
+                                        <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase border bg-slate-50 text-slate-600 border-slate-200" x-text="cat.products_count + ' produk'"></span>
+                                    </td>
+                                    <td class="px-6 py-4 text-center flex items-center justify-center gap-1">
+                                        <button type="button" 
+                                                @click="editCategory(cat)"
+                                                class="p-2 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-xl transition duration-150">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                                            </svg>
+                                        </button>
+                                        <button type="button" 
+                                                @click="deleteCategory(cat.id)"
+                                                class="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition duration-150">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                            </svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- CATEGORY MODAL FORM -->
+        <div x-show="showCategoryModal" 
+             class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm"
+             style="display: none;">
+            
+            <div class="bg-white rounded-3xl p-6 w-full max-w-sm border border-slate-100 shadow-2xl flex flex-col gap-4" @click.away="resetCategoryForm()">
+                <h3 class="font-extrabold text-slate-800 text-lg" x-text="isEditingCategory ? 'Edit Kategori' : 'Tambah Kategori Baru'"></h3>
+                <div class="flex flex-col gap-3 text-sm font-semibold text-slate-700">
+                    <div>
+                        <label class="block mb-1">Nama Kategori</label>
+                        <input type="text" x-model="newCategory.name" placeholder="Contoh: Madu & Herbal" class="w-full border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3 mt-2">
+                    <button type="button" @click="resetCategoryForm()" class="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold">Batal</button>
+                    <button type="button" @click="saveCategory()" class="py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold">Simpan</button>
+                </div>
+            </div>
+        </div>
+
         <!-- PRODUCT MODAL FORM -->
         <div x-show="showProductModal" 
              class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm"
@@ -469,9 +772,9 @@
                         <div>
                             <label class="block mb-1">Kategori</label>
                             <select x-model="newProduct.category" class="w-full border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500">
-                                <option value="Premium">Premium</option>
-                                <option value="Basah">Basah</option>
-                                <option value="Kering">Kering</option>
+                                <template x-for="cat in categories" :key="cat.id">
+                                    <option :value="cat.name" x-text="cat.name" :selected="newProduct.category === cat.name"></option>
+                                </template>
                             </select>
                         </div>
                         <div>

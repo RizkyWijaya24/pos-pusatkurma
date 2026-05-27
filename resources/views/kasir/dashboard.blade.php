@@ -9,6 +9,7 @@
         <script type="application/json" id="products-data">@json($products)</script>
         <script type="application/json" id="transactions-data">@json($todayTransactionsMapped)</script>
         <script type="application/json" id="expenses-data">@json($todayExpensesMapped)</script>
+        <script type="application/json" id="categories-data">@json($categories)</script>
 
         <!-- Alpine.js POS State -->
         <div x-data="{
@@ -18,6 +19,7 @@
             products: JSON.parse(document.getElementById('products-data').textContent),
             todayTransactions: JSON.parse(document.getElementById('transactions-data').textContent),
             expenses: JSON.parse(document.getElementById('expenses-data').textContent),
+            categories: JSON.parse(document.getElementById('categories-data').textContent),
             
             showExpenseModal: false,
             newExpense: { amount: '', category: 'Operasional Toko', description: '' },
@@ -302,6 +304,15 @@
                 this.latestTransaction = null;
             },
 
+            cancelCheckout() {
+                this.showReceipt = false;
+                this.checkoutStage = 0;
+                this.cashReceived = '';
+                this.paymentMethod = '';
+                this.cardDigits = '';
+                this.latestTransaction = null;
+            },
+
             addExpense() {
                 const amount = parseFloat(this.newExpense.amount);
                 if (isNaN(amount) || amount <= 0) {
@@ -413,7 +424,7 @@
                 <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row gap-4 justify-between items-center">
                     <!-- Category Selectors -->
                     <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full sm:w-auto">
-                        <template x-for="cat in ['Semua', 'Premium', 'Basah', 'Kering']">
+                        <template x-for="cat in ['Semua', ...categories.map(c => c.name)]">
                             <button type="button" 
                                     @click="activeCategory = cat"
                                     :class="activeCategory === cat ? 'bg-emerald-700 text-white shadow-md shadow-emerald-700/10' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
@@ -454,12 +465,12 @@
                             class="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-200 active:scale-[0.98] transition duration-150 overflow-hidden flex flex-col justify-between group cursor-pointer select-none">
                             
                             <!-- Product Photo / Forest-green Placeholder -->
-                            <div class="w-full h-32 relative overflow-hidden bg-slate-50 border-b border-slate-100/50">
+                            <div class="w-full relative overflow-hidden border-b border-slate-100/50" style="height: 128px; background-color: #f8fafc;">
                                 <template x-if="product.image_path">
-                                    <img :src="'/storage/' + product.image_path" loading="lazy" class="w-full h-full object-cover transition duration-300 group-hover:scale-105" alt="Foto produk">
+                                    <img :src="'/storage/' + product.image_path" class="transition duration-300 group-hover:scale-105" style="width: 100%; height: 100%; object-fit: cover;" alt="Foto produk">
                                 </template>
                                 <template x-if="!product.image_path">
-                                    <div class="w-full h-full bg-[#1b4332] text-emerald-100 font-bold flex flex-col items-center justify-center gap-1 select-none">
+                                    <div class="text-emerald-100 font-bold flex flex-col items-center justify-center gap-1 select-none" style="width: 100%; height: 100%; background-color: #1b4332;">
                                         <span class="text-3xl tracking-widest uppercase" x-text="product.name.split(' ').filter(w => w.trim() !== '').slice(0, 2).map(w => w[0]).join('').toUpperCase()"></span>
                                         <span class="text-[9px] tracking-widest text-emerald-400/80 font-bold uppercase">Pusat Kurma</span>
                                     </div>
@@ -472,7 +483,8 @@
                                 <span :class="{
                                     'bg-purple-50 text-purple-700 border-purple-100': product.category === 'Premium',
                                     'bg-blue-50 text-blue-700 border-blue-100': product.category === 'Basah',
-                                    'bg-amber-50 text-amber-700 border-amber-100': product.category === 'Kering'
+                                    'bg-amber-50 text-amber-700 border-amber-100': product.category === 'Kering',
+                                    'bg-emerald-50 text-emerald-700 border-emerald-100': product.category !== 'Premium' && product.category !== 'Basah' && product.category !== 'Kering'
                                 }" class="self-start text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 rounded border" x-text="product.category"></span>
 
                                 <!-- Title -->
@@ -606,7 +618,7 @@
             <div x-show="showReceipt" 
                 class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm"
                 style="display: none;"
-                @keydown.escape.window="if (checkoutStage === 1) resetPOS()">
+                @keydown.escape.window="if (checkoutStage === 1) cancelCheckout()">
                 
                 <div class="bg-white rounded-3xl p-6 w-full max-w-md border border-slate-100 shadow-2xl flex flex-col gap-5">
                     
@@ -712,7 +724,7 @@
 
                             <!-- Confirm & Cancel Actions -->
                             <div class="grid grid-cols-2 gap-3 pt-2">
-                                <button type="button" @click="resetPOS()" class="py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold transition duration-150">Batal</button>
+                                <button type="button" @click="cancelCheckout()" class="py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold transition duration-150">Batal</button>
                                 <button type="button" 
                                     @click="finishTransaction()" 
                                     :disabled="(paymentMethod === 'Cash' && (!cashReceived || parseFloat(cashReceived) < total)) || (paymentMethod === 'Debit' && cardDigits.length !== 4)"

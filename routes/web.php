@@ -50,6 +50,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/products/{product}', [\App\Http\Controllers\ProductController::class, 'update'])->name('products.update');
         Route::delete('/products/{product}', [\App\Http\Controllers\ProductController::class, 'destroy'])->name('products.destroy');
 
+        // Category CRUD
+        Route::post('/categories', [\App\Http\Controllers\CategoryController::class, 'store'])->name('categories.store');
+        Route::put('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'update'])->name('categories.update');
+        Route::delete('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'destroy'])->name('categories.destroy');
+
         // Cashier CRUD
         Route::post('/cashiers', [\App\Http\Controllers\CashierController::class, 'store'])->name('cashiers.store');
         Route::delete('/cashiers/{user}', [\App\Http\Controllers\CashierController::class, 'destroy'])->name('cashiers.destroy');

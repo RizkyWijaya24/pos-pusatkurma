@@ -11,7 +11,7 @@
         <div class="flex justify-between items-center gap-4">
             <div>
                 <h3 class="font-extrabold text-slate-800 text-lg leading-tight">Daftar Transaksi Kasir</h3>
-                <p class="text-sm text-slate-400 font-medium mt-1">Seluruh riwayat pencatatan transaksi yang telah diselesaikan oleh Anda</p>
+                <p class="text-sm text-slate-400 font-medium mt-1">Riwayat pencatatan transaksi yang telah diselesaikan oleh Anda hari ini</p>
             </div>
             <span class="bg-emerald-100 text-emerald-800 font-bold text-xs px-3 py-1.5 rounded-full">
                 Total: {{ $transactions->total() }} Transaksi

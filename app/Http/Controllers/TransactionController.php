@@ -15,6 +15,7 @@ class TransactionController extends Controller
     public function index()
     {
         $transactions = Transaction::where('cashier_id', auth()->id())
+            ->whereDate('created_at', Carbon::today())
             ->latest()
             ->paginate(15);
 
@@ -28,9 +29,10 @@ class TransactionController extends Controller
     {
         $query = Transaction::with('cashier')->latest();
 
-        // Optional date filter
-        if ($request->filled('date')) {
-            $query->whereDate('created_at', $request->date);
+        // Optional date filter - default to today
+        $date = $request->has('date') ? $request->input('date') : Carbon::today()->toDateString();
+        if (!empty($date)) {
+            $query->whereDate('created_at', $date);
         }
 
         // Optional branch filter
@@ -42,8 +44,8 @@ class TransactionController extends Controller
 
         // Fetch paginated expenses with filters
         $expenseQuery = \App\Models\Expense::with('cashier')->latest();
-        if ($request->filled('date')) {
-            $expenseQuery->whereDate('created_at', $request->date);
+        if (!empty($date)) {
+            $expenseQuery->whereDate('created_at', $date);
         }
         if ($request->filled('branch')) {
             $expenseQuery->where('branch', $request->branch);
@@ -51,7 +53,7 @@ class TransactionController extends Controller
         $expenses = $expenseQuery->paginate(20, ['*'], 'expense_page')->withQueryString();
 
         // Resolve target date (defaults to today)
-        $targetDate = $request->filled('date') ? Carbon::parse($request->date) : Carbon::today();
+        $targetDate = !empty($date) ? Carbon::parse($date) : Carbon::today();
 
         // Calculate time ranges based on the target date
         $today        = $targetDate->copy()->startOfDay();
@@ -128,9 +130,10 @@ class TransactionController extends Controller
     {
         $query = Transaction::with('cashier')->latest();
 
-        // Optional date filter
-        if ($request->filled('date')) {
-            $query->whereDate('created_at', $request->date);
+        // Optional date filter - default to today
+        $date = $request->has('date') ? $request->input('date') : Carbon::today()->toDateString();
+        if (!empty($date)) {
+            $query->whereDate('created_at', $date);
         }
 
         // Optional branch filter
@@ -142,8 +145,8 @@ class TransactionController extends Controller
 
         // Fetch paginated expenses with filters
         $expenseQuery = \App\Models\Expense::with('cashier')->latest();
-        if ($request->filled('date')) {
-            $expenseQuery->whereDate('created_at', $request->date);
+        if (!empty($date)) {
+            $expenseQuery->whereDate('created_at', $date);
         }
         if ($request->filled('branch')) {
             $expenseQuery->where('branch', $request->branch);
@@ -151,7 +154,7 @@ class TransactionController extends Controller
         $expenses = $expenseQuery->paginate(20, ['*'], 'expense_page')->withQueryString();
 
         // Resolve target date (defaults to today)
-        $targetDate = $request->filled('date') ? Carbon::parse($request->date) : Carbon::today();
+        $targetDate = !empty($date) ? Carbon::parse($date) : Carbon::today();
 
         // Calculate time ranges based on the target date
         $today        = $targetDate->copy()->startOfDay();
@@ -324,8 +327,9 @@ class TransactionController extends Controller
     {
         $query = Transaction::with('cashier')->latest();
 
-        if ($request->filled('date')) {
-            $query->whereDate('created_at', $request->date);
+        $date = $request->has('date') ? $request->input('date') : Carbon::today()->toDateString();
+        if (!empty($date)) {
+            $query->whereDate('created_at', $date);
         }
 
         if ($request->filled('branch')) {
@@ -336,7 +340,7 @@ class TransactionController extends Controller
         $now = Carbon::now();
 
         $branchSuffix = $request->filled('branch') ? '_' . str_replace(' ', '_', $request->branch) : '';
-        $filename = 'Riwayat_Transaksi' . $branchSuffix . '_' . ($request->filled('date') ? $request->date : $now->format('Y-m-d')) . '.xls';
+        $filename = 'Riwayat_Transaksi' . $branchSuffix . '_' . (!empty($date) ? $date : $now->format('Y-m-d')) . '.xls';
 
         return response()->streamDownload(function () use ($transactions, $request, $now) {
             $printDate = $now->translatedFormat('d F Y - H:i');

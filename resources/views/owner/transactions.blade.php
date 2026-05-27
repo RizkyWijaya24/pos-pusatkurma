@@ -31,10 +31,10 @@
                     </select>
 
                     <div class="flex items-center gap-2">
-                        <input type="date" name="date" value="{{ request('date') }}"
+                        <input type="date" name="date" value="{{ request()->has('date') ? request('date') : \Carbon\Carbon::today()->toDateString() }}"
                             class="text-sm border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner px-3 py-2">
                         <button type="submit" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow transition duration-150 py-2.5">Filter</button>
-                        @if(request('date') || request('branch'))
+                        @if(request()->has('date') || request('branch'))
                             <a href="{{ route('owner.transactions.index') }}" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl transition duration-150 py-2.5">Reset</a>
                         @endif
                     </div>

@@ -24,7 +24,12 @@ class DashboardController extends Controller
             ];
         });
 
-        return view('admin.dashboard', compact('products', 'cashiers'));
+        $categories = \App\Models\Category::all()->map(function ($cat) {
+            $cat->products_count = Product::where('category', $cat->name)->count();
+            return $cat;
+        });
+
+        return view('admin.dashboard', compact('products', 'cashiers', 'categories'));
     }
 
     /**
@@ -79,7 +84,9 @@ class DashboardController extends Controller
             ];
         });
 
-        return view('kasir.dashboard', compact('products', 'todayTransactionsMapped', 'todayExpensesMapped'));
+        $categories = \App\Models\Category::select('id', 'name')->get();
+
+        return view('kasir.dashboard', compact('products', 'todayTransactionsMapped', 'todayExpensesMapped', 'categories'));
     }
 
     /**
