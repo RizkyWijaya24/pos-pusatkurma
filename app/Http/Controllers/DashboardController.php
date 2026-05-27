@@ -39,26 +39,31 @@ class DashboardController extends Controller
     {
         $category = $request->input('category');
 
-        // STRICT SECURITY: Exclude cost_price from the columns selected for Cashier view!
-        // Also map selling_price as 'price' to ensure seamless integration with cashier frontend
-        $query = Product::select([
-            'id',
-            'sku',
-            'name',
-            'category',
-            'selling_price as price',
-            'price_unit',
-            'image_path',
-            'stock'
-        ]);
+        $query = Product::query();
 
         // Proteksi Strict Mode Database cPanel:
-        // Jika parameter kategori diisi dan nilainya bukan "Semua"/"all", lakukan filter WHERE
-        if ($category && !in_array(strtolower($category), ['semua', 'all', ''])) {
+        // Jika parameter kategori diisi dan nilainya bukan "Semua"/"all"/"empty", lakukan filter WHERE
+        if ($category && !in_array(strtolower(trim($category)), ['semua', 'all', ''])) {
             $query->where('category', $category);
         }
 
-        $products = $query->get();
+        // Ambil data produk secara standar dari database
+        $productsFromDb = $query->get();
+
+        // STRICT SECURITY: Mapping dilakukan di level PHP untuk memastikan cost_price 
+        // sama sekali tidak dikirimkan ke client-side/kasir view demi keamanan data modal.
+        $products = $productsFromDb->map(function ($product) {
+            return [
+                'id' => $product->id,
+                'sku' => $product->sku,
+                'name' => $product->name,
+                'category' => $product->category,
+                'price' => (int) $product->selling_price, // map selling_price to price in PHP
+                'price_unit' => $product->price_unit,
+                'image_path' => $product->image_path,
+                'stock' => (float) $product->stock
+            ];
+        });
 
         // Fetch transactions created today matching the logged-in cashier's ID
         $todayTransactions = \App\Models\Transaction::where('cashier_id', auth()->id())
