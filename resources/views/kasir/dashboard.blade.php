@@ -75,6 +75,7 @@
 
             fuzzyMatch(text, query) {
                 if (!query) return true;
+                if (!text) return false;
                 text = text.toLowerCase().trim();
                 query = query.toLowerCase().trim();
                 
@@ -105,9 +106,12 @@
 
             get filteredProducts() {
                 return this.products.filter(p => {
-                    const matchesSearch = this.fuzzyMatch(p.name, this.search) || this.fuzzyMatch(p.sku, this.search);
                     const matchesCategory = this.activeCategory === 'Semua' || p.category === this.activeCategory;
-                    return matchesSearch && matchesCategory;
+                    if (!matchesCategory) return false;
+                    
+                    const matchesName = p.name ? this.fuzzyMatch(p.name, this.search) : false;
+                    const matchesSku = p.sku ? this.fuzzyMatch(p.sku, this.search) : false;
+                    return matchesName || matchesSku;
                 });
             },
 
@@ -471,7 +475,7 @@
                                 </template>
                                 <template x-if="!product.image_path">
                                     <div class="text-emerald-100 font-bold flex flex-col items-center justify-center gap-1 select-none" style="width: 100%; height: 100%; background-color: #1b4332;">
-                                        <span class="text-3xl tracking-widest uppercase" x-text="product.name.split(' ').filter(w => w.trim() !== '').slice(0, 2).map(w => w[0]).join('').toUpperCase()"></span>
+                                        <span class="text-3xl tracking-widest uppercase" x-text="(product.name || '').split(' ').filter(w => w.trim() !== '').slice(0, 2).map(w => w[0]).join('').toUpperCase()"></span>
                                         <span class="text-[9px] tracking-widest text-emerald-400/80 font-bold uppercase">Pusat Kurma</span>
                                     </div>
                                 </template>

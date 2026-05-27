@@ -75,6 +75,7 @@
 
         fuzzyMatch(text, query) {
             if (!query) return true;
+            if (!text) return false;
             text = text.toLowerCase().trim();
             query = query.toLowerCase().trim();
             
@@ -100,9 +101,12 @@
 
         get filteredProducts() {
             return this.products.filter(p => {
-                const matchesSearch = this.fuzzyMatch(p.name, this.search) || this.fuzzyMatch(p.sku, this.search);
                 const matchesCategory = this.activeCategory === 'Semua' || p.category === this.activeCategory;
-                return matchesSearch && matchesCategory;
+                if (!matchesCategory) return false;
+                
+                const matchesName = p.name ? this.fuzzyMatch(p.name, this.search) : false;
+                const matchesSku = p.sku ? this.fuzzyMatch(p.sku, this.search) : false;
+                return matchesName || matchesSku;
             });
         },
 
@@ -595,7 +599,7 @@
                                             <img :src="'/storage/' + p.image_path" class="w-10 h-10 object-cover rounded-xl border border-slate-100 shadow-sm" alt="Foto">
                                         </template>
                                         <template x-if="!p.image_path">
-                                            <div class="w-10 h-10 bg-emerald-800 text-white font-bold flex items-center justify-center rounded-xl text-xs uppercase" x-text="p.name.split(' ').slice(0, 2).map(w => w[0]).join('')"></div>
+                                            <div class="w-10 h-10 bg-emerald-800 text-white font-bold flex items-center justify-center rounded-xl text-xs uppercase" x-text="(p.name || '').split(' ').slice(0, 2).map(w => w[0]).join('')"></div>
                                         </template>
                                     </td>
                                     <td class="px-6 py-4 text-slate-400 text-xs font-mono" x-text="p.sku"></td>
