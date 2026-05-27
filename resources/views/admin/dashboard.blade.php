@@ -41,6 +41,12 @@
         // Category Form State
         newCategory: { id: null, name: '' },
 
+        init() {
+            if (this.categories.length > 0) {
+                this.newProduct.category = this.categories[0].name;
+            }
+        },
+
         levenshteinDistance(s1, s2) {
             const len1 = s1.length;
             const len2 = s2.length;
@@ -166,7 +172,8 @@
         },
 
         resetProductForm(keepOpen = false) {
-            this.newProduct = { id: null, sku: '', name: '', category: 'Premium', cost_price: '', selling_price: '', price_unit: 'pcs', stock: '' };
+            const defaultCategory = this.categories.length > 0 ? this.categories[0].name : '';
+            this.newProduct = { id: null, sku: '', name: '', category: defaultCategory, cost_price: '', selling_price: '', price_unit: 'pcs', stock: '' };
             this.costPriceMode = 'pct';
             this.costPricePct  = 50;
             this.isEditing = false;
