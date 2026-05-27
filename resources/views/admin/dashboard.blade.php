@@ -165,12 +165,14 @@
             this.showProductModal = true;
         },
 
-        resetProductForm() {
+        resetProductForm(keepOpen = false) {
             this.newProduct = { id: null, sku: '', name: '', category: 'Premium', cost_price: '', selling_price: '', price_unit: 'pcs', stock: '' };
             this.costPriceMode = 'pct';
             this.costPricePct  = 50;
             this.isEditing = false;
-            this.showProductModal = false;
+            if (!keepOpen) {
+                this.showProductModal = false;
+            }
             const fileInput = document.getElementById('product_image');
             if (fileInput) fileInput.value = '';
         },
@@ -236,10 +238,11 @@
                                 if (idx !== -1) {
                                     this.products[idx] = data.product;
                                 }
+                                this.resetProductForm(false);
                             } else {
                                 this.products.push(data.product);
+                                this.resetProductForm(true); // Keep modal open for faster entry of next products
                             }
-                            this.resetProductForm();
                             this.showToast(data.message, 'success');
                         }
                     })
@@ -786,7 +789,7 @@
              class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm"
              style="display: none;">
             
-            <div class="bg-white rounded-3xl p-6 w-full max-w-md border border-slate-100 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto" @click.away="resetProductForm()">
+            <div class="bg-white rounded-3xl p-6 w-full max-w-md border border-slate-100 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto" @click.away="if (!confirmModal.show) resetProductForm()">
                 <h3 class="font-extrabold text-slate-800 text-lg" x-text="isEditing ? 'Edit Produk' : 'Tambah Produk Baru'"></h3>
                 <div class="flex flex-col gap-3 text-sm font-semibold text-slate-700">
                     <div>
@@ -943,7 +946,7 @@
              style="display: none;"
              @keydown.escape.window="confirmModal.show = false">
             
-            <div class="bg-white rounded-3xl p-6 w-full max-w-sm border border-slate-100 shadow-2xl flex flex-col items-center gap-5 text-center" @click.away="confirmModal.show = false">
+            <div class="bg-white rounded-3xl p-6 w-full max-w-sm border border-slate-100 shadow-2xl flex flex-col items-center gap-5 text-center" @click.stop @click.away="confirmModal.show = false">
                 <!-- Icon depending on type -->
                 <template x-if="confirmModal.type === 'danger'">
                     <div class="w-14 h-14 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center">
