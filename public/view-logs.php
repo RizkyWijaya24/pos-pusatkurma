@@ -53,6 +53,40 @@ if ($bootstrapPath && file_exists($bootstrapPath) && file_exists($vendorPath)) {
         $app = require_once $bootstrapPath;
         $app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
         
+        // AKSI PEMBUATAN SYMLINK OTOMATIS
+        $action = $_GET['action'] ?? '';
+        if ($action === 'make_link') {
+            try {
+                $storageLink = public_path('storage');
+                // Hapus file/link lama jika ada
+                if (file_exists($storageLink) || is_link($storageLink)) {
+                    if (is_link($storageLink)) {
+                        unlink($storageLink);
+                    } else {
+                        @rmdir($storageLink);
+                    }
+                }
+                
+                // Jalankan perintah artisan
+                \Illuminate\Support\Facades\Artisan::call('storage:link');
+                $artisanOutput = \Illuminate\Support\Facades\Artisan::output();
+                $diagnostics[] = "🎉 Artisan storage:link sukses! Output: " . trim($artisanOutput);
+            } catch (\Throwable $e1) {
+                // Fallback manual via symlink() PHP
+                try {
+                    $target = storage_path('app/public');
+                    $shortcut = public_path('storage');
+                    if (symlink($target, $shortcut)) {
+                        $diagnostics[] = "🎉 Sukses membuat Symlink secara manual via PHP!";
+                    } else {
+                        $diagnostics[] = "❌ Gagal membuat Symlink manual.";
+                    }
+                } catch (\Throwable $e2) {
+                    $diagnostics[] = "❌ Error pembuatan Symlink: " . $e1->getMessage() . " | " . $e2->getMessage();
+                }
+            }
+        }
+
         // 1. Periksa $fillable pada Model Product
         $productModel = new \App\Models\Product();
         $fillables = $productModel->getFillable();
@@ -107,6 +141,8 @@ if ($logFile && file_exists($logFile) && filesize($logFile) > 0) {
         .diagnostic-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 15px; margin-bottom: 20px; }
         .diagnostic-item { padding: 6px 0; font-size: 13px; font-weight: bold; border-bottom: 1px solid #334155/30; }
         .diagnostic-item:last-child { border-bottom: none; }
+        .btn-link { display: inline-block; margin-top: 10px; padding: 8px 16px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 12px; transition: 0.2s; }
+        .btn-link:hover { background: #1d4ed8; }
         a { display: inline-block; margin-top: 15px; padding: 8px 16px; background: #047857; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 13px; transition: 0.2s; }
         a:hover { background: #065f46; }
     </style>
@@ -119,6 +155,13 @@ if ($logFile && file_exists($logFile) && filesize($logFile) > 0) {
         <?php foreach ($diagnostics as $item): ?>
             <div class="diagnostic-item"><?php echo $item; ?></div>
         <?php endforeach; ?>
+        
+        <?php if (!file_exists(public_path('storage'))): ?>
+            <div style="margin-top: 15px; padding: 12px; background: rgba(59, 130, 246, 0.1); border: 1px dashed #2563eb; border-radius: 8px;">
+                <span style="font-size: 12px; color: #60a5fa; font-weight: bold; display: block; margin-bottom: 8px;">👉 Link penyimpanan belum dibuat. Klik tombol di bawah untuk membuat secara otomatis:</span>
+                <a href="?token=pk2026&action=make_link" class="btn-link">Buat Symlink Storage Otomatis</a>
+            </div>
+        <?php endif; ?>
     </div>
 
     <h2>📄 Log Aktivitas Server Terbaru:</h2>
