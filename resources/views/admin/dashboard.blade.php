@@ -189,6 +189,22 @@
             this.showProductModal = true;
         },
 
+        dataURItoBlob(dataURI) {
+            try {
+                const byteString = atob(dataURI.split(',')[1]);
+                const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+                const ab = new ArrayBuffer(byteString.length);
+                const ia = new Uint8Array(ab);
+                for (let i = 0; i < byteString.length; i++) {
+                    ia[i] = byteString.charCodeAt(i);
+                }
+                return new Blob([ab], {type: mimeString});
+            } catch (e) {
+                console.error("dataURItoBlob failed:", e);
+                return null;
+            }
+        },
+
         startCamera() {
             this.capturedPhotoFile = null;
             this.capturedPhotoPreview = '';
@@ -255,13 +271,21 @@
             
             ctx.drawImage(video, 0, 0, targetWidth, targetHeight);
             
-            this.capturedPhotoPreview = canvas.toDataURL('image/jpeg', 0.85);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            this.capturedPhotoPreview = dataUrl;
             
-            canvas.toBlob(blob => {
-                if (blob) {
-                    this.capturedPhotoFile = new File([blob], 'camera_photo.jpg', { type: 'image/jpeg' });
-                }
-            }, 'image/jpeg', 0.85);
+            const blob = this.dataURItoBlob(dataUrl);
+            if (blob) {
+                this.capturedPhotoFile = blob;
+                console.log("Photo converted synchronously to Blob, size:", blob.size, "bytes");
+            } else {
+                console.warn("Synchronous blob decoding failed, falling back to toBlob");
+                canvas.toBlob(b => {
+                    if (b) {
+                        this.capturedPhotoFile = b;
+                    }
+                }, 'image/jpeg', 0.85);
+            }
 
             this.stopCamera();
             this.showToast('Foto berhasil diambil!', 'success');
