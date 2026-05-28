@@ -473,7 +473,7 @@
                 </div>
 
                 <!-- Product Grid -->
-                <div class="grid grid-cols-2 xl:grid-cols-3 gap-4 overflow-y-auto max-h-[calc(100vh-210px)] pb-4 pr-1">
+                <div class="grid grid-cols-2 xl:grid-cols-3 gap-4 overflow-y-auto max-h-[calc(100vh-210px)] pb-4 pr-1" translate="no">
                     <template x-for="product in filteredProducts" :key="product.id">
                         <div @click="addToCart(product)" 
                             class="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-200 active:scale-[0.98] transition duration-150 overflow-hidden flex flex-col justify-between group cursor-pointer select-none">
