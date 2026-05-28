@@ -113,12 +113,9 @@
             },
 
         get filteredProducts() {
-    if (!this.search && (!this.activeCategory || String(this.activeCategory).trim().toLowerCase() === 'semua')) {
-        return this.products;
-    }
     return this.products.filter(p => {
-        const matchesSearch = this.fuzzyMatch(p.name, this.search) || this.fuzzyMatch(p.sku, this.search);
-        const currentActive = String(this.activeCategory).trim().toLowerCase();
+        const matchesSearch = !this.search || this.fuzzyMatch(p.name, this.search) || this.fuzzyMatch(p.sku, this.search);
+        const currentActive = String(this.activeCategory || 'semua').trim().toLowerCase();
         const productCat = p.category ? String(p.category).trim().toLowerCase() : '';
         const matchesCategory = currentActive === 'semua' || productCat === currentActive;
         return matchesSearch && matchesCategory;
