@@ -23,6 +23,7 @@
         <div x-data="{
             search: '',
             activeCategory: 'Semua',
+            displayLimit: 24,
             
             products: JSON.parse(document.getElementById('products-data').textContent),
             todayTransactions: JSON.parse(document.getElementById('transactions-data').textContent),
@@ -110,6 +111,19 @@
                         return distance <= threshold;
                     });
                 });
+            },
+
+            init() {
+                this.$watch('search', value => {
+                    this.displayLimit = 24;
+                });
+                this.$watch('activeCategory', value => {
+                    this.displayLimit = 24;
+                });
+            },
+
+            get paginatedProducts() {
+                return this.filteredProducts.slice(0, this.displayLimit);
             },
 
         get filteredProducts() {
@@ -471,7 +485,7 @@
 
                 <!-- Product Grid -->
                 <div class="grid grid-cols-2 xl:grid-cols-3 gap-4 overflow-y-auto max-h-[calc(100vh-210px)] pb-4 pr-1" translate="no">
-                    <template x-for="product in filteredProducts" :key="product.id">
+                    <template x-for="product in paginatedProducts" :key="product.id">
                         <div @click="addToCart(product)" 
                             class="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-200 active:scale-[0.98] transition duration-150 overflow-hidden flex flex-col justify-between group cursor-pointer select-none">
                             
@@ -518,6 +532,22 @@
                                 </svg>
                                 Tambah ke Keranjang
                             </div>
+                        </div>
+                    </template>
+
+                    <!-- Tombol Tampilkan Lebih Banyak -->
+                    <template x-if="displayLimit < filteredProducts.length">
+                        <div class="col-span-2 xl:col-span-3 py-4 flex justify-center">
+                            <button type="button" 
+                                    @click="displayLimit += 24" 
+                                    class="group px-6 py-3 rounded-2xl bg-white border border-slate-200 text-slate-700 hover:text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50/50 shadow-sm active:scale-[0.98] transition duration-150 flex items-center gap-2.5 font-bold text-xs uppercase tracking-wider">
+                                <span>Tampilkan Lebih Banyak</span>
+                                <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-xs font-semibold group-hover:bg-emerald-100 group-hover:text-emerald-700" 
+                                      x-text="filteredProducts.length - displayLimit + ' produk lagi'"></span>
+                                <svg class="h-4 w-4 text-slate-400 group-hover:text-emerald-600 transition" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </button>
                         </div>
                     </template>
                 </div>
