@@ -11,12 +11,28 @@ if ($token !== 'pk2026') {
     die('Akses ditolak. Tambahkan ?token=pk2026 di URL.');
 }
 
-// Bootstrap Laravel untuk Diagnosa Otomatis
-$bootstrapPath = __DIR__ . '/../bootstrap/app.php';
+// Auto-detect Struktur Direktori (Standar atau Flat cPanel)
+$bootstrapPath = null;
+$vendorPath = null;
+$logFile = null;
 $diagnostics = [];
-if (file_exists($bootstrapPath)) {
+
+if (file_exists(__DIR__ . '/../bootstrap/app.php')) {
+    $bootstrapPath = __DIR__ . '/../bootstrap/app.php';
+    $vendorPath = __DIR__ . '/../vendor/autoload.php';
+    $logFile = __DIR__ . '/../storage/logs/laravel.log';
+    $diagnostics[] = "ℹ️  Struktur Direktori: Standar (Folder Laravel di luar public/)";
+} elseif (file_exists(__DIR__ . '/bootstrap/app.php')) {
+    $bootstrapPath = __DIR__ . '/bootstrap/app.php';
+    $vendorPath = __DIR__ . '/vendor/autoload.php';
+    $logFile = __DIR__ . '/storage/logs/laravel.log';
+    $diagnostics[] = "ℹ️  Struktur Direktori: Flat (Semua folder digabung di root public_html/)";
+}
+
+// Jalankan Diagnosa jika bootstrap ditemukan
+if ($bootstrapPath && file_exists($bootstrapPath) && file_exists($vendorPath)) {
     try {
-        require __DIR__ . '/../vendor/autoload.php';
+        require_once $vendorPath;
         $app = require_once $bootstrapPath;
         $app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
         
@@ -48,13 +64,12 @@ if (file_exists($bootstrapPath)) {
         $diagnostics[] = "⚠️ Diagnosa Laravel tertunda: " . $e->getMessage();
     }
 } else {
-    $diagnostics[] = "❌ Gagal memuat bootstrap Laravel untuk diagnosa.";
+    $diagnostics[] = "❌ Gagal memuat bootstrap Laravel untuk diagnosa. Bootstrap/vendor tidak ditemukan.";
 }
 
 // Muat data Log
-$logFile = __DIR__ . '/../storage/logs/laravel.log';
-$logContent = "File log (storage/logs/laravel.log) tidak ditemukan atau masih kosong.";
-if (file_exists($logFile) && filesize($logFile) > 0) {
+$logContent = "File log (laravel.log) tidak ditemukan atau masih kosong.";
+if ($logFile && file_exists($logFile) && filesize($logFile) > 0) {
     $lines = file($logFile);
     $lastLines = array_slice($lines, -150); // Tampilkan 150 baris terakhir
     $logContent = implode("", $lastLines);
