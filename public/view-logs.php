@@ -76,6 +76,35 @@ if ($bootstrapPath && file_exists($bootstrapPath) && file_exists($vendorPath)) {
             }
         }
 
+        // AKSI MIGRASI FOTO LAMA KE PUBLIC_HTML
+        if ($action === 'migrate_photos') {
+            $oldDir = realpath(__DIR__ . '/../pos-pusatkurma/public/storage/products');
+            $newDir = public_path('storage/products');
+            if ($oldDir && is_dir($oldDir)) {
+                if (!file_exists($newDir)) {
+                    mkdir($newDir, 0755, true);
+                }
+                $movedCount = 0;
+                $files = glob($oldDir . '/*');
+                foreach ($files as $file) {
+                    if (is_file($file)) {
+                        $dest = $newDir . '/' . basename($file);
+                        if (!file_exists($dest)) {
+                            if (copy($file, $dest)) {
+                                $movedCount++;
+                            }
+                        }
+                    }
+                }
+                $diagnostics[] = "🎉 Sukses menyalin $movedCount foto lama dari pos-pusatkurma/public ke public_html/storage!";
+            } else {
+                $diagnostics[] = "⚠️ Folder lama tidak ditemukan atau kosong. Tidak ada foto yang perlu disalin.";
+            }
+        }
+
+        // 0. Periksa Jalur Folder Publik Aktif
+        $diagnostics[] = "ℹ️  Laravel public_path(): " . public_path();
+
         // 1. Periksa $fillable pada Model Product
         $productModel = new \App\Models\Product();
         $fillables = $productModel->getFillable();
@@ -162,6 +191,11 @@ if ($logFile && file_exists($logFile) && filesize($logFile) > 0) {
                 <a href="?token=pk2026&action=make_link" class="btn-link">Buat Symlink Storage Otomatis</a>
             </div>
         <?php endif; ?>
+
+        <div style="margin-top: 15px; padding: 12px; background: rgba(16, 185, 129, 0.1); border: 1px dashed #10b981; border-radius: 8px;">
+            <span style="font-size: 12px; color: #34d399; font-weight: bold; display: block; margin-bottom: 8px;">👉 Salin/Migrasikan foto produk dari folder lama (pos-pusatkurma/public) ke folder publik aktif (public_html/storage) secara otomatis:</span>
+            <a href="?token=pk2026&action=migrate_photos" class="btn-link" style="background: #10b981;">Salin/Migrasi Foto Lama ke Folder Publik Aktif</a>
+        </div>
     </div>
 
     <h2>📁 Berkas Foto Terunggah di Hosting:</h2>
