@@ -475,27 +475,23 @@
                         <div @click="addToCart(product)" 
                             class="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-200 active:scale-[0.98] transition duration-150 overflow-hidden flex flex-col justify-between group cursor-pointer select-none">
                             
-                            <!-- Product Photo / Forest-green Placeholder -->
-                            <!-- Product Photo: dark green placeholder as permanent base, image overlaid on top -->
-                            <div class="w-full relative overflow-hidden border-b border-slate-100/50" style="height: 128px; background-color: #1b4332;">
-                                <!-- Initials placeholder — always rendered as the bottom layer -->
-                                <div class="text-emerald-100 font-bold flex flex-col items-center justify-center gap-1 select-none" style="position: absolute; inset: 0; width: 100%; height: 100%;">
-                                    <span class="text-3xl tracking-widest uppercase" x-text="product.name ? product.name.split(' ').filter(w => w.trim() !== '').slice(0, 2).map(w => w ? w[0] : '').join('').toUpperCase() : 'PK'"></span>
-                                    <span class="text-[9px] tracking-widest text-emerald-400/80 font-bold uppercase">Pusat Kurma</span>
-                                </div>
-                                <!-- Product image — overlays placeholder when it loads; hides itself on error -->
-                                <template x-if="product.image_path">
-                                    <img :src="'/storage/' + product.image_path"
-                                         class="transition duration-300 group-hover:scale-105"
-                                         style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;"
-                                         onerror="this.style.display='none'"
-                                         alt="Foto produk">
-                                </template>
+                            <!-- Foto Produk: placeholder hijau selalu tampil, gambar overlay di atas -->
+                            <div style="height: 128px; background-color: #1b4332; position: relative; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 4px; overflow: hidden; border-bottom: 1px solid rgba(241,245,249,0.5);">
+                                <!-- Inisial: selalu ada sebagai layer bawah -->
+                                <span style="font-size: 1.875rem; font-weight: 700; color: #d1fae5; letter-spacing: 0.1em; text-transform: uppercase; z-index: 1; line-height: 1;"
+                                      x-text="product.name ? product.name.split(' ').filter(w => w.trim() !== '').slice(0, 2).map(w => w ? w[0] : '').join('').toUpperCase() : 'PK'"></span>
+                                <span style="font-size: 9px; letter-spacing: 0.1em; color: rgba(52,211,153,0.8); font-weight: 700; text-transform: uppercase; z-index: 1;">Pusat Kurma</span>
+                                <!-- Gambar: overlay di atas placeholder, sembunyi jika error -->
+                                <img x-show="product.image_path"
+                                     :src="product.image_path ? ('/storage/' + product.image_path) : ''"
+                                     style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 2;"
+                                     class="transition duration-300 group-hover:scale-105"
+                                     onerror="this.style.display='none'"
+                                     alt="Foto produk">
                             </div>
 
-
-                            <!-- Product Info -->
-                            <div class="p-3 sm:p-4 flex flex-col gap-1.5 relative">
+                            <!-- Info Produk -->
+                            <div class="p-3 sm:p-4 flex flex-col gap-1.5 relative" style="display: flex; flex-direction: column; gap: 6px; padding: 12px;">
                                 <!-- Category Badge -->
                                 <span :class="{
                                     'bg-purple-50 text-purple-700 border-purple-100': product.category === 'Premium',
