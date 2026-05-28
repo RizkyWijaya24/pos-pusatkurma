@@ -17,6 +17,7 @@ $vendorPath = null;
 $logFile = null;
 $diagnostics = [];
 $uploadedFiles = [];
+$orphanedFiles = [];
 
 // 1. Coba deteksi via Jalur Kustom cPanel /pos-pusatkurma/ (Sesuai dengan isi index.php)
 if (file_exists(__DIR__ . '/../pos-pusatkurma/bootstrap/app.php')) {
@@ -102,6 +103,33 @@ if ($bootstrapPath && file_exists($bootstrapPath) && file_exists($vendorPath)) {
             }
         }
 
+        // AKSI HAPUS FOTO YATIM (TANPA PRODUK)
+        if ($action === 'clean_orphaned') {
+            $deletedCount = 0;
+            $productsDir = public_path('storage/products');
+            if (is_dir($productsDir)) {
+                $activeImages = \App\Models\Product::whereNotNull('image_path')->pluck('image_path')->toArray();
+                $activeFilenames = array_map(function($path) {
+                    return basename($path);
+                }, $activeImages);
+                
+                $files = glob($productsDir . '/*');
+                foreach ($files as $file) {
+                    if (is_file($file)) {
+                        $filename = basename($file);
+                        if (!in_array($filename, $activeFilenames)) {
+                            if (@unlink($file)) {
+                                $deletedCount++;
+                            }
+                        }
+                    }
+                }
+                $diagnostics[] = "🧹 Sukses menghapus $deletedCount foto yatim (tanpa produk) dari folder publik!";
+            } else {
+                $diagnostics[] = "⚠️ Folder produk aktif tidak ditemukan.";
+            }
+        }
+
         // 0. Periksa Jalur Folder Publik Aktif
         $diagnostics[] = "ℹ️  Laravel public_path(): " . public_path();
 
@@ -132,10 +160,22 @@ if ($bootstrapPath && file_exists($bootstrapPath) && file_exists($vendorPath)) {
         // 4. Daftar berkas foto produk terunggah secara fisik
         $productsDir = public_path('storage/products');
         if (is_dir($productsDir)) {
+            // Ambil daftar file aktif dari database
+            $activeImages = \App\Models\Product::whereNotNull('image_path')->pluck('image_path')->toArray();
+            $activeFilenames = array_map(function($path) {
+                return basename($path);
+            }, $activeImages);
+
             $files = glob($productsDir . '/*');
             foreach ($files as $file) {
                 if (is_file($file)) {
-                    $uploadedFiles[] = basename($file) . ' (' . round(filesize($file)/1024, 1) . ' KB)';
+                    $filename = basename($file);
+                    $fileSizeKB = round(filesize($file)/1024, 1);
+                    if (in_array($filename, $activeFilenames)) {
+                        $uploadedFiles[] = $filename . ' (' . $fileSizeKB . ' KB)';
+                    } else {
+                        $orphanedFiles[] = $filename . ' (' . $fileSizeKB . ' KB)';
+                    }
                 }
             }
         }
@@ -192,21 +232,48 @@ if ($logFile && file_exists($logFile) && filesize($logFile) > 0) {
             </div>
         <?php endif; ?>
 
-        <div style="margin-top: 15px; padding: 12px; background: rgba(16, 185, 129, 0.1); border: 1px dashed #10b981; border-radius: 8px;">
-            <span style="font-size: 12px; color: #34d399; font-weight: bold; display: block; margin-bottom: 8px;">👉 Salin/Migrasikan foto produk dari folder lama (pos-pusatkurma/public) ke folder publik aktif (public_html/storage) secara otomatis:</span>
-            <a href="?token=pk2026&action=migrate_photos" class="btn-link" style="background: #10b981;">Salin/Migrasi Foto Lama ke Folder Publik Aktif</a>
+        <div style="margin-top: 15px; padding: 12px; background: rgba(16, 185, 129, 0.1); border: 1px dashed #10b981; border-radius: 8px; display: flex; flex-wrap: wrap; gap: 15px;">
+            <div style="flex: 1; min-width: 250px;">
+                <span style="font-size: 12px; color: #34d399; font-weight: bold; display: block; margin-bottom: 8px;">👉 Salin/Migrasikan foto produk dari folder lama (pos-pusatkurma/public) ke folder publik aktif (public_html/storage) secara otomatis:</span>
+                <a href="?token=pk2026&action=migrate_photos" class="btn-link" style="background: #10b981;">Salin/Migrasi Foto Lama ke Folder Publik Aktif</a>
+            </div>
+            
+            <div style="flex: 1; min-width: 250px; border-left: 1px dashed #334155; padding-left: 15px;">
+                <span style="font-size: 12px; color: #f87171; font-weight: bold; display: block; margin-bottom: 8px;">👉 Hapus semua berkas foto produk yatim (yang produknya sudah dihapus dari sistem) untuk hemat memori hosting:</span>
+                <a href="?token=pk2026&action=clean_orphaned" class="btn-link" style="background: #ef4444;" onclick="return confirm('Apakah Anda yakin ingin menghapus semua foto yang tidak memiliki produk?');">Bersihkan & Hapus Foto Yatim</a>
+            </div>
         </div>
     </div>
 
     <h2>📁 Berkas Foto Terunggah di Hosting:</h2>
-    <div class="diagnostic-card">
-        <?php if (empty($uploadedFiles)): ?>
-            <div class="diagnostic-item" style="color: #f87171;">❌ Belum ada berkas foto yang tersimpan di folder public/storage/products/</div>
-        <?php else: ?>
-            <?php foreach ($uploadedFiles as $f): ?>
-                <div class="diagnostic-item" style="color: #34d399;">📷 <?php echo $f; ?></div>
-            <?php endforeach; ?>
-        <?php endif; ?>
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 20px;">
+        <!-- Foto Aktif -->
+        <div style="flex: 1; min-width: 300px;" class="diagnostic-card">
+            <h3 style="color: #34d399; font-size: 14px; margin-top: 0; border-bottom: 1px solid #334155; padding-bottom: 8px; margin-bottom: 10px;">✅ Foto Aktif (Dipakai Produk)</h3>
+            <?php if (empty($uploadedFiles)): ?>
+                <div class="diagnostic-item" style="color: #94a3b8; font-style: italic;">Belum ada berkas foto aktif yang tersimpan.</div>
+            <?php else: ?>
+                <div style="max-height: 250px; overflow-y: auto;">
+                    <?php foreach ($uploadedFiles as $f): ?>
+                        <div class="diagnostic-item" style="color: #34d399;">📷 <?php echo $f; ?></div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Foto Yatim -->
+        <div style="flex: 1; min-width: 300px;" class="diagnostic-card">
+            <h3 style="color: #f87171; font-size: 14px; margin-top: 0; border-bottom: 1px solid #334155; padding-bottom: 8px; margin-bottom: 10px;">⚠️ Foto Yatim (Tanpa Produk / Terbengkalai)</h3>
+            <?php if (empty($orphanedFiles)): ?>
+                <div class="diagnostic-item" style="color: #34d399; font-style: italic;">🎉 Bersih! Tidak ada foto yatim di folder publik Anda.</div>
+            <?php else: ?>
+                <div style="max-height: 250px; overflow-y: auto;">
+                    <?php foreach ($orphanedFiles as $fo): ?>
+                        <div class="diagnostic-item" style="color: #f87171;">⚠️ <?php echo $fo; ?></div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
     </div>
 
     <h2>📄 Log Aktivitas Server Terbaru:</h2>
