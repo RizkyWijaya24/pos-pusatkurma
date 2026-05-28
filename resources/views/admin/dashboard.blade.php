@@ -200,7 +200,7 @@
                 }
                 return new Blob([ab], {type: mimeString});
             } catch (e) {
-                console.error("dataURItoBlob failed:", e);
+                console.error('dataURItoBlob failed:', e);
                 return null;
             }
         },
@@ -277,9 +277,9 @@
             const blob = this.dataURItoBlob(dataUrl);
             if (blob) {
                 this.capturedPhotoFile = blob;
-                console.log("Photo converted synchronously to Blob, size:", blob.size, "bytes");
+                console.log('Photo converted synchronously to Blob, size:', blob.size, 'bytes');
             } else {
-                console.warn("Synchronous blob decoding failed, falling back to toBlob");
+                console.warn('Synchronous blob decoding failed, falling back to toBlob');
                 canvas.toBlob(b => {
                     if (b) {
                         this.capturedPhotoFile = b;
