@@ -28,6 +28,8 @@
         isEditingCategory: false,
         search: '',
         activeCategory: 'Semua',
+        currentPage: 1,
+        itemsPerPage: 10,
         
         // Products list (fed dynamically from JSON Island)
         products: JSON.parse(document.getElementById('products-data').textContent),
@@ -59,6 +61,12 @@
             if (this.categories.length > 0) {
                 this.newProduct.category = this.categories[0].name;
             }
+            this.$watch('search', value => {
+                this.currentPage = 1;
+            });
+            this.$watch('activeCategory', value => {
+                this.currentPage = 1;
+            });
         },
 
         levenshteinDistance(s1, s2) {
@@ -122,6 +130,20 @@
                 const matchesSku = p.sku ? this.fuzzyMatch(p.sku, this.search) : false;
                 return matchesName || matchesSku;
             });
+        },
+
+        get totalPages() {
+            return Math.ceil(this.filteredProducts.length / this.itemsPerPage);
+        },
+
+        get paginatedProducts() {
+            const total = this.totalPages;
+            if (this.currentPage > total && total > 0) {
+                this.currentPage = total;
+            }
+            const start = (this.currentPage - 1) * this.itemsPerPage;
+            const end = start + this.itemsPerPage;
+            return this.filteredProducts.slice(start, end);
         },
 
         // Toast Helper
@@ -716,7 +738,7 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 font-semibold text-slate-800">
-                            <template x-for="p in filteredProducts" :key="p.id">
+                            <template x-for="p in paginatedProducts" :key="p.id">
                                 <tr class="hover:bg-slate-50/50 transition duration-150">
                                     <td class="px-6 py-4">
                                         <template x-if="p.image_path">
@@ -771,6 +793,49 @@
                             </template>
                         </tbody>
                     </table>
+                </div>
+                
+                <!-- Pagination Controls -->
+                <div class="bg-white px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div class="text-xs sm:text-sm font-semibold text-slate-500">
+                        Menampilkan <span class="text-slate-800 font-bold" x-text="filteredProducts.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0"></span> 
+                        sampai <span class="text-slate-800 font-bold" x-text="Math.min(currentPage * itemsPerPage, filteredProducts.length)"></span> 
+                        dari <span class="text-slate-800 font-bold" x-text="filteredProducts.length"></span> produk
+                    </div>
+                    
+                    <div class="flex items-center gap-1.5" x-show="totalPages > 1">
+                        <!-- Prev Button -->
+                        <button type="button" 
+                                @click="if (currentPage > 1) currentPage--" 
+                                :disabled="currentPage === 1"
+                                :class="currentPage === 1 ? 'opacity-40 cursor-not-allowed' : 'hover:bg-slate-100 hover:text-emerald-700'"
+                                class="p-2 text-slate-500 bg-slate-50 rounded-xl transition duration-150 flex items-center justify-center">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                            </svg>
+                        </button>
+
+                        <!-- Page Numbers -->
+                        <template x-for="page in totalPages" :key="page">
+                            <button type="button" 
+                                    @click="currentPage = page"
+                                    :class="currentPage === page ? 'bg-emerald-700 text-white shadow-md shadow-emerald-700/10 font-bold' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-emerald-700'"
+                                    class="w-9 h-9 text-xs sm:text-sm rounded-xl transition duration-150 flex items-center justify-center"
+                                    x-text="page">
+                            </button>
+                        </template>
+
+                        <!-- Next Button -->
+                        <button type="button" 
+                                @click="if (currentPage < totalPages) currentPage++" 
+                                :disabled="currentPage === totalPages"
+                                :class="currentPage === totalPages ? 'opacity-40 cursor-not-allowed' : 'hover:bg-slate-100 hover:text-emerald-700'"
+                                class="p-2 text-slate-500 bg-slate-50 rounded-xl transition duration-150 flex items-center justify-center">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
