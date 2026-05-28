@@ -475,7 +475,7 @@
                 <div class="grid grid-cols-2 xl:grid-cols-3 gap-4 overflow-y-auto max-h-[calc(100vh-210px)] pb-32 pr-1" style="overflow-y: auto; max-height: calc(100vh - 210px); padding-bottom: 120px; -webkit-overflow-scrolling: touch;" translate="no">
                     <template x-for="product in filteredProducts" :key="product.id">
                         <div @click="addToCart(product)" 
-                            style="min-height: 310px; display: flex; flex-direction: column; justify-content: space-between;"
+                            style="min-height: 340px; display: flex; flex-direction: column; justify-content: space-between;"
                             class="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-200 active:scale-[0.98] transition duration-150 overflow-hidden group cursor-pointer select-none">
                             
                             <!-- Foto Produk: placeholder hijau selalu tampil, gambar overlay di atas -->
