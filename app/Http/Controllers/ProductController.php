@@ -14,6 +14,12 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
+        \Illuminate\Support\Facades\Log::info('Product store request all: ', $request->all());
+        \Illuminate\Support\Facades\Log::info('Product store request hasFile image: ' . ($request->hasFile('image') ? 'YES' : 'NO'));
+        if ($request->hasFile('image')) {
+            \Illuminate\Support\Facades\Log::info('Product store request file image mime: ' . $request->file('image')->getMimeType());
+        }
+
         if (empty($request->sku)) {
             $request->merge(['sku' => 'PK-' . strtoupper(substr(uniqid(), -6))]);
         }
@@ -48,6 +54,12 @@ class ProductController extends Controller
      */
     public function update(Request $request, Product $product)
     {
+        \Illuminate\Support\Facades\Log::info('Product update request all: ', $request->all());
+        \Illuminate\Support\Facades\Log::info('Product update request hasFile image: ' . ($request->hasFile('image') ? 'YES' : 'NO'));
+        if ($request->hasFile('image')) {
+            \Illuminate\Support\Facades\Log::info('Product update request file image mime: ' . $request->file('image')->getMimeType());
+        }
+
         if (empty($request->sku)) {
             $request->merge(['sku' => $product->sku ?: 'PK-' . strtoupper(substr(uniqid(), -6))]);
         }
