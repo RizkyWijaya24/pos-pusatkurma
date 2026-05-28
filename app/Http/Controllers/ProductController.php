@@ -76,9 +76,12 @@ class ProductController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            // Delete old image if exists
-            if ($product->image_path && Storage::disk('public')->exists($product->image_path)) {
-                Storage::disk('public')->delete($product->image_path);
+            // Delete old image if exists from physical public/storage folder
+            if ($product->image_path) {
+                $oldPath = public_path('storage/' . $product->image_path);
+                if (file_exists($oldPath)) {
+                    @unlink($oldPath);
+                }
             }
             
             $path = $this->compressAndStoreImage($request->file('image'));
@@ -99,9 +102,12 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
-        // Delete image if exists
-        if ($product->image_path && Storage::disk('public')->exists($product->image_path)) {
-            Storage::disk('public')->delete($product->image_path);
+        // Delete image if exists from physical public/storage folder
+        if ($product->image_path) {
+            $oldPath = public_path('storage/' . $product->image_path);
+            if (file_exists($oldPath)) {
+                @unlink($oldPath);
+            }
         }
 
         $product->delete();
@@ -123,9 +129,16 @@ class ProductController extends Controller
     private function compressAndStoreImage($file)
     {
         // Graceful GD Fallback: If GD extension is not loaded or crucial functions are missing,
-        // use standard Laravel file storage to prevent application crashing.
+        // save directly to public/storage/products to avoid symlink issues on shared hosting
         if (!extension_loaded('gd') || !function_exists('imagecreatetruecolor')) {
-            return $file->store('products', 'public');
+            $filename = uniqid() . '.' . $file->getClientOriginalExtension();
+            // Ensure public/storage/products exists
+            $targetDir = public_path('storage/products');
+            if (!file_exists($targetDir)) {
+                mkdir($targetDir, 0755, true);
+            }
+            $file->move($targetDir, $filename);
+            return 'products/' . $filename;
         }
 
         $mime = $file->getMimeType();
@@ -142,9 +155,15 @@ class ProductController extends Controller
             $source = @imagecreatefromgif($file->getRealPath());
         }
 
-        // Fallback: If loader fails to parse resource, store standard file
+        // Fallback: If loader fails to parse resource, store standard file directly in public/storage
         if (!$source) {
-            return $file->store('products', 'public');
+            $filename = uniqid() . '.' . $file->getClientOriginalExtension();
+            $targetDir = public_path('storage/products');
+            if (!file_exists($targetDir)) {
+                mkdir($targetDir, 0755, true);
+            }
+            $file->move($targetDir, $filename);
+            return 'products/' . $filename;
         }
 
         $width = imagesx($source);
@@ -180,9 +199,9 @@ class ProductController extends Controller
             $source = $target;
         }
 
-        // Generate unique name and local storage destination path
+        // Generate unique name and local storage destination path inside public/storage
         $filename = 'products/' . uniqid() . '.jpg';
-        $fullPath = storage_path('app/public/' . $filename);
+        $fullPath = public_path('storage/' . $filename);
 
         // Ensure directories are dynamically created
         if (!file_exists(dirname($fullPath))) {
