@@ -49,6 +49,12 @@
         // Category Form State
         newCategory: { id: null, name: '' },
 
+        // Camera integration state
+        showCamera: false,
+        cameraStream: null,
+        capturedPhotoFile: null,
+        capturedPhotoPreview: '',
+
         init() {
             if (this.categories.length > 0) {
                 this.newProduct.category = this.categories[0].name;
@@ -183,7 +189,89 @@
             this.showProductModal = true;
         },
 
+        startCamera() {
+            this.capturedPhotoFile = null;
+            this.capturedPhotoPreview = '';
+            
+            navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                } 
+            })
+            .then(stream => {
+                this.cameraStream = stream;
+                this.showCamera = true;
+                this.$nextTick(() => {
+                    const video = document.getElementById('camera_feed');
+                    if (video) {
+                        video.srcObject = stream;
+                    }
+                });
+            })
+            .catch(err => {
+                console.error('Error camera:', err);
+                this.showToast('Gagal mengakses kamera! Pastikan izin kamera sudah diberikan.', 'error');
+            });
+        },
+
+        stopCamera() {
+            if (this.cameraStream) {
+                this.cameraStream.getTracks().forEach(track => track.stop());
+                this.cameraStream = null;
+            }
+            this.showCamera = false;
+            const video = document.getElementById('camera_feed');
+            if (video) {
+                video.srcObject = null;
+            }
+        },
+
+        capturePhoto() {
+            const video = document.getElementById('camera_feed');
+            if (!video) return;
+
+            const canvas = document.createElement('canvas');
+            const videoWidth = video.videoWidth || 640;
+            const videoHeight = video.videoHeight || 480;
+            
+            const maxDimension = 800;
+            let targetWidth = videoWidth;
+            let targetHeight = videoHeight;
+            if (videoWidth > maxDimension || videoHeight > maxDimension) {
+                if (videoWidth > videoHeight) {
+                    targetWidth = maxDimension;
+                    targetHeight = Math.round((videoHeight / videoWidth) * maxDimension);
+                } else {
+                    targetHeight = maxDimension;
+                    targetWidth = Math.round((videoWidth / videoHeight) * maxDimension);
+                }
+            }
+
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.drawImage(video, 0, 0, targetWidth, targetHeight);
+            
+            this.capturedPhotoPreview = canvas.toDataURL('image/jpeg', 0.85);
+            
+            canvas.toBlob(blob => {
+                if (blob) {
+                    this.capturedPhotoFile = new File([blob], 'camera_photo.jpg', { type: 'image/jpeg' });
+                }
+            }, 'image/jpeg', 0.85);
+
+            this.stopCamera();
+            this.showToast('Foto berhasil diambil!', 'success');
+        },
+
         resetProductForm(keepOpen = false) {
+            this.stopCamera();
+            this.capturedPhotoFile = null;
+            this.capturedPhotoPreview = '';
+            
             const defaultCategory = this.categories.length > 0 ? this.categories[0].name : '';
             this.newProduct = { id: null, sku: '', name: '', category: defaultCategory, cost_price: '', selling_price: '', price_unit: 'pcs', stock: '' };
             this.costPriceMode = 'pct';
@@ -228,9 +316,13 @@
                     formData.append('price_unit', this.newProduct.price_unit);
                     formData.append('stock', this.newProduct.stock);
 
-                    const fileInput = document.getElementById('product_image');
-                    if (fileInput && fileInput.files[0]) {
-                        formData.append('image', fileInput.files[0]);
+                    if (this.capturedPhotoFile) {
+                        formData.append('image', this.capturedPhotoFile, 'camera_photo.jpg');
+                    } else {
+                        const fileInput = document.getElementById('product_image');
+                        if (fileInput && fileInput.files[0]) {
+                            formData.append('image', fileInput.files[0]);
+                        }
                     }
 
                     const csrfToken = document.querySelector('meta[name=csrf-token]').getAttribute('content');
@@ -908,6 +1000,49 @@
                         <label class="block mb-1">Foto Produk</label>
                         <input type="file" id="product_image" accept="image/*" class="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-slate-200 rounded-xl p-1.5 focus:border-emerald-500 focus:ring-emerald-500">
                         <p class="text-[10px] text-slate-400 font-semibold mt-1">Bebas ukuran file. Foto akan otomatis dikompres oleh sistem agar ringan.</p>
+                    </div>
+
+                    <!-- Kamera Langsung -->
+                    <div class="mt-2 bg-slate-50 border border-slate-200/60 rounded-2xl p-4 flex flex-col gap-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-600">Ambil Foto Langsung</span>
+                            <button type="button" 
+                                    @click="if(showCamera) { stopCamera(); } else { startCamera(); }"
+                                    :class="showCamera ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'"
+                                    class="px-3 py-1.5 text-xs font-bold rounded-xl border transition flex items-center gap-1.5 shadow-sm">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+                                </svg>
+                                <span x-text="showCamera ? 'Matikan Kamera' : 'Buka Kamera'"></span>
+                            </button>
+                        </div>
+
+                        <!-- Live Camera Viewport -->
+                        <div x-show="showCamera" class="relative rounded-xl overflow-hidden bg-slate-900 border border-slate-800 shadow-inner flex flex-col items-center justify-center aspect-video">
+                            <video id="camera_feed" autoplay playsinline class="w-full h-full object-cover"></video>
+                            
+                            <!-- Shutter Overlay -->
+                            <button type="button" 
+                                    @click="capturePhoto()" 
+                                    class="absolute bottom-4 left-1/2 -translate-x-1/2 h-14 w-14 rounded-full bg-white border-4 border-slate-300 hover:border-emerald-500 shadow-lg active:scale-95 transition flex items-center justify-center group">
+                                <span class="h-8 w-8 rounded-full bg-rose-600 group-hover:bg-emerald-600 transition duration-150"></span>
+                            </button>
+                        </div>
+
+                        <!-- Captured Preview Section -->
+                        <div x-show="capturedPhotoPreview" class="relative rounded-xl overflow-hidden border border-slate-200/80 shadow-sm bg-white p-2">
+                            <img :src="capturedPhotoPreview" class="w-full rounded-lg max-h-48 object-cover" alt="Preview Foto Kamera">
+                            
+                            <!-- Delete Preview Button -->
+                            <button type="button" 
+                                    @click="capturedPhotoFile = null; capturedPhotoPreview = '';" 
+                                    class="absolute top-4 right-4 bg-rose-600 hover:bg-rose-700 text-white rounded-full p-2.5 shadow-md active:scale-90 transition">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-3 mt-2">
