@@ -16,6 +16,7 @@ $bootstrapPath = null;
 $vendorPath = null;
 $logFile = null;
 $diagnostics = [];
+$uploadedFiles = [];
 
 // 1. Coba deteksi via Jalur Kustom cPanel /pos-pusatkurma/ (Sesuai dengan isi index.php)
 if (file_exists(__DIR__ . '/../pos-pusatkurma/bootstrap/app.php')) {
@@ -58,7 +59,6 @@ if ($bootstrapPath && file_exists($bootstrapPath) && file_exists($vendorPath)) {
         if ($action === 'make_link') {
             try {
                 $storageLink = public_path('storage');
-                // Hapus file/link lama jika ada
                 if (file_exists($storageLink) || is_link($storageLink)) {
                     if (is_link($storageLink)) {
                         unlink($storageLink);
@@ -66,24 +66,13 @@ if ($bootstrapPath && file_exists($bootstrapPath) && file_exists($vendorPath)) {
                         @rmdir($storageLink);
                     }
                 }
-                
-                // Jalankan perintah artisan
                 \Illuminate\Support\Facades\Artisan::call('storage:link');
-                $artisanOutput = \Illuminate\Support\Facades\Artisan::output();
-                $diagnostics[] = "🎉 Artisan storage:link sukses! Output: " . trim($artisanOutput);
             } catch (\Throwable $e1) {
-                // Fallback manual via symlink() PHP
                 try {
                     $target = storage_path('app/public');
                     $shortcut = public_path('storage');
-                    if (symlink($target, $shortcut)) {
-                        $diagnostics[] = "🎉 Sukses membuat Symlink secara manual via PHP!";
-                    } else {
-                        $diagnostics[] = "❌ Gagal membuat Symlink manual.";
-                    }
-                } catch (\Throwable $e2) {
-                    $diagnostics[] = "❌ Error pembuatan Symlink: " . $e1->getMessage() . " | " . $e2->getMessage();
-                }
+                    symlink($target, $shortcut);
+                } catch (\Throwable $e2) {}
             }
         }
 
@@ -109,6 +98,17 @@ if ($bootstrapPath && file_exists($bootstrapPath) && file_exists($vendorPath)) {
             $diagnostics[] = "✅ Symlink: Folder link/direktori public/storage SUDAH ada";
         } else {
             $diagnostics[] = "❌ Symlink: Link public/storage belum dibuat! Fotonya tidak akan bisa diakses jika link ini belum ada.";
+        }
+        
+        // 4. Daftar berkas foto produk terunggah secara fisik
+        $productsDir = public_path('storage/products');
+        if (is_dir($productsDir)) {
+            $files = glob($productsDir . '/*');
+            foreach ($files as $file) {
+                if (is_file($file)) {
+                    $uploadedFiles[] = basename($file) . ' (' . round(filesize($file)/1024, 1) . ' KB)';
+                }
+            }
         }
         
     } catch (\Throwable $e) {
@@ -161,6 +161,17 @@ if ($logFile && file_exists($logFile) && filesize($logFile) > 0) {
                 <span style="font-size: 12px; color: #60a5fa; font-weight: bold; display: block; margin-bottom: 8px;">👉 Link penyimpanan belum dibuat. Klik tombol di bawah untuk membuat secara otomatis:</span>
                 <a href="?token=pk2026&action=make_link" class="btn-link">Buat Symlink Storage Otomatis</a>
             </div>
+        <?php endif; ?>
+    </div>
+
+    <h2>📁 Berkas Foto Terunggah di Hosting:</h2>
+    <div class="diagnostic-card">
+        <?php if (empty($uploadedFiles)): ?>
+            <div class="diagnostic-item" style="color: #f87171;">❌ Belum ada berkas foto yang tersimpan di folder public/storage/products/</div>
+        <?php else: ?>
+            <?php foreach ($uploadedFiles as $f): ?>
+                <div class="diagnostic-item" style="color: #34d399;">📷 <?php echo $f; ?></div>
+            <?php endforeach; ?>
         <?php endif; ?>
     </div>
 
