@@ -23,7 +23,8 @@
         <div x-data="{
             search: '',
             activeCategory: 'Semua',
-            displayLimit: 24,
+            currentPage: 1,
+            perPage: 6,
             
             products: JSON.parse(document.getElementById('products-data').textContent),
             todayTransactions: JSON.parse(document.getElementById('transactions-data').textContent),
@@ -115,15 +116,20 @@
 
             init() {
                 this.$watch('search', value => {
-                    this.displayLimit = 24;
+                    this.currentPage = 1;
                 });
                 this.$watch('activeCategory', value => {
-                    this.displayLimit = 24;
+                    this.currentPage = 1;
                 });
             },
 
+            get totalPages() {
+                return Math.ceil(this.filteredProducts.length / this.perPage) || 1;
+            },
+
             get paginatedProducts() {
-                return this.filteredProducts.slice(0, this.displayLimit);
+                const start = (this.currentPage - 1) * this.perPage;
+                return this.filteredProducts.slice(start, start + this.perPage);
             },
 
         get filteredProducts() {
@@ -535,19 +541,52 @@
                         </div>
                     </template>
 
-                    <!-- Tombol Tampilkan Lebih Banyak -->
-                    <template x-if="displayLimit < filteredProducts.length">
-                        <div class="col-span-2 xl:col-span-3 py-4 flex justify-center">
-                            <button type="button" 
-                                    @click="displayLimit += 24" 
-                                    class="group px-6 py-3 rounded-2xl bg-white border border-slate-200 text-slate-700 hover:text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50/50 shadow-sm active:scale-[0.98] transition duration-150 flex items-center gap-2.5 font-bold text-xs uppercase tracking-wider">
-                                <span>Tampilkan Lebih Banyak</span>
-                                <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-xs font-semibold group-hover:bg-emerald-100 group-hover:text-emerald-700" 
-                                      x-text="filteredProducts.length - displayLimit + ' produk lagi'"></span>
-                                <svg class="h-4 w-4 text-slate-400 group-hover:text-emerald-600 transition" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                                </svg>
-                            </button>
+                    <!-- Paginasi Produk -->
+                    <template x-if="totalPages > 1">
+                        <div class="col-span-2 xl:col-span-3 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-100 mt-4">
+                            <!-- Info Halaman -->
+                            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                                Halaman <span class="text-emerald-700 font-extrabold" x-text="currentPage"></span> dari <span class="text-slate-700 font-extrabold" x-text="totalPages"></span> (<span class="text-slate-700 font-extrabold" x-text="filteredProducts.length"></span> Produk)
+                            </span>
+
+                            <!-- Tombol Halaman -->
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <!-- Tombol Prev -->
+                                <button type="button" 
+                                        @click="if (currentPage > 1) { currentPage--; }"
+                                        :disabled="currentPage === 1"
+                                        :class="currentPage === 1 ? 'opacity-40 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-700 hover:text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50/50 active:scale-95'"
+                                        class="h-8 px-2.5 rounded-xl border border-slate-200 text-[11px] font-bold transition flex items-center gap-1 shadow-sm select-none">
+                                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                                    </svg>
+                                    Sebelumnya
+                                </button>
+
+                                <!-- Page Numbers -->
+                                <template x-for="p in totalPages" :key="p">
+                                    <template x-if="Math.abs(p - currentPage) < 3 || p === 1 || p === totalPages">
+                                        <button type="button"
+                                                @click="currentPage = p"
+                                                :class="currentPage === p ? 'bg-emerald-700 text-white border-emerald-700 shadow-md shadow-emerald-700/10' : 'bg-white text-slate-600 hover:bg-slate-50 border-slate-200'"
+                                                class="w-8 h-8 text-[11px] font-extrabold rounded-xl border transition flex items-center justify-center select-none"
+                                                x-text="p">
+                                        </button>
+                                    </template>
+                                </template>
+
+                                <!-- Tombol Next -->
+                                <button type="button" 
+                                        @click="if (currentPage < totalPages) { currentPage++; }"
+                                        :disabled="currentPage === totalPages"
+                                        :class="currentPage === totalPages ? 'opacity-40 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-700 hover:text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50/50 active:scale-95'"
+                                        class="h-8 px-2.5 rounded-xl border border-slate-200 text-[11px] font-bold transition flex items-center gap-1 shadow-sm select-none">
+                                    Berikutnya
+                                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </template>
                 </div>
