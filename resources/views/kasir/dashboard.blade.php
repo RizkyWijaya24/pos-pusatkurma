@@ -472,13 +472,14 @@
                 </div>
 
                 <!-- Product Grid -->
-                <div class="grid grid-cols-2 xl:grid-cols-3 gap-4 overflow-y-auto max-h-[calc(100vh-210px)] pb-4 pr-1" style="overflow-y: auto; max-height: calc(100vh - 210px); -webkit-overflow-scrolling: touch;" translate="no">
+                <div class="grid grid-cols-2 xl:grid-cols-3 gap-4 overflow-y-auto max-h-[calc(100vh-210px)] pb-32 pr-1" style="overflow-y: auto; max-height: calc(100vh - 210px); padding-bottom: 120px; -webkit-overflow-scrolling: touch;" translate="no">
                     <template x-for="product in filteredProducts" :key="product.id">
                         <div @click="addToCart(product)" 
-                            class="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-200 active:scale-[0.98] transition duration-150 overflow-hidden flex flex-col justify-between group cursor-pointer select-none">
+                            style="min-height: 310px; display: flex; flex-direction: column; justify-content: space-between;"
+                            class="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-200 active:scale-[0.98] transition duration-150 overflow-hidden group cursor-pointer select-none">
                             
                             <!-- Foto Produk: placeholder hijau selalu tampil, gambar overlay di atas -->
-                            <div style="height: 128px; background-color: #1b4332; position: relative; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 4px; overflow: hidden; border-bottom: 1px solid rgba(241,245,249,0.5);">
+                            <div style="height: 128px; background-color: #1b4332; position: relative; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 4px; overflow: hidden; border-bottom: 1px solid rgba(241,245,249,0.5); flex-shrink: 0;" class="shrink-0">
                                 <!-- Inisial: selalu ada sebagai layer bawah -->
                                 <span style="font-size: 1.875rem; font-weight: 700; color: #d1fae5; letter-spacing: 0.1em; text-transform: uppercase; z-index: 1; line-height: 1;"
                                       x-text="product.name ? product.name.split(' ').filter(w => w.trim() !== '').slice(0, 2).map(w => w ? w[0] : '').join('').toUpperCase() : 'PK'"></span>
@@ -493,7 +494,7 @@
                             </div>
 
                             <!-- Info Produk -->
-                            <div class="p-3 sm:p-4 flex flex-col gap-1.5 relative" style="display: flex; flex-direction: column; gap: 6px; padding: 12px;">
+                            <div class="p-3 sm:p-4 flex flex-col gap-1.5 relative flex-grow shrink-0" style="display: flex; flex-direction: column; gap: 6px; padding: 12px; flex-grow: 1; flex-shrink: 0;">
                                 <!-- Category Badge -->
                                 <span :class="{
                                     'bg-purple-50 text-purple-700 border-purple-100': product.category === 'Premium',
@@ -514,7 +515,7 @@
                             </div>
 
                             <!-- Add Button (Stylized Indicator) -->
-                            <div class="w-full py-3 bg-slate-50 hover:bg-emerald-50 border-t border-slate-100 group-hover:border-emerald-100 font-bold text-xs tracking-wider uppercase text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white transition duration-200 flex items-center justify-center gap-2">
+                            <div class="w-full py-3 bg-slate-50 hover:bg-emerald-50 border-t border-slate-100 group-hover:border-emerald-100 font-bold text-xs tracking-wider uppercase text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white transition duration-200 flex items-center justify-center gap-2 shrink-0" style="flex-shrink: 0;">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                                 </svg>
