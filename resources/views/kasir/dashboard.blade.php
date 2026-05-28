@@ -476,17 +476,23 @@
                             class="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-200 active:scale-[0.98] transition duration-150 overflow-hidden flex flex-col justify-between group cursor-pointer select-none">
                             
                             <!-- Product Photo / Forest-green Placeholder -->
-                            <div class="w-full relative overflow-hidden border-b border-slate-100/50" style="height: 128px; background-color: #f8fafc;">
-                                <template x-if="product.image_path">
-                                    <img :src="'/storage/' + product.image_path" class="transition duration-300 group-hover:scale-105" style="width: 100%; height: 100%; object-fit: cover;" alt="Foto produk">
-                                </template>
-                             <template x-if="!product.image_path">
-                              <div class="text-emerald-100 font-bold flex flex-col items-center justify-center gap-1 select-none" style="width: 100%; height: 100%; background-color: #1b4332;">
-                                <span class="text-3xl tracking-widest uppercase" x-text="product.name ? product.name.split(' ').filter(w => w.trim() !== '').slice(0, 2).map(w => w ? w[0] : '').join('').toUpperCase() : 'PK'"></span>
-                                 <span class="text-[9px] tracking-widest text-emerald-400/80 font-bold uppercase">Pusat Kurma</span>
+                            <!-- Product Photo: dark green placeholder as permanent base, image overlaid on top -->
+                            <div class="w-full relative overflow-hidden border-b border-slate-100/50" style="height: 128px; background-color: #1b4332;">
+                                <!-- Initials placeholder — always rendered as the bottom layer -->
+                                <div class="text-emerald-100 font-bold flex flex-col items-center justify-center gap-1 select-none" style="position: absolute; inset: 0; width: 100%; height: 100%;">
+                                    <span class="text-3xl tracking-widest uppercase" x-text="product.name ? product.name.split(' ').filter(w => w.trim() !== '').slice(0, 2).map(w => w ? w[0] : '').join('').toUpperCase() : 'PK'"></span>
+                                    <span class="text-[9px] tracking-widest text-emerald-400/80 font-bold uppercase">Pusat Kurma</span>
                                 </div>
-                            </template>
+                                <!-- Product image — overlays placeholder when it loads; hides itself on error -->
+                                <template x-if="product.image_path">
+                                    <img :src="'/storage/' + product.image_path"
+                                         class="transition duration-300 group-hover:scale-105"
+                                         style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;"
+                                         onerror="this.style.display='none'"
+                                         alt="Foto produk">
+                                </template>
                             </div>
+
 
                             <!-- Product Info -->
                             <div class="p-3 sm:p-4 flex flex-col gap-1.5 relative">
