@@ -11,18 +11,48 @@ if ($token !== 'pk2026') {
     die('Akses ditolak. Tambahkan ?token=pk2026 di URL.');
 }
 
-// Auto-detect Struktur Direktori (Standar atau Flat cPanel)
+// Auto-detect Struktur Direktori Custom cPanel via index.php
 $bootstrapPath = null;
 $vendorPath = null;
 $logFile = null;
 $diagnostics = [];
 
-if (file_exists(__DIR__ . '/../bootstrap/app.php')) {
+// Fungsi pembantu untuk mengurai path dari index.php secara dinamis
+function resolvePathFromIndex($pattern) {
+    $indexPath = __DIR__ . '/index.php';
+    if (!file_exists($indexPath)) return null;
+    
+    $content = file_get_contents($indexPath);
+    if (preg_match($pattern, $content, $matches)) {
+        $rawPath = $matches[1];
+        // Hilangkan __DIR__, dirname(__FILE__), titik penggabung, spasi, dan kutip
+        $cleanPath = str_replace(['__DIR__', 'dirname(__FILE__)', '.', ' '], '', $rawPath);
+        $cleanPath = trim($cleanPath, '\'"');
+        // Gabungkan kembali dengan direktori saat ini
+        return __DIR__ . '/' . ltrim($cleanPath, '/');
+    }
+    return null;
+}
+
+// 1. Coba deteksi via index.php
+$indexBootstrap = resolvePathFromIndex('/require_once\s+([^;]+app\.php)/');
+$indexVendor = resolvePathFromIndex('/require\s+([^;]+autoload\.php)/');
+
+if ($indexBootstrap && file_exists($indexBootstrap)) {
+    $bootstrapPath = $indexBootstrap;
+    $vendorPath = $indexVendor;
+    $logFile = dirname($bootstrapPath) . '/../storage/logs/laravel.log';
+    $diagnostics[] = "ℹ️  Struktur Direktori: Kustom cPanel (Terdeteksi via index.php)";
+}
+// 2. Fallback ke struktur standar
+elseif (file_exists(__DIR__ . '/../bootstrap/app.php')) {
     $bootstrapPath = __DIR__ . '/../bootstrap/app.php';
     $vendorPath = __DIR__ . '/../vendor/autoload.php';
     $logFile = __DIR__ . '/../storage/logs/laravel.log';
     $diagnostics[] = "ℹ️  Struktur Direktori: Standar (Folder Laravel di luar public/)";
-} elseif (file_exists(__DIR__ . '/bootstrap/app.php')) {
+}
+// 3. Fallback ke struktur flat
+elseif (file_exists(__DIR__ . '/bootstrap/app.php')) {
     $bootstrapPath = __DIR__ . '/bootstrap/app.php';
     $vendorPath = __DIR__ . '/vendor/autoload.php';
     $logFile = __DIR__ . '/storage/logs/laravel.log';
@@ -64,7 +94,15 @@ if ($bootstrapPath && file_exists($bootstrapPath) && file_exists($vendorPath)) {
         $diagnostics[] = "⚠️ Diagnosa Laravel tertunda: " . $e->getMessage();
     }
 } else {
-    $diagnostics[] = "❌ Gagal memuat bootstrap Laravel untuk diagnosa. Bootstrap/vendor tidak ditemukan.";
+    $diagnostics[] = "❌ Gagal memuat bootstrap Laravel untuk diagnosa. Jalur tidak terdeteksi otomatis.";
+    
+    // Cetak isi file index.php agar kita bisa melihat jalurnya secara manual
+    $indexPath = __DIR__ . '/index.php';
+    if (file_exists($indexPath)) {
+        $diagnostics[] = "ℹ️  Isi index.php: " . htmlspecialchars(file_get_contents($indexPath));
+    } else {
+        $diagnostics[] = "❌ File index.php tidak ditemukan di direktori saat ini.";
+    }
 }
 
 // Muat data Log
