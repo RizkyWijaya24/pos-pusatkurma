@@ -1155,14 +1155,21 @@
                     
                     escpos += ESC_INIT;
                     escpos += ESC_ALIGN_CENTER;
-                    escpos += ESC_BOLD_ON + ESC_DOUBLE_SIZE + 'PUSAT KURMA\n' + ESC_NORMAL_SIZE;
-                    escpos += ESC_BOLD_ON + 'PREMIUM QUALITY\n' + ESC_BOLD_OFF;
+                    escpos += ESC_BOLD_ON + ESC_DOUBLE_SIZE + 'PUSAT KURMA CIANJUR\n' + ESC_NORMAL_SIZE;
+                    escpos += ESC_BOLD_ON + 'Al karim\n' + ESC_BOLD_OFF;
                     escpos += 'Cianjur, Jawa Barat\n';
                     escpos += '================================\n';
                     
                     escpos += ESC_ALIGN_LEFT;
                     escpos += `No. Struk: ${transaction.transaction_code}\n`;
-                    escpos += `Tanggal  : ${transaction.time || new Date().toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}\n`;
+                    const today = new Date();
+                    const dd = String(today.getDate()).padStart(2, '0');
+                    const mm = String(today.getMonth() + 1).padStart(2, '0');
+                    const yyyy = today.getFullYear();
+                    const formattedDate = `${dd}/${mm}/${yyyy}`;
+                    const formattedTime = transaction.time || today.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
+                    
+                    escpos += `Tanggal  : ${formattedDate} ${formattedTime}\n`;
                     escpos += `Metode   : ${transaction.payment_method.toUpperCase()}\n`;
                     escpos += '--------------------------------\n';
                     
