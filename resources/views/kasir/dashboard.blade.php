@@ -41,6 +41,7 @@
             qtyValue: '',
             paymentMethod: '',
             cashReceived: '',
+            printMethod: 'iframe',
 
             checkoutStage: 0, // 0 = closed, 1 = details entry, 2 = loading/processing, 3 = success/receipt
             statusMessage: '',
@@ -324,6 +325,23 @@
                 this.paymentMethod = '';
                 this.cardDigits = '';
                 this.latestTransaction = null;
+            },
+
+            printReceiptAction(transaction) {
+                if (!transaction) return;
+                if (this.printMethod === 'bluetooth') {
+                    if (typeof window.printDirectBluetooth === 'function') {
+                        window.printDirectBluetooth(transaction);
+                    } else {
+                        this.showToast('Driver Bluetooth belum siap!', 'error');
+                    }
+                } else {
+                    if (typeof window.printReceipt === 'function') {
+                        window.printReceipt(transaction.id);
+                    } else {
+                        this.showToast('Driver Cetak Iframe belum siap!', 'error');
+                    }
+                }
             },
 
             addExpense() {
@@ -824,10 +842,19 @@
                                 </template>
                             </div>
 
+                            <!-- Pilihan Metode Cetak -->
+                            <div class="flex flex-col gap-1.5 pb-2 border-t border-slate-100 pt-3">
+                                <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Metode Cetak Struk</label>
+                                <select x-model="printMethod" class="w-full border-slate-200 rounded-xl text-xs font-bold focus:border-emerald-500 focus:ring-emerald-500 py-2.5 px-3 shadow-inner bg-slate-50 text-slate-700">
+                                    <option value="iframe">🖥️ Sistem Browser (Iframe/Default)</option>
+                                    <option value="bluetooth">🔌 Direct Bluetooth API (WebBLE)</option>
+                                </select>
+                            </div>
+
                             <!-- Printing & New Checkout Actions -->
-                            <div class="flex flex-col gap-2 pt-2 border-t border-slate-100">
+                            <div class="flex flex-col gap-2 pt-2">
                                 <button type="button" 
-                                    @click="printReceipt(latestTransaction.id)" 
+                                    @click="printReceiptAction(latestTransaction)" 
                                     class="w-full py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-2xl font-bold text-xs tracking-wide uppercase transition duration-150 flex items-center justify-center gap-1.5 shadow-sm">
                                     <svg class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.821V7.5a.75.75 0 0 1 .75-.75h9a.75.75 0 0 1 .75.75v6.321m-10.5 0h10.5m-10.5 0-1.755-.351A1.25 1.25 0 0 1 3 12.25v-2.5a1.25 1.25 0 0 1 1.25-1.25h15.5c.69 0 1.25.56 1.25 1.25v2.5a1.25 1.25 0 0 1-1.025 1.22l-1.725.345m-12 0a1.25 1.25 0 1 0 2.5 0m9.5 0a1.25 1.25 0 1 0 2.5 0" />
@@ -1066,6 +1093,121 @@
                 };
                 
                 iframe.src = '/kasir/transactions/' + transactionId + '/print';
+            }
+
+            async function printDirectBluetooth(transaction) {
+                if (!transaction) return;
+                try {
+                    // 1. Scan for BLE Bluetooth printers
+                    const device = await navigator.bluetooth.requestDevice({
+                        filters: [
+                            { namePrefix: 'Printer' },
+                            { namePrefix: 'MTP' },
+                            { namePrefix: 'PT-' },
+                            { namePrefix: 'POS' },
+                            { namePrefix: 'RPP' }
+                        ],
+                        optionalServices: [
+                            '000018f0-0000-1000-8000-00805f9b34fb', // Standard BLE printer service UUID
+                            '0000e914-0000-1000-8000-00805f9b34fb'  // Custom BLE printer service UUID
+                        ]
+                    });
+                    
+                    // 2. Connect GATT
+                    const server = await device.gatt.connect();
+                    
+                    // 3. Find Primary Service
+                    let service;
+                    try {
+                        service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
+                    } catch (e) {
+                        try {
+                            service = await server.getPrimaryService('0000e914-0000-1000-8000-00805f9b34fb');
+                        } catch (err) {
+                            const services = await server.getPrimaryServices();
+                            if (services.length > 0) {
+                                service = services[0];
+                            } else {
+                                throw new Error("Layanan printer Bluetooth tidak ditemukan!");
+                            }
+                        }
+                    }
+                    
+                    // 4. Get Characteristic
+                    const characteristics = await service.getCharacteristics();
+                    const writeCharacteristic = characteristics.find(c => c.properties.write || c.properties.writeWithoutResponse);
+                    if (!writeCharacteristic) {
+                        throw new Error("Karakteristik penulisan data printer tidak ditemukan!");
+                    }
+                    
+                    // 5. Build raw ESC/POS payload
+                    let escpos = '';
+                    
+                    // ESC/POS Commands
+                    const ESC_INIT = '\x1b\x40';
+                    const ESC_ALIGN_CENTER = '\x1b\x61\x01';
+                    const ESC_ALIGN_LEFT = '\x1b\x61\x00';
+                    const ESC_ALIGN_RIGHT = '\x1b\x61\x02';
+                    const ESC_BOLD_ON = '\x1b\x45\x01';
+                    const ESC_BOLD_OFF = '\x1b\x45\x00';
+                    const ESC_DOUBLE_SIZE = '\x1b\x21\x30'; // Double height and double width
+                    const ESC_NORMAL_SIZE = '\x1b\x21\x00';
+                    
+                    escpos += ESC_INIT;
+                    escpos += ESC_ALIGN_CENTER;
+                    escpos += ESC_BOLD_ON + ESC_DOUBLE_SIZE + 'PUSAT KURMA\n' + ESC_NORMAL_SIZE;
+                    escpos += ESC_BOLD_ON + 'PREMIUM QUALITY\n' + ESC_BOLD_OFF;
+                    escpos += 'Cianjur, Jawa Barat\n';
+                    escpos += '================================\n';
+                    
+                    escpos += ESC_ALIGN_LEFT;
+                    escpos += `No. Struk: ${transaction.transaction_code}\n`;
+                    escpos += `Tanggal  : ${transaction.time || new Date().toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}\n`;
+                    escpos += `Metode   : ${transaction.payment_method.toUpperCase()}\n`;
+                    escpos += '--------------------------------\n';
+                    
+                    // Items summary
+                    const items = transaction.items_summary.split(', ');
+                    items.forEach(item => {
+                        escpos += ESC_BOLD_ON + item + '\n' + ESC_BOLD_OFF;
+                    });
+                    escpos += '--------------------------------\n';
+                    
+                    // Financial details
+                    const discount = Number(transaction.discount || 0);
+                    const total = Number(transaction.total_price || 0);
+                    const subtotal = total + discount;
+                    
+                    const formatRupiahRaw = (num) => 'Rp ' + Math.round(num).toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+                    
+                    escpos += `Subtotal  : ${formatRupiahRaw(subtotal)}\n`;
+                    if (discount > 0) {
+                        escpos += `Diskon    : -${formatRupiahRaw(discount)}\n`;
+                    }
+                    escpos += ESC_BOLD_ON + `TOTAL     : ${formatRupiahRaw(total)}\n` + ESC_BOLD_OFF;
+                    escpos += '================================\n';
+                    
+                    escpos += ESC_ALIGN_CENTER;
+                    escpos += '*** TERIMA KASIH ***\n';
+                    escpos += 'Barang yang sudah dibeli tidak\n';
+                    escpos += 'dapat ditukar/dikembalikan.\n\n\n\n'; // Feed lines
+                    
+                    // 6. Encode and write in chunks of 20 bytes
+                    const encoder = new TextEncoder();
+                    const dataBytes = encoder.encode(escpos);
+                    const chunk_size = 20;
+                    
+                    for (let i = 0; i < dataBytes.length; i += chunk_size) {
+                        const chunk = dataBytes.slice(i, i + chunk_size);
+                        await writeCharacteristic.writeValue(chunk);
+                        await new Promise(r => setTimeout(r, 20)); // delay 20ms
+                    }
+                    
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { message: "Cetak struk via Bluetooth berhasil!", type: "success" } }));
+                } catch (error) {
+                    console.error("Direct Bluetooth printing failed:", error);
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { message: "Cetak Bluetooth gagal: " + error.message, type: "error" } }));
+                }
             }
         </script>
     </x-app-layout>
