@@ -1196,8 +1196,8 @@
                     
                     escpos += ESC_ALIGN_CENTER;
                     escpos += '*** TERIMA KASIH ***\n';
-                    escpos += 'Barang yang sudah dibeli tidak\n';
-                    escpos += 'dapat ditukar/dikembalikan.\n\n\n\n'; // Feed lines
+                    escpos += 'Terima kasih sudah berkunjung\n';
+                    escpos += 'silahkan datang kembali.\n\n\n\n'; // Feed lines
                     
                     // 6. Encode and write in chunks of 20 bytes
                     const encoder = new TextEncoder();
