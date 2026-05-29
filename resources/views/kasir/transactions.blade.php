@@ -43,7 +43,7 @@
         @if ($activeTab === 'daily')
 
             {{-- Summary cards --}}
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 {{ auth()->user()->isKasir() ? 'sm:grid-cols-2' : 'sm:grid-cols-3' }} gap-4">
                 {{-- Omset hari ini --}}
                 <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-5 text-white shadow-lg shadow-emerald-200/50">
                     <p class="text-xs font-bold uppercase tracking-wider text-emerald-100 mb-1">Omset Hari Ini</p>
@@ -52,6 +52,7 @@
                     </p>
                     <p class="text-xs text-emerald-200 mt-1">{{ $now->translatedFormat('l, d F Y') }}</p>
                 </div>
+                @if(!auth()->user()->isKasir())
                 {{-- Profit hari ini --}}
                 <div class="bg-white border border-slate-100 rounded-2xl p-5 shadow-md">
                     <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Profit Bersih Hari Ini</p>
@@ -63,6 +64,7 @@
                     @endphp
                     <p class="text-xs text-slate-400 mt-1">Margin: {{ $marginPct }}%</p>
                 </div>
+                @endif
                 {{-- Jumlah transaksi --}}
                 <div class="bg-white border border-slate-100 rounded-2xl p-5 shadow-md">
                     <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Transaksi Hari Ini</p>
@@ -183,18 +185,20 @@
             </div>
 
             {{-- Weekly summary cards --}}
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 {{ auth()->user()->isKasir() ? 'sm:grid-cols-2' : 'sm:grid-cols-3' }} gap-4">
                 <div class="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl p-5 text-white shadow-lg shadow-emerald-200/50">
                     <p class="text-xs font-bold uppercase tracking-wider text-emerald-100 mb-1">Total Omset Minggu Ini</p>
                     <p class="text-2xl font-extrabold tracking-tight">Rp {{ number_format($weeklyOmset, 0, ',', '.') }}</p>
                     <p class="text-xs text-emerald-200 mt-1">{{ $weeklyCount }} transaksi</p>
                 </div>
+                @if(!auth()->user()->isKasir())
                 <div class="bg-white border border-slate-100 rounded-2xl p-5 shadow-md">
                     <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Profit Bersih Minggu Ini</p>
                     <p class="text-2xl font-extrabold text-emerald-600 tracking-tight">Rp {{ number_format($weeklyProfit, 0, ',', '.') }}</p>
                     @php $wMargin = $weeklyOmset > 0 ? round(($weeklyProfit / $weeklyOmset) * 100, 1) : 0; @endphp
                     <p class="text-xs text-slate-400 mt-1">Margin: {{ $wMargin }}%</p>
                 </div>
+                @endif
                 <div class="bg-white border border-slate-100 rounded-2xl p-5 shadow-md">
                     <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Rata-rata per Hari</p>
                     @php $daysWithTrx = count(array_filter($weeklyDays, fn($d) => $d['count'] > 0)); $avgDaily = $daysWithTrx > 0 ? (int)round($weeklyOmset / $daysWithTrx) : 0; @endphp
@@ -213,8 +217,10 @@
                                 <th class="px-6 py-4">Tanggal</th>
                                 <th class="px-6 py-4">Hari</th>
                                 <th class="px-6 py-4 text-right">Total Omset</th>
+                                @if(!auth()->user()->isKasir())
                                 <th class="px-6 py-4 text-right">Profit Bersih</th>
                                 <th class="px-6 py-4 text-right">Margin</th>
+                                @endif
                                 <th class="px-6 py-4 text-center">Jml Trx</th>
                             </tr>
                         </thead>
@@ -236,12 +242,14 @@
                                     <td class="px-6 py-4 text-right font-extrabold {{ $day['omset'] > 0 ? 'text-emerald-700' : 'text-slate-300' }}">
                                         {{ $day['omset'] > 0 ? 'Rp ' . number_format($day['omset'], 0, ',', '.') : '—' }}
                                     </td>
+                                    @if(!auth()->user()->isKasir())
                                     <td class="px-6 py-4 text-right font-extrabold {{ $day['profit'] > 0 ? 'text-teal-600' : 'text-slate-300' }}">
                                         {{ $day['profit'] > 0 ? 'Rp ' . number_format($day['profit'], 0, ',', '.') : '—' }}
                                     </td>
                                     <td class="px-6 py-4 text-right text-xs font-bold text-slate-500">
                                         {{ $day['omset'] > 0 ? $dayMargin . '%' : '—' }}
                                     </td>
+                                    @endif
                                     <td class="px-6 py-4 text-center">
                                         @if ($day['count'] > 0)
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">{{ $day['count'] }} Trx</span>
@@ -257,11 +265,13 @@
                             <tr>
                                 <td colspan="3" class="px-6 py-4 font-extrabold text-emerald-800 text-sm uppercase tracking-wide">Grand Total</td>
                                 <td class="px-6 py-4 text-right font-extrabold text-emerald-700 text-base">Rp {{ number_format($weeklyOmset, 0, ',', '.') }}</td>
+                                @if(!auth()->user()->isKasir())
                                 <td class="px-6 py-4 text-right font-extrabold text-teal-600 text-base">Rp {{ number_format($weeklyProfit, 0, ',', '.') }}</td>
                                 <td class="px-6 py-4 text-right font-bold text-slate-500 text-sm">
                                     @php $totalWMargin = $weeklyOmset > 0 ? round(($weeklyProfit / $weeklyOmset) * 100, 1) : 0; @endphp
                                     {{ $totalWMargin }}%
                                 </td>
+                                @endif
                                 <td class="px-6 py-4 text-center">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-200 text-emerald-800">{{ $weeklyCount }} Trx</span>
                                 </td>
@@ -294,18 +304,20 @@
             </div>
 
             {{-- Monthly summary cards --}}
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 {{ auth()->user()->isKasir() ? 'sm:grid-cols-2' : 'sm:grid-cols-3' }} gap-4">
                 <div class="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-2xl p-5 text-white shadow-lg shadow-teal-200/50">
                     <p class="text-xs font-bold uppercase tracking-wider text-teal-100 mb-1">Total Omset Bulan Ini</p>
                     <p class="text-2xl font-extrabold tracking-tight">Rp {{ number_format($monthlyOmset, 0, ',', '.') }}</p>
                     <p class="text-xs text-teal-200 mt-1">{{ $monthlyCount }} transaksi</p>
                 </div>
+                @if(!auth()->user()->isKasir())
                 <div class="bg-white border border-slate-100 rounded-2xl p-5 shadow-md">
                     <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Profit Bersih Bulan Ini</p>
                     <p class="text-2xl font-extrabold text-emerald-600 tracking-tight">Rp {{ number_format($monthlyProfit, 0, ',', '.') }}</p>
                     @php $mMargin = $monthlyOmset > 0 ? round(($monthlyProfit / $monthlyOmset) * 100, 1) : 0; @endphp
                     <p class="text-xs text-slate-400 mt-1">Margin: {{ $mMargin }}%</p>
                 </div>
+                @endif
                 <div class="bg-white border border-slate-100 rounded-2xl p-5 shadow-md">
                     <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Rata-rata per Minggu</p>
                     @php $weeksWithTrx = count(array_filter($monthlyWeeks, fn($w) => $w['count'] > 0)); $avgWeekly = $weeksWithTrx > 0 ? (int)round($monthlyOmset / $weeksWithTrx) : 0; @endphp
@@ -324,8 +336,10 @@
                                 <th class="px-6 py-4">Periode</th>
                                 <th class="px-6 py-4">Rentang Tanggal</th>
                                 <th class="px-6 py-4 text-right">Total Omset</th>
+                                @if(!auth()->user()->isKasir())
                                 <th class="px-6 py-4 text-right">Profit Bersih</th>
                                 <th class="px-6 py-4 text-right">Margin</th>
+                                @endif
                                 <th class="px-6 py-4 text-center">Jml Trx</th>
                             </tr>
                         </thead>
@@ -339,12 +353,14 @@
                                     <td class="px-6 py-4 text-right font-extrabold {{ $w['omset'] > 0 ? 'text-emerald-700' : 'text-slate-300' }}">
                                         {{ $w['omset'] > 0 ? 'Rp ' . number_format($w['omset'], 0, ',', '.') : '—' }}
                                     </td>
+                                    @if(!auth()->user()->isKasir())
                                     <td class="px-6 py-4 text-right font-extrabold {{ $w['profit'] > 0 ? 'text-teal-600' : 'text-slate-300' }}">
                                         {{ $w['profit'] > 0 ? 'Rp ' . number_format($w['profit'], 0, ',', '.') : '—' }}
                                     </td>
                                     <td class="px-6 py-4 text-right text-xs font-bold text-slate-500">
                                         {{ $w['omset'] > 0 ? $wMarginPct . '%' : '—' }}
                                     </td>
+                                    @endif
                                     <td class="px-6 py-4 text-center">
                                         @if ($w['count'] > 0)
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">{{ $w['count'] }} Trx</span>
@@ -359,8 +375,10 @@
                             <tr>
                                 <td colspan="3" class="px-6 py-4 font-extrabold text-emerald-800 text-sm uppercase tracking-wide">Grand Total</td>
                                 <td class="px-6 py-4 text-right font-extrabold text-emerald-700 text-base">Rp {{ number_format($monthlyOmset, 0, ',', '.') }}</td>
+                                @if(!auth()->user()->isKasir())
                                 <td class="px-6 py-4 text-right font-extrabold text-teal-600 text-base">Rp {{ number_format($monthlyProfit, 0, ',', '.') }}</td>
                                 <td class="px-6 py-4 text-right font-bold text-slate-500 text-sm">{{ $mMargin }}%</td>
+                                @endif
                                 <td class="px-6 py-4 text-center">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-200 text-emerald-800">{{ $monthlyCount }} Trx</span>
                                 </td>

@@ -150,8 +150,9 @@ class TransactionController extends Controller
             $filename    = 'Laporan_Mingguan_Kasir_' . $now->format('Y-m-d') . '.xls';
             $titlePeriod = $startOfWeek->translatedFormat('d M Y') . ' s/d ' . $endOfWeek->translatedFormat('d M Y');
 
-            return response()->streamDownload(function () use ($days, $titlePeriod, $printDate, $printedBy, $cashier) {
-                $this->streamKasirWeekly($days, $titlePeriod, $printDate, $printedBy, $cashier->name);
+            $isKasir = auth()->user()->isKasir();
+            return response()->streamDownload(function () use ($days, $titlePeriod, $printDate, $printedBy, $cashier, $isKasir) {
+                $this->streamKasirWeekly($days, $titlePeriod, $printDate, $printedBy, $cashier->name, $isKasir);
             }, $filename, [
                 'Content-Type'  => 'application/vnd.ms-excel; charset=UTF-8',
                 'Cache-Control' => 'no-cache, no-store, must-revalidate',
@@ -191,8 +192,9 @@ class TransactionController extends Controller
             $filename    = 'Laporan_Bulanan_Kasir_' . $now->format('Y-m-d') . '.xls';
             $titlePeriod = $startOfMonth->translatedFormat('F Y');
 
-            return response()->streamDownload(function () use ($weeks, $titlePeriod, $printDate, $printedBy, $cashier) {
-                $this->streamKasirMonthly($weeks, $titlePeriod, $printDate, $printedBy, $cashier->name);
+            $isKasir = auth()->user()->isKasir();
+            return response()->streamDownload(function () use ($weeks, $titlePeriod, $printDate, $printedBy, $cashier, $isKasir) {
+                $this->streamKasirMonthly($weeks, $titlePeriod, $printDate, $printedBy, $cashier->name, $isKasir);
             }, $filename, [
                 'Content-Type'  => 'application/vnd.ms-excel; charset=UTF-8',
                 'Cache-Control' => 'no-cache, no-store, must-revalidate',
@@ -205,26 +207,29 @@ class TransactionController extends Controller
     /**
      * Stream weekly kasir summary as Excel HTML.
      */
-    private function streamKasirWeekly(array $days, string $period, string $printDate, string $printedBy, string $cashierName): void
+    private function streamKasirWeekly(array $days, string $period, string $printDate, string $printedBy, string $cashierName, bool $isKasir = false): void
     {
         $styles = $this->kasirExcelStyles();
+        $colspan = $isKasir ? 5 : 6;
         echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
         echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><style>' . $styles . '</style></head><body>';
-        echo '<table style="margin-bottom:16px;"><tr><td colspan="6" class="title" style="height:45px;">LAPORAN PENJUALAN MINGGUAN KASIR</td></tr>';
-        echo '<tr><td colspan="6" class="subtitle" style="height:28px;">PUSAT KURMA PREMIUM</td></tr>';
-        echo '<tr><td colspan="6" class="spacer"></td></tr>';
-        echo '<tr><td class="meta-label">Kasir</td><td colspan="5" class="meta-value">' . htmlspecialchars($cashierName) . '</td></tr>';
-        echo '<tr><td class="meta-label">Periode</td><td colspan="5" class="meta-value">' . htmlspecialchars($period) . '</td></tr>';
-        echo '<tr><td class="meta-label">Tanggal Cetak</td><td colspan="5" class="meta-value">' . htmlspecialchars($printDate) . '</td></tr>';
-        echo '<tr><td class="meta-label">Dicetak Oleh</td><td colspan="5" class="meta-value">' . htmlspecialchars($printedBy) . '</td></tr>';
-        echo '<tr><td colspan="6" class="spacer"></td></tr></table>';
+        echo '<table style="margin-bottom:16px;"><tr><td colspan="' . $colspan . '" class="title" style="height:45px;">LAPORAN PENJUALAN MINGGUAN KASIR</td></tr>';
+        echo '<tr><td colspan="' . $colspan . '" class="subtitle" style="height:28px;">PUSAT KURMA PREMIUM</td></tr>';
+        echo '<tr><td colspan="' . $colspan . '" class="spacer"></td></tr>';
+        echo '<tr><td class="meta-label">Kasir</td><td colspan="' . ($colspan - 1) . '" class="meta-value">' . htmlspecialchars($cashierName) . '</td></tr>';
+        echo '<tr><td class="meta-label">Periode</td><td colspan="' . ($colspan - 1) . '" class="meta-value">' . htmlspecialchars($period) . '</td></tr>';
+        echo '<tr><td class="meta-label">Tanggal Cetak</td><td colspan="' . ($colspan - 1) . '" class="meta-value">' . htmlspecialchars($printDate) . '</td></tr>';
+        echo '<tr><td class="meta-label">Dicetak Oleh</td><td colspan="' . ($colspan - 1) . '" class="meta-value">' . htmlspecialchars($printedBy) . '</td></tr>';
+        echo '<tr><td colspan="' . $colspan . '" class="spacer"></td></tr></table>';
 
         echo '<table><thead><tr>';
         echo '<th style="width:45px;">No</th>';
         echo '<th style="width:190px;">Tanggal</th>';
         echo '<th style="width:130px;">Hari</th>';
         echo '<th style="width:210px;">Total Omset</th>';
-        echo '<th style="width:210px;">Profit Bersih</th>';
+        if (!$isKasir) {
+            echo '<th style="width:210px;">Profit Bersih</th>';
+        }
         echo '<th style="width:130px;">Jml Transaksi</th>';
         echo '</tr></thead><tbody>';
 
@@ -242,14 +247,18 @@ class TransactionController extends Controller
             echo '<td class="center">' . htmlspecialchars($day['sub_label']) . '</td>';
             echo '<td class="center">' . htmlspecialchars($day['label']) . '</td>';
             echo '<td class="currency">' . $this->rupiah($day['omset']) . '</td>';
-            echo '<td class="currency">' . $this->rupiah($day['profit']) . '</td>';
+            if (!$isKasir) {
+                echo '<td class="currency">' . $this->rupiah($day['profit']) . '</td>';
+            }
             echo '<td class="center">' . $day['count'] . ' Trx</td>';
             echo '</tr>';
         }
-        echo '<tr><td colspan="6" class="spacer"></td></tr>';
+        echo '<tr><td colspan="' . $colspan . '" class="spacer"></td></tr>';
         echo '<tr class="total-row"><td colspan="3" class="center bold" style="font-size:11pt;">GRAND TOTAL</td>';
         echo '<td class="currency" style="font-size:11pt;">' . $this->rupiah($totalOmset) . '</td>';
-        echo '<td class="currency" style="font-size:11pt;">' . $this->rupiah($totalProfit) . '</td>';
+        if (!$isKasir) {
+            echo '<td class="currency" style="font-size:11pt;">' . $this->rupiah($totalProfit) . '</td>';
+        }
         echo '<td class="center bold">' . $totalCount . ' Trx</td></tr>';
         echo '</tbody></table></body></html>';
     }
@@ -257,26 +266,29 @@ class TransactionController extends Controller
     /**
      * Stream monthly kasir summary as Excel HTML.
      */
-    private function streamKasirMonthly(array $weeks, string $period, string $printDate, string $printedBy, string $cashierName): void
+    private function streamKasirMonthly(array $weeks, string $period, string $printDate, string $printedBy, string $cashierName, bool $isKasir = false): void
     {
         $styles = $this->kasirExcelStyles();
+        $colspan = $isKasir ? 5 : 6;
         echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
         echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><style>' . $styles . '</style></head><body>';
-        echo '<table style="margin-bottom:16px;"><tr><td colspan="6" class="title" style="height:45px;">LAPORAN PENJUALAN BULANAN KASIR</td></tr>';
-        echo '<tr><td colspan="6" class="subtitle" style="height:28px;">PUSAT KURMA PREMIUM</td></tr>';
-        echo '<tr><td colspan="6" class="spacer"></td></tr>';
-        echo '<tr><td class="meta-label">Kasir</td><td colspan="5" class="meta-value">' . htmlspecialchars($cashierName) . '</td></tr>';
-        echo '<tr><td class="meta-label">Periode</td><td colspan="5" class="meta-value">' . htmlspecialchars($period) . '</td></tr>';
-        echo '<tr><td class="meta-label">Tanggal Cetak</td><td colspan="5" class="meta-value">' . htmlspecialchars($printDate) . '</td></tr>';
-        echo '<tr><td class="meta-label">Dicetak Oleh</td><td colspan="5" class="meta-value">' . htmlspecialchars($printedBy) . '</td></tr>';
-        echo '<tr><td colspan="6" class="spacer"></td></tr></table>';
+        echo '<table style="margin-bottom:16px;"><tr><td colspan="' . $colspan . '" class="title" style="height:45px;">LAPORAN PENJUALAN BULANAN KASIR</td></tr>';
+        echo '<tr><td colspan="' . $colspan . '" class="subtitle" style="height:28px;">PUSAT KURMA PREMIUM</td></tr>';
+        echo '<tr><td colspan="' . $colspan . '" class="spacer"></td></tr>';
+        echo '<tr><td class="meta-label">Kasir</td><td colspan="' . ($colspan - 1) . '" class="meta-value">' . htmlspecialchars($cashierName) . '</td></tr>';
+        echo '<tr><td class="meta-label">Periode</td><td colspan="' . ($colspan - 1) . '" class="meta-value">' . htmlspecialchars($period) . '</td></tr>';
+        echo '<tr><td class="meta-label">Tanggal Cetak</td><td colspan="' . ($colspan - 1) . '" class="meta-value">' . htmlspecialchars($printDate) . '</td></tr>';
+        echo '<tr><td class="meta-label">Dicetak Oleh</td><td colspan="' . ($colspan - 1) . '" class="meta-value">' . htmlspecialchars($printedBy) . '</td></tr>';
+        echo '<tr><td colspan="' . $colspan . '" class="spacer"></td></tr></table>';
 
         echo '<table><thead><tr>';
         echo '<th style="width:45px;">No</th>';
         echo '<th style="width:150px;">Periode</th>';
         echo '<th style="width:220px;">Rentang Tanggal</th>';
         echo '<th style="width:210px;">Total Omset</th>';
-        echo '<th style="width:210px;">Profit Bersih</th>';
+        if (!$isKasir) {
+            echo '<th style="width:210px;">Profit Bersih</th>';
+        }
         echo '<th style="width:130px;">Jml Transaksi</th>';
         echo '</tr></thead><tbody>';
 
@@ -294,14 +306,18 @@ class TransactionController extends Controller
             echo '<td class="center">' . htmlspecialchars($w['label']) . '</td>';
             echo '<td class="center">' . htmlspecialchars($w['sub_label']) . '</td>';
             echo '<td class="currency">' . $this->rupiah($w['omset']) . '</td>';
-            echo '<td class="currency">' . $this->rupiah($w['profit']) . '</td>';
+            if (!$isKasir) {
+                echo '<td class="currency">' . $this->rupiah($w['profit']) . '</td>';
+            }
             echo '<td class="center">' . $w['count'] . ' Trx</td>';
             echo '</tr>';
         }
-        echo '<tr><td colspan="6" class="spacer"></td></tr>';
+        echo '<tr><td colspan="' . $colspan . '" class="spacer"></td></tr>';
         echo '<tr class="total-row"><td colspan="3" class="center bold" style="font-size:11pt;">GRAND TOTAL</td>';
         echo '<td class="currency" style="font-size:11pt;">' . $this->rupiah($totalOmset) . '</td>';
-        echo '<td class="currency" style="font-size:11pt;">' . $this->rupiah($totalProfit) . '</td>';
+        if (!$isKasir) {
+            echo '<td class="currency" style="font-size:11pt;">' . $this->rupiah($totalProfit) . '</td>';
+        }
         echo '<td class="center bold">' . $totalCount . ' Trx</td></tr>';
         echo '</tbody></table></body></html>';
     }
