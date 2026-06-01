@@ -579,6 +579,9 @@ class TransactionController extends Controller
 
             if ($product) {
                 $totalCost += round($product->cost_price * floatval($item['qty']));
+                
+                // Decrement product stock in the database upon purchase
+                $product->decrement('stock', floatval($item['qty']));
             }
         }
 
@@ -800,7 +803,7 @@ class TransactionController extends Controller
                     
                     // Attempt to fetch current product details for unit price estimation
                     $product = \App\Models\Product::where('name', $name)->first();
-                    $unitPrice = $product ? (int) $product->selling_price : null;
+                    $unitPrice = $product ? $product->getPriceForQuantity($qty) : null;
                     
                     $items[] = [
                         'name' => $name,
@@ -812,7 +815,7 @@ class TransactionController extends Controller
                 } else {
                     $name = trim($part);
                     $product = \App\Models\Product::where('name', $name)->first();
-                    $unitPrice = $product ? (int) $product->selling_price : null;
+                    $unitPrice = $product ? $product->getPriceForQuantity(1) : null;
                     
                     $items[] = [
                         'name' => $name,
@@ -821,6 +824,7 @@ class TransactionController extends Controller
                         'unit_price' => $unitPrice,
                         'total_price' => $unitPrice,
                     ];
+
                 }
             }
         }

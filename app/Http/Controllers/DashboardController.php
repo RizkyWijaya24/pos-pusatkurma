@@ -61,9 +61,11 @@ class DashboardController extends Controller
                 'price' => (int) $product->selling_price, // map selling_price to price in PHP
                 'price_unit' => $product->price_unit,
                 'image_path' => $product->image_path,
-                'stock' => (float) $product->stock
+                'stock' => (float) $product->stock,
+                'price_tiers' => $product->price_tiers ?? []
             ];
         });
+
 
         // Fetch transactions created today matching the logged-in cashier's ID
         $todayTransactions = \App\Models\Transaction::where('cashier_id', auth()->id())

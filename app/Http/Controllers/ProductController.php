@@ -20,6 +20,15 @@ class ProductController extends Controller
             \Illuminate\Support\Facades\Log::info('Product store request file image mime: ' . $request->file('image')->getMimeType());
         }
 
+        if (is_string($request->price_tiers)) {
+            $priceTiers = json_decode($request->price_tiers, true);
+            if (is_array($priceTiers)) {
+                $request->merge(['price_tiers' => $priceTiers]);
+            } else {
+                $request->merge(['price_tiers' => null]);
+            }
+        }
+
         if (empty($request->sku)) {
             $request->merge(['sku' => 'PK-' . strtoupper(substr(uniqid(), -6))]);
         }
@@ -33,7 +42,12 @@ class ProductController extends Controller
             'price_unit' => 'required|string|in:gram,kg,pcs,pack,dus',
             'stock' => 'required|numeric|min:0',
             'image' => 'nullable|image', // No max size limit, auto-compress is handled below
+            'price_tiers' => 'nullable|array',
+            'price_tiers.*.min_qty' => 'required|numeric|min:0',
+            'price_tiers.*.max_qty' => 'nullable|numeric|min:0',
+            'price_tiers.*.price' => 'required|integer|min:0',
         ]);
+
 
         if ($request->hasFile('image')) {
             $path = $this->compressAndStoreImage($request->file('image'));
@@ -60,6 +74,15 @@ class ProductController extends Controller
             \Illuminate\Support\Facades\Log::info('Product update request file image mime: ' . $request->file('image')->getMimeType());
         }
 
+        if (is_string($request->price_tiers)) {
+            $priceTiers = json_decode($request->price_tiers, true);
+            if (is_array($priceTiers)) {
+                $request->merge(['price_tiers' => $priceTiers]);
+            } else {
+                $request->merge(['price_tiers' => null]);
+            }
+        }
+
         if (empty($request->sku)) {
             $request->merge(['sku' => $product->sku ?: 'PK-' . strtoupper(substr(uniqid(), -6))]);
         }
@@ -73,7 +96,12 @@ class ProductController extends Controller
             'price_unit' => 'required|string|in:gram,kg,pcs,pack,dus',
             'stock' => 'required|numeric|min:0',
             'image' => 'nullable|image', // No max size limit, auto-compress is handled below
+            'price_tiers' => 'nullable|array',
+            'price_tiers.*.min_qty' => 'required|numeric|min:0',
+            'price_tiers.*.max_qty' => 'nullable|numeric|min:0',
+            'price_tiers.*.price' => 'required|integer|min:0',
         ]);
+
 
         if ($request->hasFile('image')) {
             // Delete old image if exists from physical public/storage folder

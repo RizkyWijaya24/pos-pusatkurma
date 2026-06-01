@@ -41,7 +41,8 @@
         categories: JSON.parse(document.getElementById('categories-data').textContent),
 
         // Product Form State
-        newProduct: { id: null, sku: '', name: '', category: 'Premium', cost_price: '', selling_price: '', price_unit: 'pcs', stock: '' },
+        newProduct: { id: null, sku: '', name: '', category: 'Premium', cost_price: '', selling_price: '', price_unit: 'pcs', stock: '', price_tiers: [] },
+        hasPriceTiers: false,
         costPriceMode: 'pct',   // 'pct' = persentase dari harga jual, 'manual' = isi sendiri
         costPricePct: 50,       // default 50% dari harga jual
         
@@ -183,7 +184,6 @@
             this.confirmModal.show = false;
         },
 
-        // Actions
         editProduct(product) {
             this.isEditing = true;
             this.newProduct = {
@@ -194,8 +194,10 @@
                 cost_price: product.cost_price,
                 selling_price: product.selling_price,
                 price_unit: product.price_unit,
-                stock: product.stock
+                stock: product.stock,
+                price_tiers: product.price_tiers ? JSON.parse(JSON.stringify(product.price_tiers)) : []
             };
+            this.hasPriceTiers = this.newProduct.price_tiers.length > 0;
             // When editing, pre-detect mode: check if cost_price is a round % of selling_price
             if (product.selling_price > 0) {
                 const pct = Math.round((product.cost_price / product.selling_price) * 100);
@@ -319,7 +321,8 @@
             this.capturedPhotoPreview = '';
             
             const defaultCategory = this.categories.length > 0 ? this.categories[0].name : '';
-            this.newProduct = { id: null, sku: '', name: '', category: defaultCategory, cost_price: '', selling_price: '', price_unit: 'pcs', stock: '' };
+            this.newProduct = { id: null, sku: '', name: '', category: defaultCategory, cost_price: '', selling_price: '', price_unit: 'pcs', stock: '', price_tiers: [] };
+            this.hasPriceTiers = false;
             this.costPriceMode = 'pct';
             this.costPricePct  = 50;
             this.isEditing = false;
@@ -328,6 +331,14 @@
             }
             const fileInput = document.getElementById('product_image');
             if (fileInput) fileInput.value = '';
+        },
+
+        addPriceTier() {
+            this.newProduct.price_tiers.push({ min_qty: '', max_qty: '', price: '' });
+        },
+
+        removePriceTier(idx) {
+            this.newProduct.price_tiers.splice(idx, 1);
         },
 
         // Computed effective cost_price (used before submit)
@@ -361,6 +372,8 @@
                     formData.append('selling_price', this.newProduct.selling_price);
                     formData.append('price_unit', this.newProduct.price_unit);
                     formData.append('stock', this.newProduct.stock);
+                    const activeTiers = this.hasPriceTiers ? this.newProduct.price_tiers : [];
+                    formData.append('price_tiers', JSON.stringify(activeTiers));
 
                     if (this.capturedPhotoFile) {
                         formData.append('image', this.capturedPhotoFile, 'camera_photo.jpg');
@@ -1079,6 +1092,61 @@
                             <input type="number" x-model="newProduct.cost_price"
                                    placeholder="Masukkan harga modal..."
                                    class="w-full border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500">
+                        </div>
+                    </div>
+
+                    {{-- Opsi Harga Grosir / Bertingkat --}}
+                    <div class="flex items-center gap-2 mt-1 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/60 select-none">
+                        <input type="checkbox" id="has_price_tiers" x-model="hasPriceTiers" class="rounded border-slate-300 text-emerald-700 focus:ring-emerald-500 h-4.5 w-4.5 cursor-pointer">
+                        <label for="has_price_tiers" class="text-xs font-bold text-slate-700 cursor-pointer">Aktifkan Harga Grosir / Bertingkat</label>
+                    </div>
+
+                    {{-- Form Skema Harga Grosir --}}
+                    <div x-show="hasPriceTiers" class="flex flex-col gap-3 p-4 bg-emerald-50/30 rounded-2xl border border-emerald-100/50 mt-1" style="display: none;">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-black text-emerald-800 uppercase tracking-wider">Skema Harga Grosir</span>
+                            <button type="button" @click="addPriceTier()" class="px-3 py-1.5 text-[11px] font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl transition duration-150 flex items-center gap-1 shadow-sm shadow-emerald-700/10">
+                                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                                Tambah Rentang
+                            </button>
+                        </div>
+
+                        <!-- Empty State -->
+                        <template x-if="newProduct.price_tiers.length === 0">
+                            <p class="text-[11px] text-slate-400 font-semibold italic text-center py-2">Belum ada skema harga. Silakan klik "Tambah Rentang".</p>
+                        </template>
+
+                        <!-- Tiers List -->
+                        <div class="flex flex-col gap-2">
+                            <template x-for="(tier, index) in newProduct.price_tiers" :key="index">
+                                <div class="grid grid-cols-12 gap-2 items-center bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
+                                    <!-- Min Qty -->
+                                    <div class="col-span-4 flex flex-col gap-0.5">
+                                        <span class="text-[9px] text-slate-400 font-bold uppercase">Min Qty</span>
+                                        <input type="number" step="any" x-model="tier.min_qty" placeholder="0" class="w-full text-xs font-bold border-slate-200 rounded-lg p-1.5 focus:border-emerald-500 focus:ring-emerald-500">
+                                    </div>
+                                    <!-- Max Qty -->
+                                    <div class="col-span-4 flex flex-col gap-0.5">
+                                        <span class="text-[9px] text-slate-400 font-bold uppercase">Max Qty (∞ jika kosong)</span>
+                                        <input type="number" step="any" x-model="tier.max_qty" placeholder="Kosongkan" class="w-full text-xs font-bold border-slate-200 rounded-lg p-1.5 focus:border-emerald-500 focus:ring-emerald-500">
+                                    </div>
+                                    <!-- Price -->
+                                    <div class="col-span-3 flex flex-col gap-0.5">
+                                        <span class="text-[9px] text-slate-400 font-bold uppercase">Harga Satuan (Rp)</span>
+                                        <input type="number" x-model="tier.price" placeholder="Harga" class="w-full text-xs font-bold border-slate-200 rounded-lg p-1.5 focus:border-emerald-500 focus:ring-emerald-500">
+                                    </div>
+                                    <!-- Action -->
+                                    <div class="col-span-1 flex items-center justify-center pt-3.5">
+                                        <button type="button" @click="removePriceTier(index)" class="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 rounded-lg transition duration-150">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                     </div>
                     <div>
