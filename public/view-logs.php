@@ -80,6 +80,34 @@ if (isset($_GET['shell_action'])) {
             $shellMessage = "Mengeksekusi: <code>" . htmlspecialchars($cmd) . "</code>";
             $output = shell_exec($cmd);
             $shellOutput = $output ? $output : "(Tidak ada output / Eksekusi selesai)";
+            
+            // RENDER A CLEAN OUTPUT PAGE AND EXIT IMMEDIATELY TO AVOID LARAVEL BOOT 500 ERROR!
+            ?>
+            <!DOCTYPE html>
+            <html lang="id">
+            <head>
+                <meta charset="UTF-8">
+                <title>Shell Output - Diagnostics</title>
+                <style>
+                    body { font-family: sans-serif; background: #0f172a; color: #cbd5e1; padding: 20px; }
+                    pre { background: #020617; border: 1px solid #1e293b; border-radius: 12px; padding: 20px; overflow-x: auto; white-space: pre-wrap; font-family: monospace; font-size: 12px; color: #a7f3d0; line-height: 1.5; box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.6); }
+                    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+                    .btn { display: inline-block; padding: 8px 16px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 12px; transition: 0.2s; }
+                    .btn:hover { background: #1d4ed8; }
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <h2>📟 Hasil Eksekusi Command</h2>
+                    <p style="color: #38bdf8; font-weight: bold;"><?php echo $shellMessage; ?></p>
+                    <pre><?php echo htmlspecialchars($shellOutput); ?></pre>
+                    <br>
+                    <a href="?token=pk2026" class="btn">← Kembali ke Halaman Utama Diagnosa</a>
+                </div>
+            </body>
+            </html>
+            <?php
+            exit;
         }
     }
 }
@@ -121,8 +149,10 @@ elseif (file_exists(__DIR__ . '/bootstrap/app.php')) {
     $diagnostics[] = "ℹ️  Struktur Direktori: Flat (Semua folder digabung di root public_html/)";
 }
 
-// Jalankan Diagnosa jika bootstrap ditemukan
-if ($bootstrapPath && file_exists($bootstrapPath) && file_exists($vendorPath)) {
+// Jalankan Diagnosa
+$bootLaravel = isset($_GET['boot_laravel']) && $_GET['boot_laravel'] === '1';
+
+if ($bootLaravel && $bootstrapPath && file_exists($bootstrapPath) && file_exists($vendorPath)) {
     try {
         require_once $vendorPath;
         $app = require_once $bootstrapPath;
@@ -257,7 +287,170 @@ if ($bootstrapPath && file_exists($bootstrapPath) && file_exists($vendorPath)) {
         $diagnostics[] = "⚠️ Diagnosa Laravel tertunda: " . $e->getMessage();
     }
 } else {
-    $diagnostics[] = "❌ Gagal memuat bootstrap Laravel untuk diagnosa. Jalur tidak ditemukan.";
+    // RUN PLAIN PHP DIAGNOSTICS!
+    $diagnostics[] = "ℹ️  Menjalankan diagnosa dalam Mode Aman (Plain PHP). Laravel tidak di-boot.";
+    $diagnostics[] = "👉 Untuk mencoba memuat penuh Laravel (uji boot), tambahkan <a href='?token=pk2026&boot_laravel=1' style='color:#60a5fa; font-weight:bold;'>&boot_laravel=1</a> di URL.";
+    
+    // 0. Periksa Jalur Folder Publik
+    $diagnostics[] = "ℹ️  Jalur Publik: " . __DIR__;
+    
+    // 1. Periksa $fillable pada Model Product (via membaca file)
+    $productModelFile = $projectRoot ? $projectRoot . '/app/Models/Product.php' : null;
+    if ($productModelFile && file_exists($productModelFile)) {
+        $productContent = file_get_contents($productModelFile);
+        if (strpos($productContent, 'image_path') !== false) {
+            $diagnostics[] = "✅ Model Product: 'image_path' SUDAH ada di \$fillable";
+        } else {
+            $diagnostics[] = "❌ Model Product: 'image_path' BELUM ada di \$fillable! Silakan perbarui app/Models/Product.php!";
+        }
+    } else {
+        $diagnostics[] = "⚠️ File Model Product tidak dapat dideteksi.";
+    }
+    
+    // 2. Periksa Database via PDO dan ambil berkas foto aktif
+    $dbHost = ''; $dbName = ''; $dbUser = ''; $dbPass = ''; $dbPort = '3306';
+    if ($projectRoot && file_exists($projectRoot . '/.env')) {
+        $envLines = file($projectRoot . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($envLines as $line) {
+            if (strpos(trim($line), '#') === 0) continue;
+            $parts = explode('=', $line, 2);
+            if (count($parts) === 2) {
+                $key = trim($parts[0]);
+                $val = trim($parts[1]);
+                $val = trim($val, '"\'');
+                if ($key === 'DB_HOST') $dbHost = $val;
+                elseif ($key === 'DB_DATABASE') $dbName = $val;
+                elseif ($key === 'DB_USERNAME') $dbUser = $val;
+                elseif ($key === 'DB_PASSWORD') $dbPass = $val;
+                elseif ($key === 'DB_PORT') $dbPort = $val;
+            }
+        }
+    }
+    
+    $activeFilenames = [];
+    $dbOk = false;
+    if ($dbHost && $dbName && $dbUser) {
+        try {
+            $dsn = "mysql:host=$dbHost;port=$dbPort;dbname=$dbName;charset=utf8mb4";
+            $pdo = new PDO($dsn, $dbUser, $dbPass, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_TIMEOUT => 3
+            ]);
+            
+            // Check column image_path in products
+            $stmt = $pdo->query("DESCRIBE products");
+            $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            if (in_array('image_path', $columns)) {
+                $diagnostics[] = "✅ Database: Kolom 'image_path' SUDAH ada di tabel products";
+            } else {
+                $diagnostics[] = "❌ Database: Kolom 'image_path' TIDAK DITEMUKAN di tabel products!";
+            }
+            $dbOk = true;
+            
+            // Fetch active images for file listing
+            $stmtImage = $pdo->query("SELECT image_path FROM products WHERE image_path IS NOT NULL");
+            $activeImages = $stmtImage->fetchAll(PDO::FETCH_COLUMN);
+            $activeFilenames = array_map(function($path) {
+                return basename($path);
+            }, $activeImages);
+        } catch (\Throwable $dbEx) {
+            $diagnostics[] = "⚠️ Database (Plain PHP): Gagal koneksi database - " . $dbEx->getMessage();
+        }
+    } else {
+        $diagnostics[] = "⚠️ Database (Plain PHP): Konfigurasi database di .env tidak lengkap.";
+    }
+    
+    // 3. Periksa public/storage symlink
+    $storageLink = __DIR__ . '/storage';
+    if (file_exists($storageLink)) {
+        $diagnostics[] = "✅ Symlink: Folder link/direktori public/storage SUDAH ada";
+    } else {
+        $diagnostics[] = "❌ Symlink: Link public/storage belum dibuat! Fotonya tidak akan bisa diakses jika link ini belum ada.";
+    }
+    
+    // 4. Daftar berkas foto terunggah
+    $productsDir = __DIR__ . '/storage/products';
+    if (is_dir($productsDir)) {
+        $files = glob($productsDir . '/*');
+        foreach ($files as $file) {
+            if (is_file($file)) {
+                $filename = basename($file);
+                $fileSizeKB = round(filesize($file)/1024, 1);
+                if (in_array($filename, $activeFilenames)) {
+                    $uploadedFiles[] = $filename . ' (' . $fileSizeKB . ' KB)';
+                } else {
+                    $orphanedFiles[] = $filename . ' (' . $fileSizeKB . ' KB)';
+                }
+            }
+        }
+    }
+    
+    // Action handling for non-Laravel actions
+    $action = $_GET['action'] ?? '';
+    if ($action === 'make_link') {
+        $target = $projectRoot ? $projectRoot . '/storage/app/public' : null;
+        if ($target && file_exists($target)) {
+            if (file_exists($storageLink) || is_link($storageLink)) {
+                if (is_link($storageLink)) {
+                    unlink($storageLink);
+                } else {
+                    @rmdir($storageLink);
+                }
+            }
+            if (@symlink($target, $storageLink)) {
+                header("Location: ?token=pk2026");
+                exit;
+            } else {
+                $diagnostics[] = "❌ Gagal membuat symlink via PHP. Coba buat link manual di file manager cPanel.";
+            }
+        } else {
+            $diagnostics[] = "❌ Folder target penyimpanan tidak ditemukan: " . htmlspecialchars($target);
+        }
+    }
+    
+    if ($action === 'migrate_photos') {
+        $oldDir = $projectRoot ? realpath($projectRoot . '/public/storage/products') : null;
+        $newDir = __DIR__ . '/storage/products';
+        if ($oldDir && is_dir($oldDir)) {
+            if (!file_exists($newDir)) {
+                mkdir($newDir, 0755, true);
+            }
+            $movedCount = 0;
+            $files = glob($oldDir . '/*');
+            foreach ($files as $file) {
+                if (is_file($file)) {
+                    $dest = $newDir . '/' . basename($file);
+                    if (!file_exists($dest)) {
+                        if (copy($file, $dest)) {
+                            $movedCount++;
+                        }
+                    }
+                }
+            }
+            $diagnostics[] = "🎉 Sukses menyalin $movedCount foto lama dari pos-pusatkurma/public ke public_html/storage!";
+        } else {
+            $diagnostics[] = "⚠️ Folder lama tidak ditemukan atau kosong. Tidak ada foto yang perlu disalin.";
+        }
+    }
+    
+    if ($action === 'clean_orphaned' && $dbOk) {
+        $deletedCount = 0;
+        $productsDir = __DIR__ . '/storage/products';
+        if (is_dir($productsDir)) {
+            $files = glob($productsDir . '/*');
+            foreach ($files as $file) {
+                if (is_file($file)) {
+                    $filename = basename($file);
+                    if (!in_array($filename, $activeFilenames)) {
+                        if (@unlink($file)) {
+                            $deletedCount++;
+                        }
+                    }
+                }
+            }
+            $diagnostics[] = "🧹 Sukses menghapus $deletedCount foto yatim (tanpa produk) dari folder publik!";
+        }
+    }
 }
 
 // Muat data Log
