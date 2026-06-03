@@ -180,6 +180,16 @@ if ($bootLaravel && $bootstrapPath && file_exists($bootstrapPath) && file_exists
             }
         }
 
+        // AKSI RUN MIGRATE VIA ARTISAN FACADE (TIDAK MEMBUTUHKAN SHELL_EXEC)
+        if ($action === 'run_migrate_facade') {
+            try {
+                \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+                $diagnostics[] = "🎉 Sukses menjalankan Artisan Migrate via Facade! Output:<br><pre style='color:#a7f3d0; background:#020617; padding:10px; border-radius:6px;'>" . htmlspecialchars(\Illuminate\Support\Facades\Artisan::output()) . "</pre>";
+            } catch (\Throwable $e_mig) {
+                $diagnostics[] = "❌ Gagal menjalankan Artisan Migrate via Facade: " . htmlspecialchars($e_mig->getMessage());
+            }
+        }
+
         // AKSI MIGRASI FOTO LAMA KE PUBLIC_HTML
         if ($action === 'migrate_photos') {
             $oldDir = realpath(__DIR__ . '/../pos-pusatkurma/public/storage/products');
@@ -531,6 +541,12 @@ if ($logFile && file_exists($logFile) && filesize($logFile) > 0) {
                 <a href="?token=pk2026&action=make_link" class="btn-link">Buat Symlink Storage Otomatis</a>
             </div>
         <?php endif; ?>
+
+        <div style="margin-top: 15px; padding: 12px; background: rgba(59, 130, 246, 0.1); border: 1px dashed #2563eb; border-radius: 8px;">
+            <span style="font-size: 12px; color: #60a5fa; font-weight: bold; display: block; margin-bottom: 8px;">👉 Jalankan Migrasi Database via Laravel Facade (Tanpa Terminal / 100% Aman):</span>
+            <a href="?token=pk2026&boot_laravel=1&action=run_migrate_facade" class="btn-link" style="background: #059669;">Jalankan Artisan Migrate Facade</a>
+            <span style="font-size: 11px; color: #94a3b8; display: block; margin-top: 5px;">*Catatan: Jalankan ini setelah folder <code>vendor</code> di server berhasil di-update (lewat ZIP atau Terminal).</span>
+        </div>
 
         <div style="margin-top: 15px; padding: 12px; background: rgba(16, 185, 129, 0.1); border: 1px dashed #10b981; border-radius: 8px; display: flex; flex-wrap: wrap; gap: 15px;">
             <div style="flex: 1; min-width: 250px;">
