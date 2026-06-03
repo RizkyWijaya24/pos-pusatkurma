@@ -11,6 +11,79 @@ if ($token !== 'pk2026') {
     die('Akses ditolak. Tambahkan ?token=pk2026 di URL.');
 }
 
+// EMERGENCY SHELL RUNNER (Runs before Laravel boots to avoid 500 errors preventing execution)
+$shellMessage = '';
+$shellOutput = '';
+if (isset($_GET['shell_action'])) {
+    $action = $_GET['shell_action'];
+    $cmd = '';
+    
+    // Auto-detect project root folder relative to view-logs.php
+    $projectRoot = null;
+    if (file_exists(__DIR__ . '/../pos-pusatkurma/artisan')) {
+        $projectRoot = realpath(__DIR__ . '/../pos-pusatkurma');
+    } elseif (file_exists(__DIR__ . '/../kasir-pk/artisan')) {
+        $projectRoot = realpath(__DIR__ . '/../kasir-pk');
+    } elseif (file_exists(__DIR__ . '/../artisan')) {
+        $projectRoot = realpath(__DIR__ . '/..');
+    } elseif (file_exists(__DIR__ . '/artisan')) {
+        $projectRoot = realpath(__DIR__);
+    }
+    
+    if (!$projectRoot) {
+        $shellMessage = '❌ Gagal mendeteksi folder root project (artisan tidak ditemukan)';
+    } else {
+        // Detect PHP binary
+        $phpBinary = 'php';
+        // Common cPanel PHP paths (prefer PHP 8.2+)
+        $possiblePhp = [
+            '/usr/local/bin/ea-php82',
+            '/usr/local/bin/ea-php83',
+            '/opt/cpanel/ea-php82/root/usr/bin/php',
+            '/opt/cpanel/ea-php83/root/usr/bin/php',
+            '/usr/local/bin/php',
+        ];
+        foreach ($possiblePhp as $p) {
+            if (@file_exists($p) && @is_executable($p)) {
+                $phpBinary = $p;
+                break;
+            }
+        }
+        
+        // Detect Composer binary
+        $composerBinary = 'composer';
+        $possibleComposer = [
+            '/usr/local/bin/composer',
+            $projectRoot . '/composer.phar',
+        ];
+        foreach ($possibleComposer as $c) {
+            if (@file_exists($c)) {
+                $composerBinary = $c;
+                break;
+            }
+        }
+        
+        if ($action === 'version_check') {
+            $cmd = "cd " . escapeshellarg($projectRoot) . " && $phpBinary -v && echo '---' && $phpBinary $composerBinary --version 2>&1";
+        } elseif ($action === 'composer_install') {
+            // Run composer install with PHP memory limit configuration
+            $cmd = "cd " . escapeshellarg($projectRoot) . " && $phpBinary -d memory_limit=-1 $composerBinary install --no-dev --no-interaction --optimize-autoloader 2>&1";
+        } elseif ($action === 'artisan_migrate') {
+            $cmd = "cd " . escapeshellarg($projectRoot) . " && $phpBinary artisan migrate --force 2>&1";
+        } elseif ($action === 'artisan_clear') {
+            $cmd = "cd " . escapeshellarg($projectRoot) . " && $phpBinary artisan optimize:clear 2>&1";
+        } elseif ($action === 'custom_command' && !empty($_POST['custom_cmd'])) {
+            $cmd = "cd " . escapeshellarg($projectRoot) . " && " . $_POST['custom_cmd'] . " 2>&1";
+        }
+        
+        if ($cmd) {
+            $shellMessage = "Mengeksekusi: <code>" . htmlspecialchars($cmd) . "</code>";
+            $output = shell_exec($cmd);
+            $shellOutput = $output ? $output : "(Tidak ada output / Eksekusi selesai)";
+        }
+    }
+}
+
 // Auto-detect Struktur Direktori cPanel
 $bootstrapPath = null;
 $vendorPath = null;
@@ -210,14 +283,48 @@ if ($logFile && file_exists($logFile) && filesize($logFile) > 0) {
         .diagnostic-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 15px; margin-bottom: 20px; }
         .diagnostic-item { padding: 6px 0; font-size: 13px; font-weight: bold; border-bottom: 1px solid #334155/30; }
         .diagnostic-item:last-child { border-bottom: none; }
-        .btn-link { display: inline-block; margin-top: 10px; padding: 8px 16px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 12px; transition: 0.2s; }
-        .btn-link:hover { background: #1d4ed8; }
+        .btn-link, .btn-shell { display: inline-block; margin-top: 10px; padding: 8px 16px; background: #2563eb; color: white; text-decoration: none; border: none; cursor: pointer; border-radius: 8px; font-weight: bold; font-size: 12px; transition: 0.2s; }
+        .btn-link:hover, .btn-shell:hover { background: #1d4ed8; }
+        .btn-shell-danger { background: #dc2626; }
+        .btn-shell-danger:hover { background: #b91c1c; }
+        .btn-shell-success { background: #059669; }
+        .btn-shell-success:hover { background: #047857; }
+        .btn-shell-info { background: #0891b2; }
+        .btn-shell-info:hover { background: #0b7285; }
+        .shell-cmd-box { margin-top: 15px; display: flex; gap: 10px; }
+        .shell-cmd-input { flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid #334155; background: #020617; color: #a7f3d0; font-family: monospace; font-size: 13px; }
         a { display: inline-block; margin-top: 15px; padding: 8px 16px; background: #047857; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 13px; transition: 0.2s; }
         a:hover { background: #065f46; }
     </style>
 </head>
 <body>
     <h1>📋 Diagnostics & Log Viewer - Pusat Kurma POS</h1>
+
+    <h2>⚡ Emergency Shell Runner (Gunakan Jika Site Error 500 / Tidak Bisa SSH Terminal):</h2>
+    <div class="diagnostic-card" style="border-color: #e11d48; background: rgba(225, 29, 72, 0.05);">
+        <span style="font-size: 13px; color: #fda4af; font-weight: bold; display: block; margin-bottom: 12px;">
+            ⚠️ PERINGATAN: Menu ini mengeksekusi shell command di server production. Gunakan hanya jika cPanel Terminal tidak bekerja/tidak bisa diakses.
+        </span>
+        
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+            <a href="?token=pk2026&shell_action=version_check" class="btn-shell btn-shell-info">🔍 1. Cek Versi PHP & Composer</a>
+            <a href="?token=pk2026&shell_action=composer_install" class="btn-shell btn-shell-danger" onclick="return confirm('Proses composer install mungkin butuh waktu beberapa detik. Lanjutkan?');">📦 2. Jalankan Composer Install</a>
+            <a href="?token=pk2026&shell_action=artisan_migrate" class="btn-shell btn-shell-success" onclick="return confirm('Jalankan migrasi database sekarang?');">🗄️ 3. Jalankan Artisan Migrate</a>
+            <a href="?token=pk2026&shell_action=artisan_clear" class="btn-shell">🧹 4. Bersihkan Cache Laravel</a>
+        </div>
+
+        <form method="POST" action="?token=pk2026&shell_action=custom_command" class="shell-cmd-box">
+            <input type="text" name="custom_cmd" class="shell-cmd-input" placeholder="Masukkan custom shell command (contoh: ls -la atau php artisan list)..." required>
+            <button type="submit" class="btn-shell btn-shell-info">Kirim Command</button>
+        </form>
+
+        <?php if ($shellMessage): ?>
+            <div style="margin-top: 15px; padding: 12px; background: #1e293b; border-radius: 8px; font-size: 13px;">
+                <p style="margin: 0 0 8px 0; font-weight: bold; color: #38bdf8;"><?php echo $shellMessage; ?></p>
+                <pre style="margin: 0; background: #020617; max-height: 300px; overflow-y: auto;"><?php echo htmlspecialchars($shellOutput); ?></pre>
+            </div>
+        <?php endif; ?>
+    </div>
     
     <h2>🔍 Hasil Diagnosa Otomatis Sistem:</h2>
     <div class="diagnostic-card">
