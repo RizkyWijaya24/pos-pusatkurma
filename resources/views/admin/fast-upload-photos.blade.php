@@ -229,23 +229,47 @@
                             {{-- Status Text --}}
                             <p id="status-text-{{ $product->id }}" class="text-xs text-slate-400 font-medium hidden"></p>
 
-                            {{-- Upload Button --}}
-                            <div>
+                            {{-- Upload Buttons --}}
+                            <div class="flex gap-2">
+                                {{-- Input: Gallery / File --}}
                                 <input type="file"
                                        id="file-{{ $product->id }}"
                                        accept="image/*"
                                        class="hidden"
                                        onchange="handleFileSelected(this, {{ $product->id }}, '{{ addslashes($product->name) }}', '{{ addslashes($product->category) }}')">
 
+                                {{-- Input: Camera (rear camera directly) --}}
+                                <input type="file"
+                                       id="camera-{{ $product->id }}"
+                                       accept="image/*"
+                                       capture="environment"
+                                       class="hidden"
+                                       onchange="handleFileSelected(this, {{ $product->id }}, '{{ addslashes($product->name) }}', '{{ addslashes($product->category) }}')">
+
+                                {{-- Button: Pilih Foto (dari galeri) --}}
                                 <button type="button"
                                         id="upload-btn-{{ $product->id }}"
                                         onclick="document.getElementById('file-{{ $product->id }}').click()"
-                                        class="w-full py-2.5 rounded-xl text-xs font-bold transition duration-150 flex items-center justify-center gap-2
+                                        class="flex-1 py-2.5 rounded-xl text-xs font-bold transition duration-150 flex items-center justify-center gap-1.5
                                                {{ $hasImg ? 'bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700' : 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-md shadow-emerald-700/10' }}">
-                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                                     </svg>
-                                    {{ $hasImg ? 'Ganti Foto' : 'Pilih Foto' }}
+                                    {{ $hasImg ? 'Ganti' : 'Galeri' }}
+                                </button>
+
+                                {{-- Button: Kamera langsung --}}
+                                <button type="button"
+                                        id="camera-btn-{{ $product->id }}"
+                                        onclick="document.getElementById('camera-{{ $product->id }}').click()"
+                                        class="px-3 py-2.5 rounded-xl text-xs font-bold transition duration-150 flex items-center justify-center gap-1.5
+                                               bg-sky-500 hover:bg-sky-600 text-white shadow-md shadow-sky-500/20"
+                                        title="Foto langsung dari kamera">
+                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+                                    </svg>
+                                    Kamera
                                 </button>
                             </div>
                         </div>
@@ -365,6 +389,8 @@
             // Show loading overlay
             overlay.classList.remove('hidden');
             btn.disabled = true;
+            const camBtn = document.getElementById('camera-btn-' + productId);
+            if (camBtn) camBtn.disabled = true;
 
             if (useAI) {
                 card.className = card.className.replace('has-photo', '').replace('upload-card', '').trim();
@@ -407,6 +433,7 @@
 
                 overlay.classList.add('hidden');
                 btn.disabled = false;
+                if (camBtn) camBtn.disabled = false;
 
                 if (resp.ok && data.success) {
                     // Update preview with actual saved image
@@ -454,6 +481,7 @@
             } catch (err) {
                 overlay.classList.add('hidden');
                 btn.disabled = false;
+                if (camBtn) camBtn.disabled = false;
                 card.classList.remove('uploading', 'ai-processing');
                 card.classList.add('error');
                 showToast('error', '❌ Koneksi Error', 'Gagal menghubungi server. Periksa koneksi internet Anda.');
