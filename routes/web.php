@@ -51,6 +51,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/products/{product}', [\App\Http\Controllers\ProductController::class, 'update'])->name('products.update');
         Route::delete('/products/{product}', [\App\Http\Controllers\ProductController::class, 'destroy'])->name('products.destroy');
 
+        // Fast Photo Upload
+        Route::get('/products/fast-upload', [\App\Http\Controllers\ProductController::class, 'fastUploadPage'])->name('products.fast-upload');
+        Route::post('/products/{product}/upload-photo', [\App\Http\Controllers\ProductController::class, 'uploadPhoto'])->name('products.upload-photo');
+
         // Category CRUD
         Route::post('/categories', [\App\Http\Controllers\CategoryController::class, 'store'])->name('categories.store');
         Route::put('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'update'])->name('categories.update');
