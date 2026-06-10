@@ -47,7 +47,9 @@ return new class extends Migration
         $enumString = implode(', ', $escapedBranches);
 
         // 3. Alter the branch column in the users table to ENUM safely
-        DB::statement("ALTER TABLE users MODIFY COLUMN branch ENUM({$enumString}) NOT NULL DEFAULT 'Pusat Cianjur'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE users MODIFY COLUMN branch ENUM({$enumString}) NOT NULL DEFAULT 'Pusat Cianjur'");
+        }
     }
 
     /**
@@ -55,7 +57,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Revert back to VARCHAR(255)
-        DB::statement("ALTER TABLE users MODIFY COLUMN branch VARCHAR(255) NOT NULL DEFAULT 'Pusat Cianjur'");
+        if (DB::getDriverName() !== 'sqlite') {
+            // Revert back to VARCHAR(255)
+            DB::statement("ALTER TABLE users MODIFY COLUMN branch VARCHAR(255) NOT NULL DEFAULT 'Pusat Cianjur'");
+        }
     }
 };

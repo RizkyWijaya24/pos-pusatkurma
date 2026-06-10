@@ -42,7 +42,9 @@ return new class extends Migration
         $enumString = implode(', ', $escapedBranches);
 
         // Alter the branch column in the users table to include 'Cabang Online'
-        DB::statement("ALTER TABLE users MODIFY COLUMN branch ENUM({$enumString}) NOT NULL DEFAULT 'Pusat Cianjur'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE users MODIFY COLUMN branch ENUM({$enumString}) NOT NULL DEFAULT 'Pusat Cianjur'");
+        }
     }
 
     /**
@@ -82,6 +84,8 @@ return new class extends Migration
 
         $enumString = implode(', ', $escapedBranches);
 
-        DB::statement("ALTER TABLE users MODIFY COLUMN branch ENUM({$enumString}) NOT NULL DEFAULT 'Pusat Cianjur'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE users MODIFY COLUMN branch ENUM({$enumString}) NOT NULL DEFAULT 'Pusat Cianjur'");
+        }
     }
 };

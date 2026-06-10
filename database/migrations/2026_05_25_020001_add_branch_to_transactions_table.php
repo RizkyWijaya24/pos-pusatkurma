@@ -18,7 +18,11 @@ return new class extends Migration
         });
 
         // Back-fill existing transactions with their cashier's branch value
-        DB::statement('UPDATE transactions t JOIN users u ON t.cashier_id = u.id SET t.branch = u.branch');
+        if (DB::getDriverName() === 'sqlite') {
+            DB::statement("UPDATE transactions SET branch = COALESCE((SELECT branch FROM users WHERE users.id = transactions.cashier_id), 'Pusat Cianjur')");
+        } else {
+            DB::statement('UPDATE transactions t JOIN users u ON t.cashier_id = u.id SET t.branch = u.branch');
+        }
     }
 
     /**
