@@ -28,7 +28,12 @@ class TransactionController extends Controller
         // ---- Today totals ----
         $todayStats  = Transaction::where('cashier_id', $cashierId)
             ->whereDate('created_at', Carbon::today())
-            ->selectRaw('COALESCE(SUM(total_price),0) as omset, COALESCE(SUM(total_price - total_cost),0) as profit, COUNT(*) as count')
+            ->selectRaw('COALESCE(SUM(total_price),0) as omset, 
+                         COALESCE(SUM(total_price - total_cost),0) as profit, 
+                         COUNT(*) as count,
+                         COALESCE(SUM(CASE WHEN payment_method = \'Cash\' THEN total_price ELSE 0 END),0) as cash_total,
+                         COALESCE(SUM(CASE WHEN payment_method = \'QRIS\' THEN total_price ELSE 0 END),0) as qris_total,
+                         COALESCE(SUM(CASE WHEN payment_method = \'Debit\' THEN total_price ELSE 0 END),0) as debit_total')
             ->first();
 
         // ---- Weekly summary (Mon–Sun) ----
@@ -401,7 +406,11 @@ class TransactionController extends Controller
             ->first();
 
         $todayStats = $statsQuery()
-            ->selectRaw('SUM(total_price) as omset, SUM(total_price - total_cost) as profit')
+            ->selectRaw('SUM(total_price) as omset, 
+                         SUM(total_price - total_cost) as profit,
+                         COALESCE(SUM(CASE WHEN payment_method = \'Cash\' THEN total_price ELSE 0 END),0) as cash_total,
+                         COALESCE(SUM(CASE WHEN payment_method = \'QRIS\' THEN total_price ELSE 0 END),0) as qris_total,
+                         COALESCE(SUM(CASE WHEN payment_method = \'Debit\' THEN total_price ELSE 0 END),0) as debit_total')
             ->whereDate('created_at', $today)
             ->first();
 
@@ -411,6 +420,9 @@ class TransactionController extends Controller
         $monthlyProfit = $monthlyStats->profit ?? 0;
         $todayOmset    = $todayStats->omset ?? 0;
         $todayProfit   = $todayStats->profit ?? 0;
+        $todayCash     = $todayStats->cash_total ?? 0;
+        $todayQris     = $todayStats->qris_total ?? 0;
+        $todayDebit    = $todayStats->debit_total ?? 0;
 
         // All unique branches for dropdown — optimized single UNION query
         $branches = \DB::table('users')
@@ -438,6 +450,9 @@ class TransactionController extends Controller
             'monthlyProfit',
             'todayOmset',
             'todayProfit',
+            'todayCash',
+            'todayQris',
+            'todayDebit',
             'targetDate',
             'startOfWeek',
             'endOfWeek',
@@ -502,7 +517,11 @@ class TransactionController extends Controller
             ->first();
 
         $todayStats = $statsQuery()
-            ->selectRaw('SUM(total_price) as omset, SUM(total_price - total_cost) as profit')
+            ->selectRaw('SUM(total_price) as omset, 
+                         SUM(total_price - total_cost) as profit,
+                         COALESCE(SUM(CASE WHEN payment_method = \'Cash\' THEN total_price ELSE 0 END),0) as cash_total,
+                         COALESCE(SUM(CASE WHEN payment_method = \'QRIS\' THEN total_price ELSE 0 END),0) as qris_total,
+                         COALESCE(SUM(CASE WHEN payment_method = \'Debit\' THEN total_price ELSE 0 END),0) as debit_total')
             ->whereDate('created_at', $today)
             ->first();
 
@@ -512,6 +531,9 @@ class TransactionController extends Controller
         $monthlyProfit = $monthlyStats->profit ?? 0;
         $todayOmset    = $todayStats->omset ?? 0;
         $todayProfit   = $todayStats->profit ?? 0;
+        $todayCash     = $todayStats->cash_total ?? 0;
+        $todayQris     = $todayStats->qris_total ?? 0;
+        $todayDebit    = $todayStats->debit_total ?? 0;
 
         // All unique branches for dropdown — optimized single UNION query
         $branches = \DB::table('users')
@@ -539,6 +561,9 @@ class TransactionController extends Controller
             'monthlyProfit',
             'todayOmset',
             'todayProfit',
+            'todayCash',
+            'todayQris',
+            'todayDebit',
             'targetDate',
             'startOfWeek',
             'endOfWeek',

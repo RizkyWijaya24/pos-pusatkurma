@@ -63,6 +63,7 @@ Route::middleware('auth')->group(function () {
         // Cashier CRUD
         Route::post('/cashiers', [\App\Http\Controllers\CashierController::class, 'store'])->name('cashiers.store');
         Route::delete('/cashiers/{user}', [\App\Http\Controllers\CashierController::class, 'destroy'])->name('cashiers.destroy');
+        Route::post('/impersonate/{user}', [\App\Http\Controllers\CashierController::class, 'impersonate'])->name('impersonate');
 
         // Transaction Management (Admin can view all, edit, delete)
         Route::get('/transactions/export', [\App\Http\Controllers\TransactionController::class, 'export'])->name('transactions.export');
@@ -80,6 +81,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/transactions/export', [\App\Http\Controllers\TransactionController::class, 'export'])->name('transactions.export');
         Route::get('/transactions', [\App\Http\Controllers\TransactionController::class, 'ownerIndex'])->name('transactions.index');
     });
+
+    Route::post('/leave-impersonate', [\App\Http\Controllers\CashierController::class, 'leaveImpersonate'])->name('admin.impersonate.leave');
 });
 
 require __DIR__.'/auth.php';

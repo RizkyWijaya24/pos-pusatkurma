@@ -63,4 +63,55 @@ class CashierController extends Controller
             'message' => 'Akun kasir berhasil dihapus!'
         ]);
     }
+
+    /**
+     * Impersonate a cashier.
+     */
+    public function impersonate(User $user)
+    {
+        // Security check: Only admins can trigger impersonation
+        if (!auth()->user()->isAdmin()) {
+            abort(403, 'Hanya Admin yang dapat menggunakan fitur ini.');
+        }
+
+        // Target check: Cannot impersonate oneself or another admin/owner
+        if ($user->id === auth()->id()) {
+            return redirect()->back()->with('error', 'Anda tidak bisa masuk sebagai diri sendiri.');
+        }
+        
+        if ($user->role !== 'kasir') {
+            return redirect()->back()->with('error', 'Hanya kasir yang dapat diakses.');
+        }
+
+        // Save original admin ID in session
+        session(['impersonate_original_user_id' => auth()->id()]);
+
+        // Login as cashier
+        auth()->login($user);
+
+        return redirect()->route('dashboard')->with('success', 'Berhasil masuk sebagai ' . $user->name);
+    }
+
+    /**
+     * Leave impersonation and switch back to admin.
+     */
+    public function leaveImpersonate()
+    {
+        $originalId = session()->pull('impersonate_original_user_id');
+
+        if (!$originalId) {
+            return redirect()->route('dashboard')->with('error', 'Tidak ada sesi impersonasi.');
+        }
+
+        $admin = User::find($originalId);
+
+        if (!$admin) {
+            return redirect()->route('dashboard')->with('error', 'Admin tidak ditemukan.');
+        }
+
+        // Login back as admin
+        auth()->login($admin);
+
+        return redirect()->route('admin.dashboard')->with('success', 'Kembali ke akun Admin.');
+    }
 }

@@ -95,6 +95,43 @@
                         Margin: {{ $todayOmset > 0 ? round(($todayProfit / $todayOmset) * 100) : 0 }}%
                     </span>
                 </div>
+        </div>
+
+        {{-- Rincian Metode Pembayaran Tanggal Terpilih --}}
+        <div class="bg-white border border-slate-100 rounded-3xl p-5 shadow-md">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="p-1.5 bg-emerald-50 text-emerald-700 rounded-xl">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-19.5 5.25h12.75A1.125 1.125 0 0016.5 13.125v-1.5a1.125 1.125 0 00-1.125-1.125H3.75A1.125 1.125 0 002.625 11.625v1.5a1.125 1.125 0 001.125 1.125z" />
+                    </svg>
+                </span>
+                <div>
+                    <h4 class="font-extrabold text-slate-800 text-sm leading-tight">Rincian Metode Pembayaran {{ $targetDate->isToday() ? 'Hari Ini' : 'Terfilter' }}</h4>
+                    <p class="text-xs text-slate-400 font-medium">Pembagian omset berdasarkan metode pembayaran untuk tanggal {{ $targetDate->translatedFormat('d M Y') }}</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {{-- Tunai --}}
+                <div class="bg-emerald-50/40 border border-emerald-100 rounded-2xl p-4 flex flex-col justify-between">
+                    <span class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1">💵 Bayar Tunai</span>
+                    <p class="text-xl font-black text-slate-800 tracking-tight">
+                        Rp {{ number_format((int)$todayCash, 0, ',', '.') }}
+                    </p>
+                </div>
+                {{-- Non-Tunai QRIS --}}
+                <div class="bg-teal-50/40 border border-teal-100 rounded-2xl p-4 flex flex-col justify-between">
+                    <span class="text-[10px] font-bold text-teal-800 uppercase tracking-wider mb-1">📱 Non-Tunai (QRIS)</span>
+                    <p class="text-xl font-black text-slate-800 tracking-tight">
+                        Rp {{ number_format((int)$todayQris, 0, ',', '.') }}
+                    </p>
+                </div>
+                {{-- Non-Tunai Debit/TF --}}
+                <div class="bg-sky-50/40 border border-sky-100 rounded-2xl p-4 flex flex-col justify-between">
+                    <span class="text-[10px] font-bold text-sky-800 uppercase tracking-wider mb-1">💳 Non-Tunai (Debit/TF)</span>
+                    <p class="text-xl font-black text-slate-800 tracking-tight">
+                        Rp {{ number_format((int)$todayDebit, 0, ',', '.') }}
+                    </p>
+                </div>
             </div>
         </div>
 
