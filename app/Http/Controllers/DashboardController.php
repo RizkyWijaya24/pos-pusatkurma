@@ -418,6 +418,28 @@ class DashboardController extends Controller
 
         $monthlyTrend = array_values($weeks);
 
+        // Fetch transactions for daily, weekly, and monthly best sellers
+        $todayTransactionsForBestSeller = $baseQuery()
+            ->whereDate('created_at', \Carbon\Carbon::today())
+            ->get();
+
+        $now = \Carbon\Carbon::now();
+        $startOfWeekForBestSeller = $now->copy()->startOfWeek();
+        $endOfWeekForBestSeller = $now->copy()->endOfWeek();
+        $weeklyTransactionsForBestSeller = $baseQuery()
+            ->whereBetween('created_at', [$startOfWeekForBestSeller, $endOfWeekForBestSeller])
+            ->get();
+
+        $startOfMonthForBestSeller = \Carbon\Carbon::now()->startOfMonth();
+        $endOfMonthForBestSeller = \Carbon\Carbon::now()->endOfMonth();
+        $monthlyTransactionsForBestSeller = $baseQuery()
+            ->whereBetween('created_at', [$startOfMonthForBestSeller, $endOfMonthForBestSeller])
+            ->get();
+
+        $bestSellersToday = $this->getBestSellers($todayTransactionsForBestSeller, 5);
+        $bestSellersWeekly = $this->getBestSellers($weeklyTransactionsForBestSeller, 5);
+        $bestSellersMonthly = $this->getBestSellers($monthlyTransactionsForBestSeller, 5);
+
         return view('owner.dashboard', compact(
             'lowStockCount',
             'lowStockProducts',
@@ -434,8 +456,65 @@ class DashboardController extends Controller
             'monthlyTrend',
             'breakdownData',
             'activeExpenses',
-            'expenseGrowthPercent'
+            'expenseGrowthPercent',
+            'bestSellersToday',
+            'bestSellersWeekly',
+            'bestSellersMonthly'
         ));
+    }
+
+    /**
+     * Parse items_summary from transactions and return top selling products.
+     */
+    private function getBestSellers($transactions, $limit = 5)
+    {
+        $bestSellers = [];
+        foreach ($transactions as $trx) {
+            if (empty($trx->items_summary)) {
+                continue;
+            }
+            $parts = explode(', ', $trx->items_summary);
+            foreach ($parts as $part) {
+                if (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)$/', trim($part), $matches)) {
+                    $name = trim($matches[1]);
+                    $qty = floatval($matches[2]);
+                    $unit = $matches[3];
+                } else {
+                    $name = trim($part);
+                    $qty = 1.0;
+                    $unit = 'pcs';
+                }
+
+                if (!isset($bestSellers[$name])) {
+                    $bestSellers[$name] = [
+                        'name' => $name,
+                        'qty' => 0.0,
+                        'unit' => $unit
+                    ];
+                }
+                $bestSellers[$name]['qty'] += $qty;
+            }
+        }
+
+        // Sort descending by qty
+        uasort($bestSellers, function ($a, $b) {
+            return $b['qty'] <=> $a['qty'];
+        });
+
+        $sliced = array_slice($bestSellers, 0, $limit);
+        
+        // Enrich with product image if exists
+        $names = array_keys($sliced);
+        $products = \App\Models\Product::whereIn('name', $names)->get()->keyBy('name');
+        
+        foreach ($sliced as &$item) {
+            $product = $products->get($item['name']);
+            $item['image_path'] = $product ? $product->image_path : null;
+            $item['category'] = $product ? $product->category : null;
+        }
+        unset($item);
+
+        return $sliced;
     }
 
     /**

@@ -419,6 +419,189 @@
 
         </div>
 
+        <!-- 2.5. Best Seller Products Section (Harian, Mingguan, Bulanan) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            
+            <!-- Column 1: Best Seller Hari Ini -->
+            <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-5">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shadow-sm">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="font-extrabold text-slate-800 text-sm leading-tight">Terlaris Hari Ini</h4>
+                        <p class="text-[10px] text-slate-400 font-medium">Berdasarkan volume penjualan hari ini</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                    @forelse($bestSellersToday as $item)
+                        <div class="flex items-center justify-between p-2 rounded-2xl hover:bg-slate-50 transition duration-150 border border-transparent hover:border-slate-100">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <!-- Rank Indicator -->
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 border
+                                    @if($loop->iteration == 1) bg-amber-100 text-amber-800 border-amber-200
+                                    @elseif($loop->iteration == 2) bg-slate-200 text-slate-800 border-slate-300
+                                    @elseif($loop->iteration == 3) bg-orange-100 text-orange-800 border-orange-200
+                                    @else bg-slate-50 text-slate-500 border-slate-100 @endif">
+                                    #{{ $loop->iteration }}
+                                </div>
+                                
+                                <!-- Product Image / Initial -->
+                                @if(!empty($item['image_path']))
+                                    <img src="/storage/{{ $item['image_path'] }}" class="w-10 h-10 object-cover rounded-xl border border-slate-100 shadow-sm shrink-0" alt="Foto">
+                                @else
+                                    <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 font-extrabold text-[10px] shrink-0 shadow-sm">
+                                        {{ strtoupper(substr($item['name'], 0, 2)) }}
+                                    </div>
+                                @endif
+
+                                <!-- Product Info -->
+                                <div class="min-w-0">
+                                    <h5 class="font-bold text-xs text-slate-800 truncate" title="{{ $item['name'] }}">{{ $item['name'] }}</h5>
+                                    <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block mt-0.5">{{ $item['category'] ?? 'Umum' }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Quantity Badge -->
+                            <div class="bg-amber-50/80 text-amber-700 border border-amber-100 rounded-lg px-2 py-1 text-xs font-black shrink-0 shadow-sm whitespace-nowrap">
+                                {{ $item['qty'] }} {{ $item['unit'] }}
+                            </div>
+                        </div>
+                    @empty
+                        <div class="py-8 text-center text-slate-400 text-xs font-semibold flex flex-col items-center gap-2">
+                            <svg class="h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                            </svg>
+                            <span>Belum ada transaksi hari ini</span>
+                        </div>
+                    @endforelse
+                </div>
+            </div>
+
+            <!-- Column 2: Best Seller Pekan Ini -->
+            <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-5">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shadow-sm">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.306a11.95 11.95 0 015.814-5.518l2.74-1.22m0 0l-5.94-2.281m5.94 2.28l-2.28 5.941" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="font-extrabold text-slate-800 text-sm leading-tight">Terlaris Pekan Ini</h4>
+                        <p class="text-[10px] text-slate-400 font-medium">Berdasarkan volume penjualan pekan ini</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                    @forelse($bestSellersWeekly as $item)
+                        <div class="flex items-center justify-between p-2 rounded-2xl hover:bg-slate-50 transition duration-150 border border-transparent hover:border-slate-100">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <!-- Rank Indicator -->
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 border
+                                    @if($loop->iteration == 1) bg-amber-100 text-amber-800 border-amber-200
+                                    @elseif($loop->iteration == 2) bg-slate-200 text-slate-800 border-slate-300
+                                    @elseif($loop->iteration == 3) bg-orange-100 text-orange-800 border-orange-200
+                                    @else bg-slate-50 text-slate-500 border-slate-100 @endif">
+                                    #{{ $loop->iteration }}
+                                </div>
+                                
+                                <!-- Product Image / Initial -->
+                                @if(!empty($item['image_path']))
+                                    <img src="/storage/{{ $item['image_path'] }}" class="w-10 h-10 object-cover rounded-xl border border-slate-100 shadow-sm shrink-0" alt="Foto">
+                                @else
+                                    <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 font-extrabold text-[10px] shrink-0 shadow-sm">
+                                        {{ strtoupper(substr($item['name'], 0, 2)) }}
+                                    </div>
+                                @endif
+
+                                <!-- Product Info -->
+                                <div class="min-w-0">
+                                    <h5 class="font-bold text-xs text-slate-800 truncate" title="{{ $item['name'] }}">{{ $item['name'] }}</h5>
+                                    <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block mt-0.5">{{ $item['category'] ?? 'Umum' }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Quantity Badge -->
+                            <div class="bg-emerald-50/80 text-emerald-700 border border-emerald-100 rounded-lg px-2 py-1 text-xs font-black shrink-0 shadow-sm whitespace-nowrap">
+                                {{ $item['qty'] }} {{ $item['unit'] }}
+                            </div>
+                        </div>
+                    @empty
+                        <div class="py-8 text-center text-slate-400 text-xs font-semibold flex flex-col items-center gap-2">
+                            <svg class="h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                            </svg>
+                            <span>Belum ada transaksi pekan ini</span>
+                        </div>
+                    @endforelse
+                </div>
+            </div>
+
+            <!-- Column 3: Best Seller Bulan Ini -->
+            <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-5">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 border border-teal-100 flex items-center justify-center shadow-sm">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499c.173-.439.82-.439.993 0l1.905 4.821 5.215.356c.478.033.668.627.294.948l-3.927 3.374 1.22 5.097c.112.469-.4.842-.816.578L12 16.03l-4.526 2.766c-.416.264-.928-.109-.816-.578l1.22-5.097-3.927-3.374c-.374-.32-.184-.915.294-.948l5.215-.356 1.905-4.821z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="font-extrabold text-slate-800 text-sm leading-tight">Terlaris Bulan Ini</h4>
+                        <p class="text-[10px] text-slate-400 font-medium">Berdasarkan volume penjualan bulan ini</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                    @forelse($bestSellersMonthly as $item)
+                        <div class="flex items-center justify-between p-2 rounded-2xl hover:bg-slate-50 transition duration-150 border border-transparent hover:border-slate-100">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <!-- Rank Indicator -->
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 border
+                                    @if($loop->iteration == 1) bg-amber-100 text-amber-800 border-amber-200
+                                    @elseif($loop->iteration == 2) bg-slate-200 text-slate-800 border-slate-300
+                                    @elseif($loop->iteration == 3) bg-orange-100 text-orange-800 border-orange-200
+                                    @else bg-slate-50 text-slate-500 border-slate-100 @endif">
+                                    #{{ $loop->iteration }}
+                                </div>
+                                
+                                <!-- Product Image / Initial -->
+                                @if(!empty($item['image_path']))
+                                    <img src="/storage/{{ $item['image_path'] }}" class="w-10 h-10 object-cover rounded-xl border border-slate-100 shadow-sm shrink-0" alt="Foto">
+                                @else
+                                    <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 font-extrabold text-[10px] shrink-0 shadow-sm">
+                                        {{ strtoupper(substr($item['name'], 0, 2)) }}
+                                    </div>
+                                @endif
+
+                                <!-- Product Info -->
+                                <div class="min-w-0">
+                                    <h5 class="font-bold text-xs text-slate-800 truncate" title="{{ $item['name'] }}">{{ $item['name'] }}</h5>
+                                    <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block mt-0.5">{{ $item['category'] ?? 'Umum' }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Quantity Badge -->
+                            <div class="bg-teal-50/80 text-teal-700 border border-teal-100 rounded-lg px-2 py-1 text-xs font-black shrink-0 shadow-sm whitespace-nowrap">
+                                {{ $item['qty'] }} {{ $item['unit'] }}
+                            </div>
+                        </div>
+                    @empty
+                        <div class="py-8 text-center text-slate-400 text-xs font-semibold flex flex-col items-center gap-2">
+                            <svg class="h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                            </svg>
+                            <span>Belum ada transaksi bulan ini</span>
+                        </div>
+                    @endforelse
+                </div>
+            </div>
+
+        </div>
+
         <!-- 3. BOTTOM ROW: Dynamic Financial Breakdown Table (Collapsible on Card Click) -->
         <div id="breakdown-table-container" x-show="showTable" x-transition style="display: none;"
              class="bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-4">
