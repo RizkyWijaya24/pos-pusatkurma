@@ -465,6 +465,7 @@ class DashboardController extends Controller
 
     /**
      * Parse items_summary from transactions and return top selling products.
+     * Combines Normalization (Gram -> Kg) and Sorting by Purchase Frequency.
      */
     private function getBestSellers($transactions, $limit = 5)
     {
@@ -474,36 +475,53 @@ class DashboardController extends Controller
                 continue;
             }
             $parts = explode(', ', $trx->items_summary);
+            $seenInThisTransaction = [];
             foreach ($parts as $part) {
                 if (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)$/', trim($part), $matches)) {
                     $name = trim($matches[1]);
                     $qty = floatval($matches[2]);
-                    $unit = $matches[3];
+                    $unit = strtolower(trim($matches[3]));
                 } else {
                     $name = trim($part);
                     $qty = 1.0;
                     $unit = 'pcs';
                 }
 
+                // Normalize weight unit: gram -> kg
+                if ($unit === 'gram' || $unit === 'g') {
+                    $qty = $qty / 1000;
+                    $unit = 'kg';
+                }
+
                 if (!isset($bestSellers[$name])) {
                     $bestSellers[$name] = [
                         'name' => $name,
                         'qty' => 0.0,
-                        'unit' => $unit
+                        'unit' => $unit,
+                        'count' => 0
                     ];
                 }
+                
                 $bestSellers[$name]['qty'] += $qty;
+                
+                if (!isset($seenInThisTransaction[$name])) {
+                    $bestSellers[$name]['count'] += 1;
+                    $seenInThisTransaction[$name] = true;
+                }
             }
         }
 
-        // Sort descending by qty
+        // Sort descending by transaction frequency (count), secondary by total quantity (qty)
         uasort($bestSellers, function ($a, $b) {
-            return $b['qty'] <=> $a['qty'];
+            if ($b['count'] === $a['count']) {
+                return $b['qty'] <=> $a['qty'];
+            }
+            return $b['count'] <=> $a['count'];
         });
 
         $sliced = array_slice($bestSellers, 0, $limit);
         
-        // Enrich with product image if exists
+        // Enrich with product image and category if exists
         $names = array_keys($sliced);
         $products = \App\Models\Product::whereIn('name', $names)->get()->keyBy('name');
         

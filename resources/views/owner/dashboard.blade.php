@@ -433,7 +433,7 @@
                     </div>
                     <div>
                         <h4 class="font-extrabold text-slate-800 text-sm leading-tight">Terlaris Hari Ini</h4>
-                        <p class="text-[10px] text-slate-400 font-medium">Berdasarkan volume penjualan hari ini</p>
+                        <p class="text-[10px] text-slate-400 font-medium">Berdasarkan popularitas & volume hari ini</p>
                     </div>
                 </div>
 
@@ -466,9 +466,14 @@
                                 </div>
                             </div>
 
-                            <!-- Quantity Badge -->
-                            <div class="bg-amber-50/80 text-amber-700 border border-amber-100 rounded-lg px-2 py-1 text-xs font-black shrink-0 shadow-sm whitespace-nowrap">
-                                {{ $item['qty'] }} {{ $item['unit'] }}
+                            <!-- Popularity & Qty Info -->
+                            <div class="text-right shrink-0 flex flex-col items-end gap-0.5">
+                                <span class="bg-amber-100/70 text-amber-800 border border-amber-200/50 rounded-lg px-2 py-0.5 text-[10px] font-black shadow-sm whitespace-nowrap">
+                                    {{ $item['count'] }}x Transaksi
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-bold">
+                                    Total: {{ $item['qty'] }} {{ $item['unit'] }}
+                                </span>
                             </div>
                         </div>
                     @empty
@@ -492,7 +497,7 @@
                     </div>
                     <div>
                         <h4 class="font-extrabold text-slate-800 text-sm leading-tight">Terlaris Pekan Ini</h4>
-                        <p class="text-[10px] text-slate-400 font-medium">Berdasarkan volume penjualan pekan ini</p>
+                        <p class="text-[10px] text-slate-400 font-medium">Berdasarkan popularitas & volume pekan ini</p>
                     </div>
                 </div>
 
@@ -525,9 +530,14 @@
                                 </div>
                             </div>
 
-                            <!-- Quantity Badge -->
-                            <div class="bg-emerald-50/80 text-emerald-700 border border-emerald-100 rounded-lg px-2 py-1 text-xs font-black shrink-0 shadow-sm whitespace-nowrap">
-                                {{ $item['qty'] }} {{ $item['unit'] }}
+                            <!-- Popularity & Qty Info -->
+                            <div class="text-right shrink-0 flex flex-col items-end gap-0.5">
+                                <span class="bg-emerald-100/70 text-emerald-800 border border-emerald-200/50 rounded-lg px-2 py-0.5 text-[10px] font-black shadow-sm whitespace-nowrap">
+                                    {{ $item['count'] }}x Transaksi
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-bold">
+                                    Total: {{ $item['qty'] }} {{ $item['unit'] }}
+                                </span>
                             </div>
                         </div>
                     @empty
@@ -551,7 +561,7 @@
                     </div>
                     <div>
                         <h4 class="font-extrabold text-slate-800 text-sm leading-tight">Terlaris Bulan Ini</h4>
-                        <p class="text-[10px] text-slate-400 font-medium">Berdasarkan volume penjualan bulan ini</p>
+                        <p class="text-[10px] text-slate-400 font-medium">Berdasarkan popularitas & volume bulan ini</p>
                     </div>
                 </div>
 
@@ -584,9 +594,14 @@
                                 </div>
                             </div>
 
-                            <!-- Quantity Badge -->
-                            <div class="bg-teal-50/80 text-teal-700 border border-teal-100 rounded-lg px-2 py-1 text-xs font-black shrink-0 shadow-sm whitespace-nowrap">
-                                {{ $item['qty'] }} {{ $item['unit'] }}
+                            <!-- Popularity & Qty Info -->
+                            <div class="text-right shrink-0 flex flex-col items-end gap-0.5">
+                                <span class="bg-teal-100/70 text-teal-800 border border-teal-200/50 rounded-lg px-2 py-0.5 text-[10px] font-black shadow-sm whitespace-nowrap">
+                                    {{ $item['count'] }}x Transaksi
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-bold">
+                                    Total: {{ $item['qty'] }} {{ $item['unit'] }}
+                                </span>
                             </div>
                         </div>
                     @empty
