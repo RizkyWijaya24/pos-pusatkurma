@@ -159,7 +159,7 @@
             <div class="flex flex-col gap-1">
                 <div class="flex flex-wrap items-center gap-2">
                     <h3 class="font-extrabold text-slate-800 text-lg leading-tight">
-                        Laporan Penjualan — @if($activeFilter === 'today') Hari Ini @elseif($activeFilter === 'weekly') Pekan Ini @else Bulan Ini @endif
+                        Laporan Penjualan — @if($activeFilter === 'today') Hari Ini @elseif($activeFilter === 'yesterday') Kemarin @elseif($activeFilter === 'weekly') Pekan Ini @elseif($activeFilter === 'last_week') Pekan Lalu @elseif($activeFilter === 'monthly') Bulan Ini @else Laporan Bulan Lalu @endif
                     </h3>
                     @if($selectedBranch)
                         <span class="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
@@ -191,8 +191,11 @@
                     <select name="filter" onchange="this.form.submit()" 
                             class="w-full sm:w-auto text-xs font-bold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner px-4 py-2.5 bg-slate-50 text-slate-700 hover:bg-slate-100/50 transition cursor-pointer">
                         <option value="today" {{ $activeFilter === 'today' ? 'selected' : '' }}>📅 Hari Ini</option>
+                        <option value="yesterday" {{ $activeFilter === 'yesterday' ? 'selected' : '' }}>📅 Kemarin</option>
                         <option value="weekly" {{ $activeFilter === 'weekly' ? 'selected' : '' }}>📅 Minggu Ini</option>
+                        <option value="last_week" {{ $activeFilter === 'last_week' ? 'selected' : '' }}>📅 Minggu Lalu</option>
                         <option value="monthly" {{ $activeFilter === 'monthly' ? 'selected' : '' }}>📅 Bulan Ini</option>
+                        <option value="last_month" {{ $activeFilter === 'last_month' ? 'selected' : '' }}>📅 Bulan Lalu</option>
                     </select>
                 </form>
             </div>
@@ -439,7 +442,7 @@
         <!-- 2.5. Best Seller Products Section (Harian, Mingguan, Bulanan) -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             
-            <!-- Column 1: Best Seller Hari Ini -->
+            <!-- Column 1: Best Seller Hari Ini / Kemarin -->
             <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-5">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shadow-sm">
@@ -449,8 +452,12 @@
                         </svg>
                     </div>
                     <div>
-                        <h4 class="font-extrabold text-slate-800 text-sm leading-tight">Terlaris Hari Ini</h4>
-                        <p class="text-[10px] text-slate-400 font-medium">Berdasarkan popularitas & volume hari ini</p>
+                        <h4 class="font-extrabold text-slate-800 text-sm leading-tight">
+                            {{ $activeFilter === 'yesterday' ? 'Terlaris Kemarin' : 'Terlaris Hari Ini' }}
+                        </h4>
+                        <p class="text-[10px] text-slate-400 font-medium">
+                            Berdasarkan popularitas & volume {{ $activeFilter === 'yesterday' ? 'kemarin' : 'hari ini' }}
+                        </p>
                     </div>
                 </div>
 
@@ -498,13 +505,13 @@
                             <svg class="h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
                             </svg>
-                            <span>Belum ada transaksi hari ini</span>
+                            <span>Belum ada transaksi {{ $activeFilter === 'yesterday' ? 'kemarin' : 'hari ini' }}</span>
                         </div>
                     @endforelse
                 </div>
             </div>
 
-            <!-- Column 2: Best Seller Pekan Ini -->
+            <!-- Column 2: Best Seller Pekan Ini / Pekan Lalu -->
             <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-5">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shadow-sm">
@@ -513,8 +520,12 @@
                         </svg>
                     </div>
                     <div>
-                        <h4 class="font-extrabold text-slate-800 text-sm leading-tight">Terlaris Pekan Ini</h4>
-                        <p class="text-[10px] text-slate-400 font-medium">Berdasarkan popularitas & volume pekan ini</p>
+                        <h4 class="font-extrabold text-slate-800 text-sm leading-tight">
+                            {{ $activeFilter === 'last_week' ? 'Terlaris Pekan Lalu' : 'Terlaris Pekan Ini' }}
+                        </h4>
+                        <p class="text-[10px] text-slate-400 font-medium">
+                            Berdasarkan popularitas & volume {{ $activeFilter === 'last_week' ? 'pekan lalu' : 'pekan ini' }}
+                        </p>
                     </div>
                 </div>
 
@@ -562,13 +573,13 @@
                             <svg class="h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
                             </svg>
-                            <span>Belum ada transaksi pekan ini</span>
+                            <span>Belum ada transaksi {{ $activeFilter === 'last_week' ? 'pekan lalu' : 'pekan ini' }}</span>
                         </div>
                     @endforelse
                 </div>
             </div>
 
-            <!-- Column 3: Best Seller Bulan Ini -->
+            <!-- Column 3: Best Seller Bulan Ini / Bulan Lalu -->
             <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-5">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 border border-teal-100 flex items-center justify-center shadow-sm">
@@ -577,8 +588,12 @@
                         </svg>
                     </div>
                     <div>
-                        <h4 class="font-extrabold text-slate-800 text-sm leading-tight">Terlaris Bulan Ini</h4>
-                        <p class="text-[10px] text-slate-400 font-medium">Berdasarkan popularitas & volume bulan ini</p>
+                        <h4 class="font-extrabold text-slate-800 text-sm leading-tight">
+                            {{ $activeFilter === 'last_month' ? 'Terlaris Bulan Lalu' : 'Terlaris Bulan Ini' }}
+                        </h4>
+                        <p class="text-[10px] text-slate-400 font-medium">
+                            Berdasarkan popularitas & volume {{ $activeFilter === 'last_month' ? 'bulan lalu' : 'bulan ini' }}
+                        </p>
                     </div>
                 </div>
 
@@ -626,7 +641,7 @@
                             <svg class="h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
                             </svg>
-                            <span>Belum ada transaksi bulan ini</span>
+                            <span>Belum ada transaksi {{ $activeFilter === 'last_month' ? 'bulan lalu' : 'bulan ini' }}</span>
                         </div>
                     @endforelse
                 </div>

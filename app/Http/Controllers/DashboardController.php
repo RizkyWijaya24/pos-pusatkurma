@@ -115,9 +115,9 @@ class DashboardController extends Controller
         $lowStockCount = Product::where('stock', '<=', 10)->count();
         $lowStockProducts = Product::where('stock', '<=', 10)->get();
 
-        // 2. Resolve Active Filter (?filter=today/weekly/monthly)
+        // 2. Resolve Active Filter (?filter=today/yesterday/weekly/last_week/monthly/last_month)
         $activeFilter = $request->query('filter', 'today');
-        if (!in_array($activeFilter, ['today', 'weekly', 'monthly'])) {
+        if (!in_array($activeFilter, ['today', 'yesterday', 'weekly', 'last_week', 'monthly', 'last_month'])) {
             $activeFilter = 'today';
         }
 
@@ -173,6 +173,24 @@ class DashboardController extends Controller
             $comparisonExpenses = $expenseQuery()
                 ->whereDate('created_at', \Carbon\Carbon::yesterday())
                 ->sum('amount');
+        } elseif ($activeFilter === 'yesterday') {
+            $activeStats = $baseQuery()
+                ->selectRaw('SUM(total_price) as omset, SUM(total_price - total_cost) as profit, COUNT(id) as count')
+                ->whereDate('created_at', \Carbon\Carbon::yesterday())
+                ->first();
+
+            $comparisonStats = $baseQuery()
+                ->selectRaw('SUM(total_price) as omset, SUM(total_price - total_cost) as profit, COUNT(id) as count')
+                ->whereDate('created_at', \Carbon\Carbon::today()->subDays(2))
+                ->first();
+
+            $activeExpenses = $expenseQuery()
+                ->whereDate('created_at', \Carbon\Carbon::yesterday())
+                ->sum('amount');
+
+            $comparisonExpenses = $expenseQuery()
+                ->whereDate('created_at', \Carbon\Carbon::today()->subDays(2))
+                ->sum('amount');
         } elseif ($activeFilter === 'weekly') {
             $now = \Carbon\Carbon::now();
             $startOfWeek = $now->copy()->startOfWeek();
@@ -196,7 +214,30 @@ class DashboardController extends Controller
             $comparisonExpenses = $expenseQuery()
                 ->whereBetween('created_at', [$startOfLastWeek, $endOfLastWeek])
                 ->sum('amount');
-        } else { // monthly
+        } elseif ($activeFilter === 'last_week') {
+            $now = \Carbon\Carbon::now();
+            $startOfLastWeek = $now->copy()->subWeek()->startOfWeek();
+            $endOfLastWeek   = $now->copy()->subWeek()->endOfWeek();
+            $activeStats = $baseQuery()
+                ->selectRaw('SUM(total_price) as omset, SUM(total_price - total_cost) as profit, COUNT(id) as count')
+                ->whereBetween('created_at', [$startOfLastWeek, $endOfLastWeek])
+                ->first();
+
+            $startOfTwoWeeksAgo = $now->copy()->subWeeks(2)->startOfWeek();
+            $endOfTwoWeeksAgo   = $now->copy()->subWeeks(2)->endOfWeek();
+            $comparisonStats = $baseQuery()
+                ->selectRaw('SUM(total_price) as omset, SUM(total_price - total_cost) as profit, COUNT(id) as count')
+                ->whereBetween('created_at', [$startOfTwoWeeksAgo, $endOfTwoWeeksAgo])
+                ->first();
+
+            $activeExpenses = $expenseQuery()
+                ->whereBetween('created_at', [$startOfLastWeek, $endOfLastWeek])
+                ->sum('amount');
+
+            $comparisonExpenses = $expenseQuery()
+                ->whereBetween('created_at', [$startOfTwoWeeksAgo, $endOfTwoWeeksAgo])
+                ->sum('amount');
+        } elseif ($activeFilter === 'monthly') {
             $startOfMonth = \Carbon\Carbon::now()->startOfMonth();
             $endOfMonth = \Carbon\Carbon::now()->endOfMonth();
             $activeStats = $baseQuery()
@@ -217,6 +258,28 @@ class DashboardController extends Controller
 
             $comparisonExpenses = $expenseQuery()
                 ->whereBetween('created_at', [$startOfLastMonth, $endOfLastMonth])
+                ->sum('amount');
+        } else { // last_month
+            $startOfLastMonth = \Carbon\Carbon::now()->subMonth()->startOfMonth();
+            $endOfLastMonth = \Carbon\Carbon::now()->subMonth()->endOfMonth();
+            $activeStats = $baseQuery()
+                ->selectRaw('SUM(total_price) as omset, SUM(total_price - total_cost) as profit, COUNT(id) as count')
+                ->whereBetween('created_at', [$startOfLastMonth, $endOfLastMonth])
+                ->first();
+
+            $startOfTwoMonthsAgo = \Carbon\Carbon::now()->subMonths(2)->startOfMonth();
+            $endOfTwoMonthsAgo = \Carbon\Carbon::now()->subMonths(2)->endOfMonth();
+            $comparisonStats = $baseQuery()
+                ->selectRaw('SUM(total_price) as omset, SUM(total_price - total_cost) as profit, COUNT(id) as count')
+                ->whereBetween('created_at', [$startOfTwoMonthsAgo, $endOfTwoMonthsAgo])
+                ->first();
+
+            $activeExpenses = $expenseQuery()
+                ->whereBetween('created_at', [$startOfLastMonth, $endOfLastMonth])
+                ->sum('amount');
+
+            $comparisonExpenses = $expenseQuery()
+                ->whereBetween('created_at', [$startOfTwoMonthsAgo, $endOfTwoMonthsAgo])
                 ->sum('amount');
         }
 
@@ -260,23 +323,25 @@ class DashboardController extends Controller
 
         // 4. Fetch/Build breakdown table data (with optional branch filter)
         $breakdownData = [];
-        if ($activeFilter === 'today') {
+        if ($activeFilter === 'today' || $activeFilter === 'yesterday') {
+            $targetDate = $activeFilter === 'today' ? \Carbon\Carbon::today() : \Carbon\Carbon::yesterday();
             $todayQ = $baseQuery()->with('cashier')
-                ->whereDate('created_at', \Carbon\Carbon::today())
+                ->whereDate('created_at', $targetDate)
                 ->latest()
                 ->take(10);
             $todayTransactions = $todayQ->get();
 
-            if ($todayTransactions->isEmpty()) {
+            if ($todayTransactions->isEmpty() && $activeFilter === 'today') {
                 $todayTransactions = $baseQuery()->with('cashier')
                     ->latest()
                     ->take(5)
                     ->get();
             }
             $breakdownData = $todayTransactions;
-        } elseif ($activeFilter === 'weekly') {
-            $startOfWeek = \Carbon\Carbon::now()->startOfWeek();
-            $endOfWeek = \Carbon\Carbon::now()->endOfWeek();
+        } elseif ($activeFilter === 'weekly' || $activeFilter === 'last_week') {
+            $now = \Carbon\Carbon::now();
+            $startOfWeek = $activeFilter === 'weekly' ? $now->copy()->startOfWeek() : $now->copy()->subWeek()->startOfWeek();
+            $endOfWeek = $activeFilter === 'weekly' ? $now->copy()->endOfWeek() : $now->copy()->subWeek()->endOfWeek();
 
             $days = [];
             for ($date = $startOfWeek->copy(); $date->lte($endOfWeek); $date->addDay()) {
@@ -299,10 +364,10 @@ class DashboardController extends Controller
                 }
             }
             $breakdownData = array_values($days);
-        } else {
-            $startOfMonth = \Carbon\Carbon::now()->startOfMonth();
-            $endOfMonth = \Carbon\Carbon::now()->endOfMonth();
-            $daysInMonth = \Carbon\Carbon::now()->daysInMonth;
+        } else { // monthly / last_month
+            $startOfMonth = $activeFilter === 'monthly' ? \Carbon\Carbon::now()->startOfMonth() : \Carbon\Carbon::now()->subMonth()->startOfMonth();
+            $endOfMonth = $activeFilter === 'monthly' ? \Carbon\Carbon::now()->endOfMonth() : \Carbon\Carbon::now()->subMonth()->endOfMonth();
+            $daysInMonth = $startOfMonth->daysInMonth;
 
             $weeksBreakdown = [
                 1 => ['start' => 1, 'end' => 7, 'label' => 'Minggu 1', 'sub_label' => '01 - 07 ' . $startOfMonth->translatedFormat('F'), 'omset' => 0, 'profit' => 0, 'count' => 0],
@@ -330,9 +395,15 @@ class DashboardController extends Controller
             $breakdownData = array_values($weeksBreakdown);
         }
 
-        // 5. Fetch weekly omset breakdown for the general trend graph (always all-branch for graph)
-        $startOfWeek = \Carbon\Carbon::now()->startOfWeek();
-        $endOfWeek = \Carbon\Carbon::now()->endOfWeek();
+        // 5. Fetch weekly omset breakdown for the general trend graph (sensitive to last_week filter)
+        $now = \Carbon\Carbon::now();
+        if ($activeFilter === 'last_week') {
+            $startOfWeek = $now->copy()->subWeek()->startOfWeek();
+            $endOfWeek = $now->copy()->subWeek()->endOfWeek();
+        } else {
+            $startOfWeek = $now->copy()->startOfWeek();
+            $endOfWeek = $now->copy()->endOfWeek();
+        }
 
         $days = [];
         for ($date = $startOfWeek->copy(); $date->lte($endOfWeek); $date->addDay()) {
@@ -365,10 +436,15 @@ class DashboardController extends Controller
 
         $weeklyTrend = array_values($days);
 
-        // 6. Fetch monthly weekly-breakdown for the general trend graph (filtered based on selectedBranch)
-        $startOfMonth = \Carbon\Carbon::now()->startOfMonth();
-        $endOfMonth = \Carbon\Carbon::now()->endOfMonth();
-        $daysInMonth = \Carbon\Carbon::now()->daysInMonth;
+        // 6. Fetch monthly weekly-breakdown for the general trend graph (sensitive to last_month filter)
+        if ($activeFilter === 'last_month') {
+            $startOfMonth = \Carbon\Carbon::now()->subMonth()->startOfMonth();
+            $endOfMonth = \Carbon\Carbon::now()->subMonth()->endOfMonth();
+        } else {
+            $startOfMonth = \Carbon\Carbon::now()->startOfMonth();
+            $endOfMonth = \Carbon\Carbon::now()->endOfMonth();
+        }
+        $daysInMonth = $startOfMonth->daysInMonth;
 
         $weeks = [
             1 => ['label' => 'Minggu 1', 'full_name' => 'Minggu Pertama', 'date' => '01-07', 'omset' => 0, 'is_today' => false],
@@ -380,16 +456,18 @@ class DashboardController extends Controller
             $weeks[5] = ['label' => 'Minggu 5', 'full_name' => 'Minggu Kelima', 'date' => '29-' . $daysInMonth, 'omset' => 0, 'is_today' => false];
         }
 
-        // Determine which week of the month today is
-        $todayDay = \Carbon\Carbon::now()->day;
-        foreach ($weeks as $wNum => &$w) {
-            $start = ($wNum - 1) * 7 + 1;
-            $end = ($wNum === 5) ? $daysInMonth : $wNum * 7;
-            if ($todayDay >= $start && $todayDay <= $end) {
-                $w['is_today'] = true;
+        // Determine which week of the month today is (only if the active month is this month)
+        if ($startOfMonth->isCurrentMonth()) {
+            $todayDay = \Carbon\Carbon::now()->day;
+            foreach ($weeks as $wNum => &$w) {
+                $start = ($wNum - 1) * 7 + 1;
+                $end = ($wNum === 5) ? $daysInMonth : $wNum * 7;
+                if ($todayDay >= $start && $todayDay <= $end) {
+                    $w['is_today'] = true;
+                }
             }
+            unset($w);
         }
-        unset($w);
 
         $monthlyOmsetDetail = $baseQuery()
             ->selectRaw('DAY(created_at) as day, SUM(total_price) as total_omset')
@@ -418,20 +496,31 @@ class DashboardController extends Controller
 
         $monthlyTrend = array_values($weeks);
 
-        // Fetch transactions for daily, weekly, and monthly best sellers
+        // 7. Fetch transactions for daily, weekly, and monthly best sellers (sensitive to historical filters)
+        $todayTarget = ($activeFilter === 'yesterday') ? \Carbon\Carbon::yesterday() : \Carbon\Carbon::today();
         $todayTransactionsForBestSeller = $baseQuery()
-            ->whereDate('created_at', \Carbon\Carbon::today())
+            ->whereDate('created_at', $todayTarget)
             ->get();
 
         $now = \Carbon\Carbon::now();
-        $startOfWeekForBestSeller = $now->copy()->startOfWeek();
-        $endOfWeekForBestSeller = $now->copy()->endOfWeek();
+        if ($activeFilter === 'last_week') {
+            $startOfWeekForBestSeller = $now->copy()->subWeek()->startOfWeek();
+            $endOfWeekForBestSeller = $now->copy()->subWeek()->endOfWeek();
+        } else {
+            $startOfWeekForBestSeller = $now->copy()->startOfWeek();
+            $endOfWeekForBestSeller = $now->copy()->endOfWeek();
+        }
         $weeklyTransactionsForBestSeller = $baseQuery()
             ->whereBetween('created_at', [$startOfWeekForBestSeller, $endOfWeekForBestSeller])
             ->get();
 
-        $startOfMonthForBestSeller = \Carbon\Carbon::now()->startOfMonth();
-        $endOfMonthForBestSeller = \Carbon\Carbon::now()->endOfMonth();
+        if ($activeFilter === 'last_month') {
+            $startOfMonthForBestSeller = \Carbon\Carbon::now()->subMonth()->startOfMonth();
+            $endOfMonthForBestSeller = \Carbon\Carbon::now()->subMonth()->endOfMonth();
+        } else {
+            $startOfMonthForBestSeller = \Carbon\Carbon::now()->startOfMonth();
+            $endOfMonthForBestSeller = \Carbon\Carbon::now()->endOfMonth();
+        }
         $monthlyTransactionsForBestSeller = $baseQuery()
             ->whereBetween('created_at', [$startOfMonthForBestSeller, $endOfMonthForBestSeller])
             ->get();
@@ -576,7 +665,7 @@ class DashboardController extends Controller
     public function exportBestSellers(Request $request)
     {
         $activeFilter = $request->query('filter', 'today');
-        if (!in_array($activeFilter, ['today', 'weekly', 'monthly'])) {
+        if (!in_array($activeFilter, ['today', 'yesterday', 'weekly', 'last_week', 'monthly', 'last_month'])) {
             $activeFilter = 'today';
         }
 
@@ -589,22 +678,24 @@ class DashboardController extends Controller
             : \App\Models\Transaction::query();
 
         // Query transactions based on the selected filter
-        if ($activeFilter === 'today') {
-            $transactions = $baseQuery()->whereDate('created_at', \Carbon\Carbon::today())->get();
-            $periodLabel = 'Hari Ini (' . \Carbon\Carbon::today()->translatedFormat('d F Y') . ')';
-            $filePrefix = 'Laporan_Best_Seller_Harian';
-        } elseif ($activeFilter === 'weekly') {
-            $startOfWeek = \Carbon\Carbon::now()->startOfWeek();
-            $endOfWeek = \Carbon\Carbon::now()->endOfWeek();
+        if ($activeFilter === 'today' || $activeFilter === 'yesterday') {
+            $targetDate = $activeFilter === 'today' ? \Carbon\Carbon::today() : \Carbon\Carbon::yesterday();
+            $transactions = $baseQuery()->whereDate('created_at', $targetDate)->get();
+            $periodLabel = ($activeFilter === 'today' ? 'Hari Ini' : 'Kemarin') . ' (' . $targetDate->translatedFormat('d F Y') . ')';
+            $filePrefix = $activeFilter === 'today' ? 'Laporan_Best_Seller_Harian' : 'Laporan_Best_Seller_Kemarin';
+        } elseif ($activeFilter === 'weekly' || $activeFilter === 'last_week') {
+            $now = \Carbon\Carbon::now();
+            $startOfWeek = $activeFilter === 'weekly' ? $now->copy()->startOfWeek() : $now->copy()->subWeek()->startOfWeek();
+            $endOfWeek = $activeFilter === 'weekly' ? $now->copy()->endOfWeek() : $now->copy()->subWeek()->endOfWeek();
             $transactions = $baseQuery()->whereBetween('created_at', [$startOfWeek, $endOfWeek])->get();
-            $periodLabel = 'Pekan Ini (' . $startOfWeek->translatedFormat('d M Y') . ' s/d ' . $endOfWeek->translatedFormat('d M Y') . ')';
-            $filePrefix = 'Laporan_Best_Seller_Mingguan';
-        } else { // monthly
-            $startOfMonth = \Carbon\Carbon::now()->startOfMonth();
-            $endOfMonth = \Carbon\Carbon::now()->endOfMonth();
+            $periodLabel = ($activeFilter === 'weekly' ? 'Pekan Ini' : 'Pekan Lalu') . ' (' . $startOfWeek->translatedFormat('d M Y') . ' s/d ' . $endOfWeek->translatedFormat('d M Y') . ')';
+            $filePrefix = $activeFilter === 'weekly' ? 'Laporan_Best_Seller_Mingguan' : 'Laporan_Best_Seller_Minggu_Lalu';
+        } else { // monthly / last_month
+            $startOfMonth = $activeFilter === 'monthly' ? \Carbon\Carbon::now()->startOfMonth() : \Carbon\Carbon::now()->subMonth()->startOfMonth();
+            $endOfMonth = $activeFilter === 'monthly' ? \Carbon\Carbon::now()->endOfMonth() : \Carbon\Carbon::now()->subMonth()->endOfMonth();
             $transactions = $baseQuery()->whereBetween('created_at', [$startOfMonth, $endOfMonth])->get();
-            $periodLabel = 'Bulan Ini (' . $startOfMonth->translatedFormat('F Y') . ')';
-            $filePrefix = 'Laporan_Best_Seller_Bulanan';
+            $periodLabel = ($activeFilter === 'monthly' ? 'Bulan Ini' : 'Bulan Lalu') . ' (' . $startOfMonth->translatedFormat('F Y') . ')';
+            $filePrefix = $activeFilter === 'monthly' ? 'Laporan_Best_Seller_Bulanan' : 'Laporan_Best_Seller_Bulan_Lalu';
         }
 
         // Increase limit for export so they see more products
@@ -675,7 +766,7 @@ class DashboardController extends Controller
     public function exportOwnerReport(Request $request)
     {
         $activeFilter = $request->query('filter', 'today');
-        if (!in_array($activeFilter, ['today', 'weekly', 'monthly'])) {
+        if (!in_array($activeFilter, ['today', 'yesterday', 'weekly', 'last_week', 'monthly', 'last_month'])) {
             $activeFilter = 'today';
         }
 
@@ -686,11 +777,14 @@ class DashboardController extends Controller
         $printDate = $now->translatedFormat('d F Y - H:i');
         $printedBy = auth()->user()->name . ' (' . ucfirst(auth()->user()->role) . ')';
 
-        if ($activeFilter === 'today') {
-            $filename = 'Laporan_Harian_POS' . $branchSuffix . '_' . $now->format('Y-m-d') . '.xls';
+        if ($activeFilter === 'today' || $activeFilter === 'yesterday') {
+            $targetDate = $activeFilter === 'today' ? \Carbon\Carbon::today() : \Carbon\Carbon::yesterday();
+            $label = $activeFilter === 'today' ? 'Hari Ini' : 'Kemarin';
+            $filePrefix = $activeFilter === 'today' ? 'Laporan_Harian_POS' : 'Laporan_Kemarin_POS';
+            $filename = $filePrefix . $branchSuffix . '_' . $now->format('Y-m-d') . '.xls';
             
             $query = \App\Models\Transaction::with('cashier')
-                ->whereDate('created_at', \Carbon\Carbon::today())
+                ->whereDate('created_at', $targetDate)
                 ->latest();
 
             if ($activeBranch) {
@@ -699,7 +793,7 @@ class DashboardController extends Controller
 
             $todayTransactions = $query->get();
 
-            return response()->streamDownload(function () use ($todayTransactions, $activeBranch, $printDate, $printedBy, $now) {
+            return response()->streamDownload(function () use ($todayTransactions, $activeBranch, $printDate, $printedBy, $now, $targetDate, $label) {
                 echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
                 echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
                 echo '<style>' . $this->excelStyles() . '</style></head><body>';
@@ -709,7 +803,7 @@ class DashboardController extends Controller
                 echo '<tr><td colspan="9" class="title" style="height:45px;">LAPORAN PENJUALAN HARIAN POS</td></tr>';
                 echo '<tr><td colspan="9" class="subtitle" style="height:28px;">PUSAT KURMA PREMIUM</td></tr>';
                 echo '<tr><td colspan="9" class="spacer"></td></tr>';
-                echo '<tr><td class="meta-label">Filter Waktu</td><td colspan="8" class="meta-value">Hari Ini (' . $now->translatedFormat('d F Y') . ')</td></tr>';
+                echo '<tr><td class="meta-label">Filter Waktu</td><td colspan="8" class="meta-value">' . $label . ' (' . $targetDate->translatedFormat('d F Y') . ')</td></tr>';
                 echo '<tr><td class="meta-label">Filter Cabang</td><td colspan="8" class="meta-value">' . htmlspecialchars($activeBranch ? $activeBranch : 'Semua Cabang') . '</td></tr>';
                 echo '<tr><td class="meta-label">Tanggal Cetak</td><td colspan="8" class="meta-value">' . htmlspecialchars($printDate) . '</td></tr>';
                 echo '<tr><td class="meta-label">Dicetak Oleh</td><td colspan="8" class="meta-value">' . htmlspecialchars($printedBy) . '</td></tr>';
@@ -778,13 +872,12 @@ class DashboardController extends Controller
                 'Cache-Control' => 'no-cache, no-store, must-revalidate',
                 'Pragma' => 'no-cache',
                 'Expires' => '0',
-            ]);
-
-        } elseif ($activeFilter === 'weekly') {
-            $filename = 'Laporan_Mingguan_POS' . $branchSuffix . '_' . $now->format('Y-m-d') . '.xls';
+            ]);        } elseif ($activeFilter === 'weekly' || $activeFilter === 'last_week') {
+            $filePrefix = $activeFilter === 'weekly' ? 'Laporan_Mingguan_POS' : 'Laporan_Minggu_Lalu_POS';
+            $filename = $filePrefix . $branchSuffix . '_' . $now->format('Y-m-d') . '.xls';
             
-            $startOfWeek = $now->copy()->startOfWeek();
-            $endOfWeek = $now->copy()->endOfWeek();
+            $startOfWeek = $activeFilter === 'weekly' ? $now->copy()->startOfWeek() : $now->copy()->subWeek()->startOfWeek();
+            $endOfWeek = $activeFilter === 'weekly' ? $now->copy()->endOfWeek() : $now->copy()->subWeek()->endOfWeek();
 
             $days = [];
             for ($date = $startOfWeek->copy(); $date->lte($endOfWeek); $date->addDay()) {
@@ -896,12 +989,13 @@ class DashboardController extends Controller
                 'Expires' => '0',
             ]);
 
-        } else { // monthly
-            $filename = 'Laporan_Bulanan_POS' . $branchSuffix . '_' . $now->format('Y-m-d') . '.xls';
+        } else { // monthly / last_month
+            $filePrefix = $activeFilter === 'monthly' ? 'Laporan_Bulanan_POS' : 'Laporan_Bulan_Lalu_POS';
+            $filename = $filePrefix . $branchSuffix . '_' . $now->format('Y-m-d') . '.xls';
 
-            $startOfMonth = $now->copy()->startOfMonth();
-            $endOfMonth = $now->copy()->endOfMonth();
-            $daysInMonth = $now->daysInMonth;
+            $startOfMonth = $activeFilter === 'monthly' ? $now->copy()->startOfMonth() : $now->copy()->subMonth()->startOfMonth();
+            $endOfMonth = $activeFilter === 'monthly' ? $now->copy()->endOfMonth() : $now->copy()->subMonth()->endOfMonth();
+            $daysInMonth = $startOfMonth->daysInMonth;
 
             $weeksBreakdown = [
                 1 => ['start' => 1, 'end' => 7, 'label' => 'Minggu 1', 'sub_label' => '01 - 07 ' . $startOfMonth->translatedFormat('F'), 'omset' => 0, 'profit' => 0, 'count' => 0],
