@@ -76,6 +76,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:owner,admin')->prefix('owner')->name('owner.')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'owner'])->name('dashboard');
         Route::get('/dashboard/export', [\App\Http\Controllers\DashboardController::class, 'exportOwnerReport'])->name('dashboard.export');
+        Route::get('/dashboard/export-best-sellers', [\App\Http\Controllers\DashboardController::class, 'exportBestSellers'])->name('dashboard.export-best-sellers');
 
         // Transaction History (Owner read-only)
         Route::get('/transactions/export', [\App\Http\Controllers\TransactionController::class, 'export'])->name('transactions.export');

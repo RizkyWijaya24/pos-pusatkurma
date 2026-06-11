@@ -571,6 +571,105 @@ class DashboardController extends Controller
     }
 
     /**
+     * Export Best Seller products report as Excel-compatible file.
+     */
+    public function exportBestSellers(Request $request)
+    {
+        $activeFilter = $request->query('filter', 'today');
+        if (!in_array($activeFilter, ['today', 'weekly', 'monthly'])) {
+            $activeFilter = 'today';
+        }
+
+        $activeBranch = $request->query('branch', '');
+        $branchSuffix = $activeBranch ? '_' . str_replace(' ', '_', $activeBranch) : '';
+
+        // Helper: base query with optional branch scope
+        $baseQuery = fn() => ($activeBranch && $activeBranch !== '')
+            ? \App\Models\Transaction::where('branch', $activeBranch)
+            : \App\Models\Transaction::query();
+
+        // Query transactions based on the selected filter
+        if ($activeFilter === 'today') {
+            $transactions = $baseQuery()->whereDate('created_at', \Carbon\Carbon::today())->get();
+            $periodLabel = 'Hari Ini (' . \Carbon\Carbon::today()->translatedFormat('d F Y') . ')';
+            $filePrefix = 'Laporan_Best_Seller_Harian';
+        } elseif ($activeFilter === 'weekly') {
+            $startOfWeek = \Carbon\Carbon::now()->startOfWeek();
+            $endOfWeek = \Carbon\Carbon::now()->endOfWeek();
+            $transactions = $baseQuery()->whereBetween('created_at', [$startOfWeek, $endOfWeek])->get();
+            $periodLabel = 'Pekan Ini (' . $startOfWeek->translatedFormat('d M Y') . ' s/d ' . $endOfWeek->translatedFormat('d M Y') . ')';
+            $filePrefix = 'Laporan_Best_Seller_Mingguan';
+        } else { // monthly
+            $startOfMonth = \Carbon\Carbon::now()->startOfMonth();
+            $endOfMonth = \Carbon\Carbon::now()->endOfMonth();
+            $transactions = $baseQuery()->whereBetween('created_at', [$startOfMonth, $endOfMonth])->get();
+            $periodLabel = 'Bulan Ini (' . $startOfMonth->translatedFormat('F Y') . ')';
+            $filePrefix = 'Laporan_Best_Seller_Bulanan';
+        }
+
+        // Increase limit for export so they see more products
+        $bestSellers = $this->getBestSellers($transactions, 100);
+
+        $now = \Carbon\Carbon::now();
+        $filename = $filePrefix . $branchSuffix . '_' . $now->format('Y-m-d') . '.xls';
+        $printDate = $now->translatedFormat('d F Y - H:i');
+        $printedBy = auth()->user()->name . ' (' . ucfirst(auth()->user()->role) . ')';
+
+        return response()->streamDownload(function () use ($bestSellers, $activeBranch, $periodLabel, $printDate, $printedBy) {
+            echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
+            echo '<style>' . $this->excelStyles() . '</style></head><body>';
+
+            // Metadata Table
+            echo '<table style="margin-bottom:16px;">';
+            echo '<tr><td colspan="6" class="title" style="height:45px;">LAPORAN PRODUK BEST SELLER (TERLARIS)</td></tr>';
+            echo '<tr><td colspan="6" class="subtitle" style="height:28px;">PUSAT KURMA PREMIUM</td></tr>';
+            echo '<tr><td colspan="6" class="spacer"></td></tr>';
+            echo '<tr><td class="meta-label">Periode</td><td colspan="5" class="meta-value">' . htmlspecialchars($periodLabel) . '</td></tr>';
+            echo '<tr><td class="meta-label">Filter Cabang</td><td colspan="5" class="meta-value">' . htmlspecialchars($activeBranch ? $activeBranch : 'Semua Cabang') . '</td></tr>';
+            echo '<tr><td class="meta-label">Tanggal Cetak</td><td colspan="5" class="meta-value">' . htmlspecialchars($printDate) . '</td></tr>';
+            echo '<tr><td class="meta-label">Dicetak Oleh</td><td colspan="5" class="meta-value">' . htmlspecialchars($printedBy) . '</td></tr>';
+            echo '<tr><td colspan="6" class="spacer"></td></tr>';
+            echo '</table>';
+
+            // Data Table
+            echo '<table>';
+            echo '<thead><tr>';
+            echo '<th style="width:70px;">Peringkat</th>';
+            echo '<th style="width:250px;">Nama Produk</th>';
+            echo '<th style="width:150px;">Kategori</th>';
+            echo '<th style="width:150px; text-align:center;">Jumlah Transaksi</th>';
+            echo '<th style="width:150px; text-align:right;">Total Kuantitas Terjual</th>';
+            echo '<th style="width:100px; text-align:center;">Satuan</th>';
+            echo '</tr></thead><tbody>';
+
+            $idx = 1;
+            foreach ($bestSellers as $item) {
+                $rowClass = $idx % 2 === 0 ? ' class="stripe"' : '';
+                echo '<tr' . $rowClass . '>';
+                echo '<td class="center font-bold">#' . $idx++ . '</td>';
+                echo '<td class="bold">' . htmlspecialchars($item['name']) . '</td>';
+                echo '<td>' . htmlspecialchars($item['category'] ?? 'Umum') . '</td>';
+                echo '<td class="center">' . $item['count'] . 'x Transaksi</td>';
+                echo '<td class="right bold">' . number_format($item['qty'], 2, ',', '.') . '</td>';
+                echo '<td class="center font-bold">' . htmlspecialchars($item['unit']) . '</td>';
+                echo '</tr>';
+            }
+
+            if (empty($bestSellers)) {
+                echo '<tr><td colspan="6" class="center text" style="color:#6b7280;height:60px;">Belum ada data penjualan produk untuk periode ini.</td></tr>';
+            }
+
+            echo '</tbody></table></body></html>';
+        }, $filename, [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ]);
+    }
+
+    /**
      * Export dynamic financial report as Excel-compatible file.
      */
     public function exportOwnerReport(Request $request)
