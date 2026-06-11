@@ -28,13 +28,14 @@ class TransactionSeeder extends Seeder
         }
 
         $paymentMethods = ['Cash', 'QRIS', 'Debit'];
+        $branches = ['Pusat Cianjur', 'Cabang Bandung', 'Cabang Jakarta'];
 
-        // Seed transactions for the last 8 days (from 7 days ago until today)
-        for ($i = 7; $i >= 0; $i--) {
+        // Seed transactions for the last 60 days (from 59 days ago until today)
+        for ($i = 59; $i >= 0; $i--) {
             $date = Carbon::today()->subDays($i);
 
-            // Generate 3 to 6 transactions per day
-            $numTransactions = rand(3, 6);
+            // Generate 3 to 8 transactions per day
+            $numTransactions = rand(3, 8);
 
             for ($j = 0; $j < $numTransactions; $j++) {
                 // Set a random time during the day (e.g. 08:00 to 21:00)
@@ -45,6 +46,7 @@ class TransactionSeeder extends Seeder
 
                 $cashier = $cashiers->random();
                 $paymentMethod = $paymentMethods[array_rand($paymentMethods)];
+                $branch = $branches[array_rand($branches)];
 
                 // Pick 1 to 4 random products
                 $transactionProducts = $products->random(rand(1, min(4, $products->count())));
@@ -86,6 +88,7 @@ class TransactionSeeder extends Seeder
                 $transaction->total_price = $totalPrice;
                 $transaction->total_cost = $totalCost;
                 $transaction->payment_method = $paymentMethod;
+                $transaction->branch = $branch;
                 $transaction->created_at = $transactionDate;
                 $transaction->updated_at = $transactionDate;
                 $transaction->save();

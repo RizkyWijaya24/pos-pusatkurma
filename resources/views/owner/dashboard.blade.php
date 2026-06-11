@@ -159,7 +159,7 @@
             <div class="flex flex-col gap-1">
                 <div class="flex flex-wrap items-center gap-2">
                     <h3 class="font-extrabold text-slate-800 text-lg leading-tight">
-                        Laporan Penjualan — @if($activeFilter === 'today') Hari Ini @elseif($activeFilter === 'yesterday') Kemarin @elseif($activeFilter === 'weekly') Pekan Ini @elseif($activeFilter === 'last_week') Pekan Lalu @elseif($activeFilter === 'monthly') Bulan Ini @else Laporan Bulan Lalu @endif
+                        Laporan Penjualan — {{ $titleLabel }}
                     </h3>
                     @if($selectedBranch)
                         <span class="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
@@ -171,7 +171,7 @@
             </div>
             
             <!-- Right Side: Dropdowns and Filters Controls -->
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+            <div x-data="{ filterType: '{{ $filterType }}' }" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
                 <!-- Single Merged GET Form for both Filters -->
                 <form method="GET" action="{{ route('owner.dashboard') }}" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                     <!-- Dropdown Filter Cabang -->
@@ -187,16 +187,25 @@
                         @endforeach
                     </select>
 
-                    <!-- Dropdown Filter Waktu (Timeframe) -->
-                    <select name="filter" onchange="this.form.submit()" 
+                    <!-- Dropdown Filter Tipe Waktu -->
+                    <select name="filter_type" x-model="filterType" onchange="this.form.submit()"
                             class="w-full sm:w-auto text-xs font-bold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner px-4 py-2.5 bg-slate-50 text-slate-700 hover:bg-slate-100/50 transition cursor-pointer">
-                        <option value="today" {{ $activeFilter === 'today' ? 'selected' : '' }}>📅 Hari Ini</option>
-                        <option value="yesterday" {{ $activeFilter === 'yesterday' ? 'selected' : '' }}>📅 Kemarin</option>
-                        <option value="weekly" {{ $activeFilter === 'weekly' ? 'selected' : '' }}>📅 Minggu Ini</option>
-                        <option value="last_week" {{ $activeFilter === 'last_week' ? 'selected' : '' }}>📅 Minggu Lalu</option>
-                        <option value="monthly" {{ $activeFilter === 'monthly' ? 'selected' : '' }}>📅 Bulan Ini</option>
-                        <option value="last_month" {{ $activeFilter === 'last_month' ? 'selected' : '' }}>📅 Bulan Lalu</option>
+                        <option value="harian">📅 Harian</option>
+                        <option value="mingguan">📅 Mingguan</option>
+                        <option value="bulanan">📅 Bulanan</option>
                     </select>
+
+                    <!-- Input Tanggal Spesifik (Harian) -->
+                    <input type="date" name="date" value="{{ $selectedDate }}" x-show="filterType === 'harian'" onchange="this.form.submit()"
+                           class="w-full sm:w-auto text-xs font-bold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner px-4 py-2 bg-slate-50 text-slate-700 hover:bg-slate-100/50 transition cursor-pointer">
+
+                    <!-- Input Minggu Spesifik (Mingguan) -->
+                    <input type="week" name="week" value="{{ $selectedWeek }}" x-show="filterType === 'mingguan'" onchange="this.form.submit()"
+                           class="w-full sm:w-auto text-xs font-bold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner px-4 py-2 bg-slate-50 text-slate-700 hover:bg-slate-100/50 transition cursor-pointer">
+
+                    <!-- Input Bulan Spesifik (Bulanan) -->
+                    <input type="month" name="month" value="{{ $selectedMonth }}" x-show="filterType === 'bulanan'" onchange="this.form.submit()"
+                           class="w-full sm:w-auto text-xs font-bold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner px-4 py-2 bg-slate-50 text-slate-700 hover:bg-slate-100/50 transition cursor-pointer">
                 </form>
             </div>
         </div>
@@ -237,15 +246,15 @@
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
                             </svg>
-                            <span class="truncate">+{{ number_format($revenueGrowthPercent, 1) }}% @if($activeFilter === 'today') vs kemarin @elseif($activeFilter === 'weekly') vs pekan lalu @else vs bulan lalu @endif</span>
+                            <span class="truncate">+{{ number_format($revenueGrowthPercent, 1) }}% {{ $comparisonLabel }}</span>
                         @elseif($revenueGrowthPercent < 0)
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-15 15m0 0H11.25m-11.25 0V8.25" />
                             </svg>
-                            <span class="truncate">{{ number_format($revenueGrowthPercent, 1) }}% @if($activeFilter === 'today') vs kemarin @elseif($activeFilter === 'weekly') vs pekan lalu @else vs bulan lalu @endif</span>
+                            <span class="truncate">{{ number_format($revenueGrowthPercent, 1) }}% {{ $comparisonLabel }}</span>
                         @else
                             <span class="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0"></span>
-                            <span class="truncate">Stabil @if($activeFilter === 'today') vs kemarin @elseif($activeFilter === 'weekly') vs pekan lalu @else vs bulan lalu @endif</span>
+                            <span class="truncate">Stabil {{ $comparisonLabel }}</span>
                         @endif
                     </div>
                 </div>
@@ -276,15 +285,15 @@
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
                             </svg>
-                            <span class="truncate">+{{ number_format($profitGrowthPercent, 1) }}% @if($activeFilter === 'today') vs kemarin @elseif($activeFilter === 'weekly') vs pekan lalu @else vs bulan lalu @endif</span>
+                            <span class="truncate">+{{ number_format($profitGrowthPercent, 1) }}% {{ $comparisonLabel }}</span>
                         @elseif($profitGrowthPercent < 0)
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-15 15m0 0H11.25m-11.25 0V8.25" />
                             </svg>
-                            <span class="truncate">{{ number_format($profitGrowthPercent, 1) }}% @if($activeFilter === 'today') vs kemarin @elseif($activeFilter === 'weekly') vs pekan lalu @else vs bulan lalu @endif</span>
+                            <span class="truncate">{{ number_format($profitGrowthPercent, 1) }}% {{ $comparisonLabel }}</span>
                         @else
                             <span class="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0"></span>
-                            <span class="truncate">Stabil @if($activeFilter === 'today') vs kemarin @elseif($activeFilter === 'weekly') vs pekan lalu @else vs bulan lalu @endif</span>
+                            <span class="truncate">Stabil {{ $comparisonLabel }}</span>
                         @endif
                     </div>
                 </div>
@@ -312,15 +321,15 @@
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
                             </svg>
-                            <span class="truncate">+{{ number_format($transactionGrowthPercent, 1) }}% @if($activeFilter === 'today') vs kemarin @elseif($activeFilter === 'weekly') vs pekan lalu @else vs bulan lalu @endif</span>
+                            <span class="truncate">+{{ number_format($transactionGrowthPercent, 1) }}% {{ $comparisonLabel }}</span>
                         @elseif($transactionGrowthPercent < 0)
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-15 15m0 0H11.25m-11.25 0V8.25" />
                             </svg>
-                            <span class="truncate">{{ number_format($transactionGrowthPercent, 1) }}% @if($activeFilter === 'today') vs kemarin @elseif($activeFilter === 'weekly') vs pekan lalu @else vs bulan lalu @endif</span>
+                            <span class="truncate">{{ number_format($transactionGrowthPercent, 1) }}% {{ $comparisonLabel }}</span>
                         @else
                             <span class="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0"></span>
-                            <span class="truncate">Stabil @if($activeFilter === 'today') vs kemarin @elseif($activeFilter === 'weekly') vs pekan lalu @else vs bulan lalu @endif</span>
+                            <span class="truncate">Stabil {{ $comparisonLabel }}</span>
                         @endif
                     </div>
                 </div>
@@ -348,15 +357,15 @@
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
                             </svg>
-                            <span class="truncate">+{{ number_format($expenseGrowthPercent, 1) }}% @if($activeFilter === 'today') vs kemarin @elseif($activeFilter === 'weekly') vs pekan lalu @else vs bulan lalu @endif</span>
+                            <span class="truncate">+{{ number_format($expenseGrowthPercent, 1) }}% {{ $comparisonLabel }}</span>
                         @elseif($expenseGrowthPercent < 0)
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-15 15m0 0H11.25m-11.25 0V8.25" />
                             </svg>
-                            <span class="truncate">{{ number_format($expenseGrowthPercent, 1) }}% @if($activeFilter === 'today') vs kemarin @elseif($activeFilter === 'weekly') vs pekan lalu @else vs bulan lalu @endif</span>
+                            <span class="truncate">{{ number_format($expenseGrowthPercent, 1) }}% {{ $comparisonLabel }}</span>
                         @else
                             <span class="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0"></span>
-                            <span class="truncate">Stabil @if($activeFilter === 'today') vs kemarin @elseif($activeFilter === 'weekly') vs pekan lalu @else vs bulan lalu @endif</span>
+                            <span class="truncate">Stabil {{ $comparisonLabel }}</span>
                         @endif
                     </div>
                 </div>
@@ -429,12 +438,12 @@
                 <p class="text-xs text-slate-400 font-medium mt-1">Daftar produk paling populer berdasarkan jumlah transaksi dan volume penjualan</p>
             </div>
             <div class="flex items-center gap-3 shrink-0 w-full sm:w-auto justify-end">
-                <a href="{{ route('owner.dashboard.export-best-sellers', ['filter' => $activeFilter, 'branch' => $selectedBranch]) }}" 
+                <a href="{{ route('owner.dashboard.export-best-sellers', ['filter_type' => $filterType, 'date' => $selectedDate, 'week' => $selectedWeek, 'month' => $selectedMonth, 'branch' => $selectedBranch]) }}" 
                    class="px-4 py-2.5 bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-800 hover:text-white text-xs font-bold rounded-xl shadow-sm transition duration-150 flex items-center gap-2">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                     </svg>
-                    <span>Ekspor Excel Terlaris ({{ $activeFilter === 'today' ? 'Hari Ini' : ($activeFilter === 'weekly' ? 'Pekan Ini' : 'Bulan Ini') }})</span>
+                    <span>Ekspor Excel Terlaris ({{ $filterType === 'harian' ? 'Harian' : ($filterType === 'mingguan' ? 'Mingguan' : 'Bulanan') }})</span>
                 </a>
             </div>
         </div>
@@ -453,10 +462,10 @@
                     </div>
                     <div>
                         <h4 class="font-extrabold text-slate-800 text-sm leading-tight">
-                            {{ $activeFilter === 'yesterday' ? 'Terlaris Kemarin' : 'Terlaris Hari Ini' }}
+                            Terlaris Harian
                         </h4>
-                        <p class="text-[10px] text-slate-400 font-medium">
-                            Berdasarkan popularitas & volume {{ $activeFilter === 'yesterday' ? 'kemarin' : 'hari ini' }}
+                        <p class="text-[10px] text-slate-400 font-medium font-mono">
+                            Tanggal: {{ $bestSellerDay->translatedFormat('d M Y') }}
                         </p>
                     </div>
                 </div>
@@ -505,7 +514,7 @@
                             <svg class="h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
                             </svg>
-                            <span>Belum ada transaksi {{ $activeFilter === 'yesterday' ? 'kemarin' : 'hari ini' }}</span>
+                            <span>Belum ada transaksi pada tanggal ini</span>
                         </div>
                     @endforelse
                 </div>
@@ -521,10 +530,10 @@
                     </div>
                     <div>
                         <h4 class="font-extrabold text-slate-800 text-sm leading-tight">
-                            {{ $activeFilter === 'last_week' ? 'Terlaris Pekan Lalu' : 'Terlaris Pekan Ini' }}
+                            Terlaris Mingguan
                         </h4>
-                        <p class="text-[10px] text-slate-400 font-medium">
-                            Berdasarkan popularitas & volume {{ $activeFilter === 'last_week' ? 'pekan lalu' : 'pekan ini' }}
+                        <p class="text-[10px] text-slate-400 font-medium font-mono">
+                            Pekan: {{ $startOfWeek->translatedFormat('d M') }} - {{ $endOfWeek->translatedFormat('d M Y') }}
                         </p>
                     </div>
                 </div>
@@ -573,7 +582,7 @@
                             <svg class="h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
                             </svg>
-                            <span>Belum ada transaksi {{ $activeFilter === 'last_week' ? 'pekan lalu' : 'pekan ini' }}</span>
+                            <span>Belum ada transaksi pada pekan ini</span>
                         </div>
                     @endforelse
                 </div>
@@ -589,10 +598,10 @@
                     </div>
                     <div>
                         <h4 class="font-extrabold text-slate-800 text-sm leading-tight">
-                            {{ $activeFilter === 'last_month' ? 'Terlaris Bulan Lalu' : 'Terlaris Bulan Ini' }}
+                            Terlaris Bulanan
                         </h4>
-                        <p class="text-[10px] text-slate-400 font-medium">
-                            Berdasarkan popularitas & volume {{ $activeFilter === 'last_month' ? 'bulan lalu' : 'bulan ini' }}
+                        <p class="text-[10px] text-slate-400 font-medium font-mono">
+                            Bulan: {{ $startOfMonth->translatedFormat('F Y') }}
                         </p>
                     </div>
                 </div>
@@ -641,38 +650,34 @@
                             <svg class="h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
                             </svg>
-                            <span>Belum ada transaksi {{ $activeFilter === 'last_month' ? 'bulan lalu' : 'bulan ini' }}</span>
+                            <span>Belum ada transaksi pada bulan ini</span>
                         </div>
                     @endforelse
                 </div>
-            </div>
-
-        </div>
-
-        <!-- 3. BOTTOM ROW: Dynamic Financial Breakdown Table (Collapsible on Card Click) -->
+                <!-- 3. BOTTOM ROW: Dynamic Financial Breakdown Table (Collapsible on Card Click) -->
         <div id="breakdown-table-container" x-show="showTable" x-transition style="display: none;"
              class="bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-4">
             
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h4 class="font-extrabold text-slate-800 text-base leading-tight">
-                        @if($activeFilter === 'today')
-                            Daftar Transaksi Terkini 
-                        @elseif($activeFilter === 'weekly')
+                        @if($filterType === 'harian')
+                            Daftar Transaksi Harian
+                        @elseif($filterType === 'mingguan')
                             Rincian Pendapatan Harian Pekan Ini
                         @else
                             Rincian Pendapatan Mingguan Bulan Ini
                         @endif
                         <span id="table-focus-badge" class="text-xs font-bold px-2.5 py-0.5 rounded-full uppercase ml-1.5 border"
-                            x-show="activeCard !== null"
-                            :class="activeCard === 'omset' ? 'bg-emerald-50 text-emerald-800 border-emerald-100' : (activeCard === 'profit' ? 'bg-teal-50 text-teal-800 border-teal-100' : 'bg-rose-50 text-rose-800 border-rose-100')"
-                            x-text="activeCard === 'omset' ? 'Fokus Omset' : (activeCard === 'profit' ? 'Fokus Profit' : 'Fokus Transaksi')">
+                             x-show="activeCard !== null"
+                             :class="activeCard === 'omset' ? 'bg-emerald-50 text-emerald-800 border-emerald-100' : (activeCard === 'profit' ? 'bg-teal-50 text-teal-800 border-teal-100' : 'bg-rose-50 text-rose-800 border-rose-100')"
+                             x-text="activeCard === 'omset' ? 'Fokus Omset' : (activeCard === 'profit' ? 'Fokus Profit' : 'Fokus Transaksi')">
                         </span>
                     </h4>
                     <p class="text-xs text-slate-400 font-medium mt-1">
-                        @if($activeFilter === 'today')
-                            Daftar transaksi kasir yang tercatat pada hari ini
-                        @elseif($activeFilter === 'weekly')
+                        @if($filterType === 'harian')
+                            Daftar transaksi kasir yang tercatat pada tanggal terpilih
+                        @elseif($filterType === 'mingguan')
                             Laporan analisis kinerja keuangan harian dari hari Senin sampai Minggu
                         @else
                             Laporan analisis kinerja keuangan mingguan dalam bulan berjalan
@@ -682,7 +687,7 @@
                 
                 <div class="flex items-center gap-3 shrink-0 w-full sm:w-auto justify-end">
                     <!-- Button Ekspor Excel (Visible on all filters) -->
-                    <a href="{{ route('owner.dashboard.export', ['filter' => $activeFilter, 'branch' => $selectedBranch]) }}" 
+                    <a href="{{ route('owner.dashboard.export', ['filter_type' => $filterType, 'date' => $selectedDate, 'week' => $selectedWeek, 'month' => $selectedMonth, 'branch' => $selectedBranch]) }}" 
                        class="px-4 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-800 hover:text-white text-xs font-bold rounded-xl shadow-sm transition duration-150 flex items-center gap-2">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
@@ -690,7 +695,7 @@
                         <span>Ekspor Excel</span>
                     </a>
 
-                    @if($activeFilter === 'today')
+                    @if($filterType === 'harian')
                         <a href="{{ route('owner.transactions.index') }}" class="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow transition duration-150 flex items-center gap-1.5">
                             <span>Lihat Semua Riwayat</span>
                             <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
@@ -703,7 +708,7 @@
 
             <div class="overflow-x-auto w-full max-w-full rounded-2xl border border-slate-100">
                 <table class="min-w-full divide-y divide-slate-100 text-left text-sm text-slate-700">
-                    @if($activeFilter === 'today')
+                    @if($filterType === 'harian')
                         <!-- Headers for Today's Transactions -->
                         <thead class="bg-slate-50 font-bold text-slate-500 uppercase tracking-wider text-xs">
                             <tr>
@@ -745,9 +750,9 @@
                                     </td>
                                     <td class="px-5 py-4">
                                         <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase border
-                                            {{ $trx->payment_method === 'Cash' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : '' }}
-                                            {{ $trx->payment_method === 'QRIS' ? 'bg-teal-50 text-teal-700 border-teal-100' : '' }}
-                                            {{ $trx->payment_method === 'Debit' ? 'bg-sky-50 text-sky-700 border-sky-100' : '' }}
+                                             {{ $trx->payment_method === 'Cash' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : '' }}
+                                             {{ $trx->payment_method === 'QRIS' ? 'bg-teal-50 text-teal-700 border-teal-100' : '' }}
+                                             {{ $trx->payment_method === 'Debit' ? 'bg-sky-50 text-sky-700 border-sky-100' : '' }}
                                         ">
                                             {{ $trx->payment_method }}
                                         </span>
@@ -759,7 +764,7 @@
                             @empty
                                 <tr>
                                     <td colspan="6" class="px-6 py-12 text-center text-slate-400 font-semibold">
-                                        Belum ada catatan riwayat transaksi hari ini.
+                                        Belum ada catatan riwayat transaksi pada tanggal ini.
                                     </td>
                                 </tr>
                             @endforelse
@@ -792,7 +797,7 @@
                                     </td>
                                     <td class="px-5 py-4 text-center whitespace-nowrap">
                                         <span class="px-2.5 py-1 rounded-full text-xs font-extrabold border
-                                            {{ $row['omset'] > 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100' }}
+                                             {{ $row['omset'] > 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100' }}
                                         ">
                                             {{ $row['omset'] > 0 ? round(($row['profit'] / $row['omset']) * 100) : 0 }}%
                                         </span>
@@ -813,6 +818,5 @@
                 </table>
             </div>
         </div>
-
     </div>
 </x-app-layout>
