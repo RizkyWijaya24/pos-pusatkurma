@@ -511,18 +511,63 @@
                 }
                 msg += `--------------------------------------\n\n`;
                 
-                msg += `*DAFTAR TRANSAKSI HARI INI*\n`;
-                if (this.todayTransactions.length === 0) {
-                    msg += `Belum ada transaksi hari ini.\n`;
-                } else {
-                    this.todayTransactions.forEach((t, index) => {
-                        msg += `${index + 1}. [${t.time}] *${t.transaction_code}* - ${this.formatRupiah(t.total_price)} (${t.payment_method})\n`;
-                        if (t.items_summary) {
-                            msg += `   _Detail: ${t.items_summary}_\n`;
+                // Calculate best sellers from todayTransactions
+                const bestSellers = {};
+                this.todayTransactions.forEach(t => {
+                    if (!t.items_summary) return;
+                    const parts = t.items_summary.split(', ');
+                    parts.forEach(part => {
+                        const trimmedPart = part.trim();
+                        if (!trimmedPart) return;
+                        
+                        let name = trimmedPart;
+                        let qty = 1.0;
+                        let unit = 'pcs';
+                        
+                        const match = trimmedPart.match(/^(.*?)\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)$/);
+                        if (match) {
+                            name = match[1].trim();
+                            qty = parseFloat(match[2]);
+                            unit = match[3].trim().toLowerCase();
                         }
+                        
+                        if (unit === 'gram' || unit === 'g') {
+                            qty = qty / 1000;
+                            unit = 'kg';
+                        }
+                        
+                        if (!bestSellers[name]) {
+                            bestSellers[name] = {
+                                name: name,
+                                qty: 0.0,
+                                unit: unit,
+                                count: 0
+                            };
+                        }
+                        
+                        bestSellers[name].qty += qty;
+                        bestSellers[name].count += 1;
+                    });
+                });
+                
+                const sortedBestSellers = Object.values(bestSellers).sort((a, b) => {
+                    if (b.count === a.count) {
+                        return b.qty - a.qty;
+                    }
+                    return b.count - a.count;
+                });
+                
+                msg += `*PRODUK TERLARIS HARI INI*\n`;
+                if (sortedBestSellers.length === 0) {
+                    msg += `Belum ada penjualan produk hari ini.\n`;
+                } else {
+                    sortedBestSellers.forEach((item, index) => {
+                        const qtyStr = Number(item.qty.toFixed(2)).toString();
+                        msg += `${index + 1}. *${item.name}*: ${qtyStr} ${item.unit} (${item.count}x terjual)\n`;
                     });
                 }
-                msg += `\n_Laporan ini dibuat otomatis melalui sistem POS Pusat Kurma._`;
+                msg += `--------------------------------------\n\n`;
+                msg += `_Laporan ini dibuat otomatis melalui sistem POS Pusat Kurma._`;
                 
                 this.waMessage = msg;
             },
