@@ -555,9 +555,9 @@
                         return b.qty - a.qty;
                     }
                     return b.count - a.count;
-                });
+                }).slice(0, 5);
                 
-                msg += `*PRODUK TERLARIS HARI INI*\n`;
+                msg += `*TOP 5 PRODUK TERLARIS HARI INI*\n`;
                 if (sortedBestSellers.length === 0) {
                     msg += `Belum ada penjualan produk hari ini.\n`;
                 } else {
