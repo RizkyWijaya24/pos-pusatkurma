@@ -123,4 +123,11 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | WhatsApp Report Number Configuration
+    |--------------------------------------------------------------------------
+    */
+    'whatsapp_report_number' => env('WHATSAPP_REPORT_NUMBER', ''),
+
 ];

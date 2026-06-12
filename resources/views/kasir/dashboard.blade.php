@@ -33,6 +33,10 @@
             newExpense: { amount: '', category: 'Operasional Toko', description: '' },
             pendingDeleteExpenseId: null,
             
+            showWaModal: false,
+            waNumber: '{{ config('app.whatsapp_report_number', '') }}',
+            waMessage: '',
+            
             cart: [],
             discount: '',
             showReceipt: false,
@@ -460,6 +464,86 @@
             formatRupiah(num) {
                 if (num === null || num === undefined) return 'Rp 0';
                 return 'Rp ' + Math.round(num).toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+            },
+
+            generateWaMessage() {
+                const today = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                const cashierName = '{{ addslashes(auth()->user()->name) }}';
+                const branch = '{{ addslashes(auth()->user()->branch ?? "Pusat Cianjur") }}';
+                
+                let msg = `*LAPORAN HARIAN KASIR - PUSAT KURMA*\n`;
+                msg += `--------------------------------------\n`;
+                msg += `*Tanggal:* ${today}\n`;
+                msg += `*Kasir:* ${cashierName}\n`;
+                msg += `*Cabang:* ${branch}\n`;
+                msg += `--------------------------------------\n\n`;
+                
+                msg += `*RINGKASAN KAS BERSIH*\n`;
+                msg += `💵 *Omset Hari Ini:* ${this.formatRupiah(this.todaySalesTotal)}\n`;
+                msg += `💸 *Total Pengeluaran:* ${this.formatRupiah(this.todayExpensesTotal)}\n`;
+                msg += `💰 *Uang di Laci (Kas Bersih):* ${this.formatRupiah(this.todayNetCash)}\n`;
+                msg += `--------------------------------------\n\n`;
+                
+                msg += `*RINCIAN METODE PEMBAYARAN*\n`;
+                const methods = { 'Cash': 0, 'QRIS': 0, 'Debit': 0 };
+                const methodCounts = { 'Cash': 0, 'QRIS': 0, 'Debit': 0 };
+                
+                this.todayTransactions.forEach(t => {
+                    const m = t.payment_method || 'Cash';
+                    if (methods[m] !== undefined) {
+                        methods[m] += parseFloat(t.total_price);
+                        methodCounts[m]++;
+                    }
+                });
+                
+                msg += `• *Tunai (Cash):* ${this.formatRupiah(methods['Cash'])} (${methodCounts['Cash']} trx)\n`;
+                msg += `• *QRIS:* ${this.formatRupiah(methods['QRIS'])} (${methodCounts['QRIS']} trx)\n`;
+                msg += `• *Debit:* ${this.formatRupiah(methods['Debit'])} (${methodCounts['Debit']} trx)\n`;
+                msg += `--------------------------------------\n\n`;
+                
+                msg += `*RINCIAN PENGELUARAN*\n`;
+                if (this.expenses.length === 0) {
+                    msg += `Tidak ada pengeluaran hari ini.\n`;
+                } else {
+                    this.expenses.forEach((e, index) => {
+                        msg += `${index + 1}. [${e.time}] *${e.category}* - ${this.formatRupiah(e.amount)} (${e.description})\n`;
+                    });
+                }
+                msg += `--------------------------------------\n\n`;
+                
+                msg += `*DAFTAR TRANSAKSI HARI INI*\n`;
+                if (this.todayTransactions.length === 0) {
+                    msg += `Belum ada transaksi hari ini.\n`;
+                } else {
+                    this.todayTransactions.forEach((t, index) => {
+                        msg += `${index + 1}. [${t.time}] *${t.transaction_code}* - ${this.formatRupiah(t.total_price)} (${t.payment_method})\n`;
+                        if (t.items_summary) {
+                            msg += `   _Detail: ${t.items_summary}_\n`;
+                        }
+                    });
+                }
+                msg += `\n_Laporan ini dibuat otomatis melalui sistem POS Pusat Kurma._`;
+                
+                this.waMessage = msg;
+            },
+
+            sendWaReport(toGroup = false) {
+                let url = '';
+                if (toGroup) {
+                    url = `https://api.whatsapp.com/send?text=${encodeURIComponent(this.waMessage)}`;
+                } else {
+                    let number = this.waNumber.replace(/[^0-9]/g, '');
+                    if (!number) {
+                        this.showToast('Nomor WhatsApp tujuan harus diisi!', 'warning');
+                        return;
+                    }
+                    if (number.startsWith('0')) {
+                        number = '62' + number.slice(1);
+                    }
+                    url = `https://api.whatsapp.com/send?phone=${number}&text=${encodeURIComponent(this.waMessage)}`;
+                }
+                window.open(url, '_blank');
+                this.showWaModal = false;
             }
         }" class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full max-w-full overflow-hidden">
 
@@ -508,6 +592,16 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         Catat Pengeluaran
+                    </button>
+
+                    <!-- Button Laporan WA -->
+                    <button type="button" 
+                            @click="generateWaMessage(); showWaModal = true;"
+                            class="shrink-0 px-4 py-2 text-xs font-bold rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition duration-150 flex items-center gap-1.5 shadow-sm">
+                        <svg class="h-4 w-4 shrink-0 text-emerald-600" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.488 1.449 5.412 1.451 5.928 0 10.751-4.82 10.754-10.748.002-2.873-1.116-5.573-3.149-7.608C17.628 4.214 14.93 3.093 12.005 3.093c-5.93 0-10.756 4.821-10.76 10.75-.001 1.993.52 3.94 1.508 5.662l-.99 3.61 3.733-.979zm11.238-7.73c-.302-.151-1.787-.881-2.056-.979-.269-.099-.465-.148-.659.15-.195.299-.754.979-.924 1.178-.17.199-.341.224-.643.075-.3-.15-1.268-.467-2.417-1.492-.893-.797-1.496-1.783-1.672-2.083-.176-.3-.019-.461.13-.61.135-.133.302-.35.453-.524.151-.174.2-.299.3-.498.101-.2.05-.375-.025-.524-.075-.15-.659-1.587-.902-2.172-.237-.57-.497-.493-.659-.501-.17-.008-.365-.01-.56-.01-.196 0-.517.073-.787.37-.27.299-1.031 1.008-1.031 2.459 0 1.452 1.054 2.853 1.202 3.053.148.2 2.074 3.167 5.024 4.444.702.304 1.25.485 1.678.621.705.224 1.347.193 1.854.117.565-.084 1.787-.73 2.039-1.436.252-.706.252-1.312.176-1.436-.076-.124-.271-.199-.573-.35z"/>
+                        </svg>
+                        Laporan WA
                     </button>
 
                     <!-- Search box -->
@@ -1104,6 +1198,65 @@
                         </div>
                     </div>
 
+                </div>
+            </div>
+
+            <!-- TOUCH WHATSAPP REPORT MODAL (Kirim Laporan Kasir ke WA) -->
+            <div x-show="showWaModal" 
+                class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm shadow-2xl"
+                style="display: none;"
+                @keydown.escape.window="showWaModal = false">
+                
+                <div class="bg-white rounded-3xl p-6 w-full max-w-lg border border-slate-100 shadow-2xl flex flex-col gap-4" 
+                     @click.away="showWaModal = false">
+                    
+                    <!-- Modal Header -->
+                    <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+                        <div>
+                            <h3 class="font-extrabold text-slate-800 text-lg">Kirim Laporan Harian ke WhatsApp</h3>
+                            <p class="text-xs text-slate-400 font-semibold mt-0.5">Kirim rekap transaksi & pengeluaran hari ini ke WhatsApp</p>
+                        </div>
+                        <button type="button" @click="showWaModal = false" class="text-slate-400 hover:text-slate-600 transition">
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Modal Body -->
+                    <div class="flex flex-col gap-4">
+                        <div class="flex flex-col gap-1">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Nomor WhatsApp Tujuan (Untuk Kirim Langsung)</label>
+                            <input type="text" 
+                                   x-model="waNumber" 
+                                   placeholder="Contoh: 628123456789" 
+                                   class="w-full py-2.5 px-4 border-slate-200 rounded-xl font-bold focus:border-emerald-500 focus:ring-emerald-500 shadow-inner">
+                            <span class="text-[10px] text-slate-400 mt-0.5">Kosongkan/Abaikan jika ingin membagikan ke Grup atau Chat Lain.</span>
+                        </div>
+
+                        <div class="flex flex-col gap-1">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pratinjau Laporan</label>
+                            <textarea x-model="waMessage" 
+                                      rows="10" 
+                                      readonly
+                                      class="w-full border-slate-200 rounded-xl bg-slate-50 text-slate-700 shadow-inner px-4 py-2.5 text-xs font-mono select-all focus:outline-none"></textarea>
+                        </div>
+
+                        <!-- Tiga Tombol Aksi -->
+                        <div class="grid grid-cols-3 gap-2.5 mt-2">
+                            <button type="button" @click="showWaModal = false" class="py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold text-xs transition duration-150">Batal</button>
+                            
+                            <!-- Tombol Bagikan ke Grup (Tanpa No Telp) -->
+                            <button type="button" @click="sendWaReport(true)" class="py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-bold text-xs shadow-md shadow-teal-600/10 transition duration-150 flex items-center justify-center gap-1">
+                                👥 Bagikan ke Grup
+                            </button>
+                            
+                            <!-- Tombol Kirim ke Nomor (Dengan No Telp) -->
+                            <button type="button" @click="sendWaReport(false)" class="py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl font-bold text-xs shadow-md shadow-emerald-700/10 transition duration-150 flex items-center justify-center gap-1">
+                                🟢 Kirim Nomor
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
