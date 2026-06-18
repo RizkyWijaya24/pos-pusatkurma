@@ -1,22 +1,238 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-bold text-xl text-slate-800 leading-tight">
-            {{ __('Manajemen Inventori & Kasir') }}
-        </h2>
+        <div class="flex items-center gap-3" x-data="{ 
+            open: false, 
+            activeTabLabel: 'Stok Inventori',
+            setTab(tab, label) {
+                this.activeTabLabel = label;
+                this.open = false;
+                window.dispatchEvent(new CustomEvent('change-tab', { detail: tab }));
+            }
+        }" @change-tab.window="
+            if ($event.detail === 'inventory') activeTabLabel = 'Stok Inventori';
+            if ($event.detail === 'cashiers') activeTabLabel = 'Kelola Kasir';
+            if ($event.detail === 'categories') activeTabLabel = 'Kelola Kategori';
+            if ($event.detail === 'wholesale') activeTabLabel = 'Nota Partai';
+        ">
+            <h2 class="font-extrabold text-slate-800 dark:text-purple-100 leading-tight hidden sm:block">
+                {{ __('Manajemen:') }}
+            </h2>
+            
+            <div class="relative">
+                <button @click="open = !open" 
+                        type="button"
+                        class="flex items-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-dp-800 text-emerald-800 dark:text-purple-100 rounded-xl text-sm font-extrabold border border-emerald-100 dark:border-dp-700 shadow-sm transition duration-150 hover:bg-emerald-100/50 dark:hover:bg-dp-700">
+                    <span x-text="activeTabLabel">Stok Inventori</span>
+                    <svg class="h-4 w-4 text-emerald-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                    </svg>
+                </button>
+                
+                <div x-show="open" 
+                     @click.away="open = false"
+                     x-transition:enter="transition ease-out duration-100"
+                     x-transition:enter-start="transform opacity-0 scale-95"
+                     x-transition:enter-end="transform opacity-100 scale-100"
+                     x-transition:leave="transition ease-in duration-75"
+                     x-transition:leave-start="transform opacity-100 scale-100"
+                     x-transition:leave-end="transform opacity-0 scale-95"
+                     class="absolute left-0 mt-2 w-48 bg-white dark:bg-dp-800 border border-slate-200 dark:border-dp-700 rounded-xl shadow-lg z-50 p-1 flex flex-col gap-0.5"
+                     style="display: none;">
+                    
+                    <button type="button" @click="setTab('inventory', 'Stok Inventori')" 
+                            class="w-full text-left px-3 py-2.5 text-xs font-bold rounded-lg transition duration-150 hover:bg-slate-50 dark:hover:bg-dp-700 text-slate-700 dark:text-purple-200 flex items-center gap-2">
+                        <span>📦</span> <span>Stok Inventori</span>
+                    </button>
+                    <button type="button" @click="setTab('cashiers', 'Kelola Kasir')" 
+                            class="w-full text-left px-3 py-2.5 text-xs font-bold rounded-lg transition duration-150 hover:bg-slate-50 dark:hover:bg-dp-700 text-slate-700 dark:text-purple-200 flex items-center gap-2">
+                        <span>👥</span> <span>Kelola Kasir</span>
+                    </button>
+                    <button type="button" @click="setTab('categories', 'Kelola Kategori')" 
+                            class="w-full text-left px-3 py-2.5 text-xs font-bold rounded-lg transition duration-150 hover:bg-slate-50 dark:hover:bg-dp-700 text-slate-700 dark:text-purple-200 flex items-center gap-2">
+                        <span>🏷️</span> <span>Kelola Kategori</span>
+                    </button>
+                    <button type="button" @click="setTab('wholesale', 'Nota Partai')" 
+                            class="w-full text-left px-3 py-2.5 text-xs font-bold rounded-lg transition duration-150 hover:bg-slate-50 dark:hover:bg-dp-700 text-slate-700 dark:text-purple-200 flex items-center gap-2">
+                        <span>📝</span> <span>Nota Partai</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     </x-slot>
 
-    <!-- Global JS Error Catcher to diagnose hosting issues -->
-    <script>
-        window.onerror = function(message, source, lineno, colno, error) {
-            alert("Admin JS Error: " + message + "\nSource: " + source + "\nLine: " + lineno + "\nCol: " + colno);
-            return false;
-        };
-    </script>
+    {{-- ============================================================
+         ADMIN DASHBOARD - DARK MODE STYLE OVERRIDES
+         Higher specificity using html.dark to override Tailwind
+         ============================================================ --}}
+    <style>
+        /* ── CARDS & PANELS ── */
+        html.dark .admin-card,
+        html.dark .bg-white {
+            background-color: #1a1240 !important;
+        }
 
-    <!-- JSON Data Islands for Security and HTML parsing safety -->
+        /* ── TABLE CONTAINER ── */
+        html.dark .admin-table-wrap {
+            background-color: #1a1240;
+            border-color: rgba(42,29,99,0.5);
+        }
+
+        /* ── TABLE HEADER ROW ── */
+        html.dark thead tr,
+        html.dark .admin-thead {
+            background-color: #140e34 !important;
+        }
+        html.dark thead th {
+            color: #c4b5fd !important;
+            border-color: rgba(42,29,99,0.4) !important;
+        }
+
+        /* ── TABLE BODY ── */
+        html.dark tbody tr {
+            background-color: #1a1240 !important;
+            border-color: rgba(42,29,99,0.3) !important;
+            color: #ddd6fe !important;
+        }
+        html.dark tbody tr:hover {
+            background-color: rgba(42,29,99,0.35) !important;
+        }
+        html.dark tbody td {
+            color: #ddd6fe !important;
+            border-color: rgba(42,29,99,0.25) !important;
+        }
+
+        /* ── ALL TEXT COLORS ── */
+        html.dark .text-slate-800 { color: #ede9fe !important; }
+        html.dark .text-slate-700 { color: #ddd6fe !important; }
+        html.dark .text-slate-600 { color: #c4b5fd !important; }
+        html.dark .text-slate-500 { color: #a78bfa !important; }
+        html.dark .text-slate-400 { color: #8b5cf6 !important; }
+
+        /* ── SLATE BACKGROUNDS ── */
+        html.dark .bg-slate-50 { background-color: rgba(42,29,99,0.3) !important; }
+        html.dark .bg-slate-100 { background-color: rgba(42,29,99,0.35) !important; }
+        html.dark .bg-slate-200 { background-color: rgba(42,29,99,0.5) !important; }
+
+        /* ── BORDERS ── */
+        html.dark .border-slate-100 { border-color: rgba(42,29,99,0.4) !important; }
+        html.dark .border-slate-200 { border-color: rgba(42,29,99,0.5) !important; }
+        html.dark .divide-slate-100 > * + * { border-color: rgba(42,29,99,0.3) !important; }
+
+        /* ── FORM INPUTS ── */
+        html.dark input[type="text"],
+        html.dark input[type="number"],
+        html.dark input[type="email"],
+        html.dark input[type="password"],
+        html.dark input[type="file"],
+        html.dark select,
+        html.dark textarea {
+            background-color: #140e34 !important;
+            border-color: rgba(109,40,217,0.4) !important;
+            color: #ede9fe !important;
+        }
+        html.dark input::placeholder,
+        html.dark textarea::placeholder {
+            color: #7c3aed !important;
+            opacity: 0.7;
+        }
+        html.dark input:focus,
+        html.dark select:focus,
+        html.dark textarea:focus {
+            border-color: #7c3aed !important;
+            box-shadow: 0 0 0 3px rgba(124,58,237,0.25) !important;
+            outline: none !important;
+        }
+
+        /* ── CANCEL / SECONDARY BUTTONS ── */
+        html.dark .btn-cancel,
+        html.dark button.bg-slate-100,
+        html.dark button.bg-slate-200 {
+            background-color: rgba(42,29,99,0.4) !important;
+            color: #c4b5fd !important;
+        }
+        html.dark button.bg-slate-100:hover {
+            background-color: rgba(67,46,145,0.55) !important;
+        }
+
+        /* ── CATEGORY FILTER CHIP BUTTONS ── */
+        html.dark .cat-btn-inactive {
+            background-color: rgba(42,29,99,0.3) !important;
+            color: #c4b5fd !important;
+            border-color: rgba(42,29,99,0.4) !important;
+        }
+        html.dark .cat-btn-inactive:hover {
+            background-color: rgba(67,46,145,0.5) !important;
+            color: #ede9fe !important;
+        }
+
+        /* ── MODALS ── */
+        html.dark .modal-card {
+            background-color: #1e1545 !important;
+            border-color: rgba(42,29,99,0.6) !important;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(109,40,217,0.2) !important;
+        }
+
+        /* ── EMERALD TEXT (keep readable in dark) ── */
+        html.dark .text-emerald-700 { color: #34d399 !important; }
+        html.dark .text-emerald-800 { color: #6ee7b7 !important; }
+        html.dark .text-emerald-600 { color: #34d399 !important; }
+        html.dark .bg-emerald-50 { background-color: rgba(6,46,30,0.45) !important; }
+
+        /* ── ROSE/DANGER ── */
+        html.dark .bg-rose-50 { background-color: rgba(76,5,25,0.5) !important; }
+
+        /* ── WHOLESALE ITEMS ROW ── */
+        html.dark .wholesale-row {
+            background-color: rgba(20,14,52,0.7) !important;
+            border-color: rgba(42,29,99,0.35) !important;
+        }
+        html.dark .wholesale-row:hover {
+            background-color: rgba(42,29,99,0.4) !important;
+        }
+
+        /* ── SKU MONO TEXT ── */
+        html.dark .font-mono { color: #a78bfa !important; }
+
+        /* ── PAGINATION ROW ── */
+        html.dark .pagination-wrap {
+            background-color: #1a1240 !important;
+            border-color: rgba(42,29,99,0.4) !important;
+        }
+        html.dark .page-btn {
+            background-color: rgba(42,29,99,0.35) !important;
+            color: #c4b5fd !important;
+        }
+        html.dark .page-btn:hover {
+            background-color: rgba(67,46,145,0.5) !important;
+            color: #ede9fe !important;
+        }
+
+        /* ── HOVER SUGGESTIONS ── */
+        html.dark .suggestion-wrap {
+            background-color: #1e1545 !important;
+            border-color: rgba(42,29,99,0.7) !important;
+        }
+        html.dark .suggestion-item:hover {
+            background-color: rgba(42,29,99,0.5) !important;
+            color: #a7f3d0 !important;
+        }
+
+        /* ── PRICE TIER SECTION ── */
+        html.dark .price-tier-row {
+            background-color: #140e34 !important;
+            border-color: rgba(42,29,99,0.4) !important;
+        }
+        html.dark .price-tier-header {
+            background-color: rgba(20,14,52,0.7) !important;
+            border-color: rgba(42,29,99,0.4) !important;
+        }
+    </style>
+
+    {{-- JSON Data Islands --}}
     <script type="application/json" id="products-data">@json($products)</script>
     <script type="application/json" id="cashiers-data">@json($cashiers)</script>
     <script type="application/json" id="categories-data">@json($categories)</script>
+
 
     <!-- Alpine.js Admin State -->
     <div x-data="{
@@ -80,6 +296,9 @@
             });
             this.$watch('activeCategory', value => {
                 this.currentPage = 1;
+            });
+            window.addEventListener('change-tab', (e) => {
+                this.activeTab = e.detail;
             });
         },
 
@@ -900,58 +1119,17 @@
                 'Ya, Simpan'
             );
         }
-    }" class="flex flex-col md:flex-row gap-8 max-w-full overflow-hidden">
+    }" class="max-w-full overflow-hidden">
 
-        <!-- Tabs Navigation -->
-        <div class="w-full md:w-64 flex-shrink-0 flex flex-col gap-2">
-            <button type="button" 
-                    @click="activeTab = 'inventory'"
-                    :class="activeTab === 'inventory' ? 'bg-emerald-700 text-white shadow-md shadow-emerald-700/10' : 'bg-transparent text-slate-600 hover:bg-slate-50'"
-                    class="px-5 py-3 text-sm font-bold rounded-xl transition duration-150 flex items-center gap-2">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-                </svg>
-                Stok Inventori
-            </button>
-            <button type="button" 
-                    @click="activeTab = 'cashiers'"
-                    :class="activeTab === 'cashiers' ? 'bg-emerald-700 text-white shadow-md shadow-emerald-700/10' : 'bg-transparent text-slate-600 hover:bg-slate-50'"
-                    class="px-5 py-3 text-sm font-bold rounded-xl transition duration-150 flex items-center gap-2">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.109A11.386 11.386 0 0110.089 18M14.214 16.058A9.396 9.396 0 0013.3 14.12M14.214 16.058A9.38 9.38 0 0110.089 18M9.75 18.917A11.542 11.542 0 016 18M9.75 18.917V19.128c0 .248-.02.492-.059.729l-.12.718a2.25 2.25 0 01-2.236 1.903H5.068a2.25 2.25 0 01-2.236-1.903l-.12-.718A2.25 2.25 0 012.653 19.1M9.75 18.917c0-1.113-.285-2.16-.786-3.07M2.653 19.1c0-1.113.285-2.16.786-3.07M2.653 19.1v.109c0 .777.12 1.525.343 2.227M6 18c-2.435 0-4.646.993-6.223 2.6M6 18V18.128c0 .248-.02.492-.059.729l-.12.718a2.25 2.25 0 01-2.236 1.903H5.068a2.25 2.25 0 01-2.236-1.903l-.12-.718A2.25 2.25 0 012.653 19.1M6 18a11.386 11.386 0 00-3.004 2.822" />
-                </svg>
-                Kelola Kasir
-            </button>
-            <button type="button" 
-                    @click="activeTab = 'categories'"
-                    :class="activeTab === 'categories' ? 'bg-emerald-700 text-white shadow-md shadow-emerald-700/10' : 'bg-transparent text-slate-600 hover:bg-slate-50'"
-                    class="px-5 py-3 text-sm font-bold rounded-xl transition duration-150 flex items-center gap-2">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581a1.125 1.125 0 001.591 0l7.1-7.1a1.125 1.125 0 000-1.591l-9.581-9.581A2.25 2.25 0 0010.74 3z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
-                </svg>
-                Kelola Kategori
-            </button>
-            <button type="button" 
-                    @click="activeTab = 'wholesale'"
-                    :class="activeTab === 'wholesale' ? 'bg-emerald-700 text-white shadow-md shadow-emerald-700/10' : 'bg-transparent text-slate-600 hover:bg-slate-50'"
-                    class="px-5 py-3 text-sm font-bold rounded-xl transition duration-150 flex items-center gap-2">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9z" />
-                </svg>
-                Nota Partai
-            </button>
-        </div>
-
-        <div class="flex-grow">
+        <div class="w-full min-w-0">
             <!-- 1. INVENTORY TAB CONTENT -->
             <div x-show="activeTab === 'inventory'" class="flex flex-col gap-6">
             
             <!-- Tab Controls -->
             <div class="flex justify-between items-center gap-4">
                 <div>
-                    <h3 class="font-extrabold text-slate-800 text-lg leading-tight">Daftar Stok Produk Kurma</h3>
-                    <p class="text-sm text-slate-400 font-medium mt-1">Kelola stok, harga, dan SKU semua produk kurma</p>
+                    <h3 class="font-extrabold text-slate-800 dark:text-purple-100 text-lg leading-tight">Daftar Stok Produk Kurma</h3>
+                    <p class="text-sm text-slate-400 dark:text-purple-400 font-medium mt-1">Kelola stok, harga, dan SKU semua produk kurma</p>
                 </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
                     <a href="{{ route('admin.products.fast-upload') }}"
@@ -973,7 +1151,7 @@
             </div>
 
             <!-- Category and Search Panel -->
-            <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row gap-4 justify-between items-center">
+            <div class="admin-card bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row gap-4 justify-between items-center">
                 <!-- Category Selectors -->
                 <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full sm:w-auto">
                     <template x-for="cat in ['Semua', ...categories.map(c => c.name)]">
@@ -1001,7 +1179,7 @@
             </div>
 
             <!-- Responsive Table (Scrolls horizontally or turns into beautiful cards on Mobile) -->
-            <div class="bg-white rounded-3xl border border-slate-100 shadow-md overflow-hidden">
+            <div class="admin-card admin-table-wrap bg-white rounded-3xl border border-slate-100 shadow-md overflow-hidden">
                 <div class="overflow-x-auto w-full max-w-full">
                     <table class="min-w-full divide-y divide-slate-100 text-left text-sm text-slate-700">
                         <thead class="bg-slate-50 font-bold text-slate-500 uppercase tracking-wider text-xs">
@@ -1076,7 +1254,7 @@
                 </div>
                 
                 <!-- Pagination Controls -->
-                <div class="bg-white px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="pagination-wrap bg-white px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div class="text-xs sm:text-sm font-semibold text-slate-500">
                         Menampilkan <span class="text-slate-800 font-bold" x-text="filteredProducts.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0"></span> 
                         sampai <span class="text-slate-800 font-bold" x-text="Math.min(currentPage * itemsPerPage, filteredProducts.length)"></span> 
@@ -1089,7 +1267,7 @@
                                 @click="if (currentPage > 1) currentPage--" 
                                 :disabled="currentPage === 1"
                                 :class="currentPage === 1 ? 'opacity-40 cursor-not-allowed' : 'hover:bg-slate-100 hover:text-emerald-700'"
-                                class="p-2 text-slate-500 bg-slate-50 rounded-xl transition duration-150 flex items-center justify-center">
+                                class="page-btn p-2 text-slate-500 bg-slate-50 rounded-xl transition duration-150 flex items-center justify-center">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                             </svg>
@@ -1126,8 +1304,8 @@
             <!-- Tab Controls -->
             <div class="flex justify-between items-center gap-4">
                 <div>
-                    <h3 class="font-extrabold text-slate-800 text-lg leading-tight">Daftar Akun Kasir Toko</h3>
-                    <p class="text-sm text-slate-400 font-medium mt-1">Kelola kredensial akun kasir yang bertugas melayani transaksi</p>
+                    <h3 class="font-extrabold text-slate-800 dark:text-purple-100 text-lg leading-tight">Daftar Akun Kasir Toko</h3>
+                    <p class="text-sm text-slate-400 dark:text-purple-400 font-medium mt-1">Kelola kredensial akun kasir yang bertugas melayani transaksi</p>
                 </div>
                 <button type="button" 
                         @click="showCashierModal = true"
@@ -1140,7 +1318,7 @@
             </div>
 
             <!-- Responsive Table (Cashiers) -->
-            <div class="bg-white rounded-3xl border border-slate-100 shadow-md overflow-hidden">
+            <div class="admin-card admin-table-wrap bg-white rounded-3xl border border-slate-100 shadow-md overflow-hidden">
                 <div class="overflow-x-auto w-full max-w-full">
                     <table class="min-w-full divide-y divide-slate-100 text-left text-sm text-slate-700">
                         <thead class="bg-slate-50 font-bold text-slate-500 uppercase tracking-wider text-xs">
@@ -1201,8 +1379,8 @@
             <!-- Tab Controls -->
             <div class="flex justify-between items-center gap-4">
                 <div>
-                    <h3 class="font-extrabold text-slate-800 text-lg leading-tight">Daftar Kategori Produk</h3>
-                    <p class="text-sm text-slate-400 font-medium mt-1">Kelola kategori produk kurma dan lihat jumlah produk terkait</p>
+                    <h3 class="font-extrabold text-slate-800 dark:text-purple-100 text-lg leading-tight">Daftar Kategori Produk</h3>
+                    <p class="text-sm text-slate-400 dark:text-purple-400 font-medium mt-1">Kelola kategori produk kurma dan lihat jumlah produk terkait</p>
                 </div>
                 <button type="button" 
                         @click="resetCategoryForm(); showCategoryModal = true"
@@ -1215,7 +1393,7 @@
             </div>
 
             <!-- Responsive Table (Categories) -->
-            <div class="bg-white rounded-3xl border border-slate-100 shadow-md overflow-hidden">
+            <div class="admin-card admin-table-wrap bg-white rounded-3xl border border-slate-100 shadow-md overflow-hidden">
                 <div class="overflow-x-auto w-full max-w-full">
                     <table class="min-w-full divide-y divide-slate-100 text-left text-sm text-slate-700">
                         <thead class="bg-slate-50 font-bold text-slate-500 uppercase tracking-wider text-xs">
@@ -1261,8 +1439,8 @@
             <!-- Tab Controls -->
             <div class="flex justify-between items-center gap-4">
                 <div>
-                    <h3 class="font-extrabold text-slate-800 text-lg leading-tight">Pembuatan Nota Penjualan Partai (Grosir)</h3>
-                    <p class="text-sm text-slate-400 font-medium mt-1">Buat nota dengan penentuan produk, kuantitas, harga jual, dan modal secara manual/kustom</p>
+                    <h3 class="font-extrabold text-slate-800 dark:text-purple-100 text-lg leading-tight">Pembuatan Nota Penjualan Partai (Grosir)</h3>
+                    <p class="text-sm text-slate-400 dark:text-purple-400 font-medium mt-1">Buat nota dengan penentuan produk, kuantitas, harga jual, dan modal secara manual/kustom</p>
                 </div>
             </div>
 
@@ -1273,7 +1451,7 @@
                 <div class="lg:col-span-8 flex flex-col gap-6">
                     
                     <!-- Customer Information Card -->
-                    <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-4">
+                    <div class="admin-card bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-4">
                         <span class="text-xs font-black text-emerald-800 uppercase tracking-wider block border-b border-slate-100 pb-2">Informasi Penerima / Pelanggan</span>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -1294,7 +1472,7 @@
                     </div>
 
                     <!-- Items Table Card -->
-                    <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-4">
+                    <div class="admin-card bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-4">
                         <div class="flex justify-between items-center border-b border-slate-100 pb-3">
                             <span class="text-xs font-black text-emerald-800 uppercase tracking-wider">Rincian Barang Belanjaan</span>
                             <button type="button" 
@@ -1495,7 +1673,7 @@
              class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm"
              style="display: none;">
             
-            <div class="bg-white rounded-3xl p-6 w-full max-w-sm border border-slate-100 shadow-2xl flex flex-col gap-4" @click.away="resetCategoryForm()">
+            <div class="modal-card bg-white rounded-3xl p-6 w-full max-w-sm border border-slate-100 shadow-2xl flex flex-col gap-4" @click.away="resetCategoryForm()">
                 <h3 class="font-extrabold text-slate-800 text-lg" x-text="isEditingCategory ? 'Edit Kategori' : 'Tambah Kategori Baru'"></h3>
                 <div class="flex flex-col gap-3 text-sm font-semibold text-slate-700">
                     <div>
@@ -1515,7 +1693,7 @@
              class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm"
              style="display: none;">
             
-            <div class="bg-white rounded-3xl p-6 w-full max-w-md border border-slate-100 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto" @click.away="if (!confirmModal.show) resetProductForm()">
+            <div class="modal-card bg-white rounded-3xl p-6 w-full max-w-md border border-slate-100 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto" @click.away="if (!confirmModal.show) resetProductForm()">
                 <h3 class="font-extrabold text-slate-800 text-lg" x-text="isEditing ? 'Edit Produk' : 'Tambah Produk Baru'"></h3>
                 <div class="flex flex-col gap-3 text-sm font-semibold text-slate-700">
                     <div>
@@ -1727,7 +1905,7 @@
              class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm"
              style="display: none;">
             
-            <div class="bg-white rounded-3xl p-6 w-full max-w-md border border-slate-100 shadow-2xl flex flex-col gap-4" @click.away="showCashierModal = false">
+            <div class="modal-card bg-white rounded-3xl p-6 w-full max-w-md border border-slate-100 shadow-2xl flex flex-col gap-4" @click.away="showCashierModal = false">
                 <h3 class="font-extrabold text-slate-800 text-lg">Daftarkan Akun Kasir Baru</h3>
                 <div class="flex flex-col gap-3 text-sm font-semibold text-slate-700">
                     <div>
@@ -1770,7 +1948,7 @@
              style="display: none;"
              @keydown.escape.window="confirmModal.show = false">
             
-            <div class="bg-white rounded-3xl p-6 w-full max-w-sm border border-slate-100 shadow-2xl flex flex-col items-center gap-5 text-center" @click.stop @click.away="confirmModal.show = false">
+            <div class="modal-card bg-white rounded-3xl p-6 w-full max-w-sm border border-slate-100 shadow-2xl flex flex-col items-center gap-5 text-center" @click.stop @click.away="confirmModal.show = false">
                 <!-- Icon depending on type -->
                 <template x-if="confirmModal.type === 'danger'">
                     <div class="w-14 h-14 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center">

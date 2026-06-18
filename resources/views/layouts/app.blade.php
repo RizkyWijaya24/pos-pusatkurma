@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full bg-slate-50" translate="no">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full bg-slate-50 dark:bg-dp-950" translate="no">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -21,17 +21,17 @@
                 font-family: 'Outfit', sans-serif;
             }
 
-            /* GLOBAL TOAST PREMIUM GLASSMORPHISM THEME */
+            /* GLOBAL TOAST */
             #global-toast {
                 position: fixed;
-                top: 5rem; /* 80px - beautiful placement below h-16 (64px) navbar */
-                right: 1.25rem; /* 20px */
+                top: 5rem;
+                right: 1.25rem;
                 z-index: 999999;
                 max-width: 24rem;
                 width: calc(100% - 2.5rem);
-                background-color: rgba(255, 255, 255, 0.95);
-                backdrop-filter: blur(8px);
-                -webkit-backdrop-filter: blur(8px);
+                background-color: rgba(255, 255, 255, 0.97);
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
                 border-radius: 1rem;
                 box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
                 border: 1px solid rgba(241, 245, 249, 0.8);
@@ -53,8 +53,19 @@
                 pointer-events: auto;
             }
         </style>
+
+        {{-- DARK MODE INIT — Run before render to prevent flash --}}
+        <script>
+            (function() {
+                const stored = localStorage.getItem('pk-theme');
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (stored === 'dark' || (!stored && prefersDark)) {
+                    document.documentElement.classList.add('dark');
+                }
+            })();
+        </script>
     </head>
-    <body class="h-full text-slate-800 antialiased overflow-x-hidden" x-data="{ sidebarOpen: false }">
+    <body class="h-full text-slate-800 dark:text-purple-100 antialiased overflow-x-hidden bg-slate-50 dark:bg-dp-950" x-data="{ sidebarOpen: false }">
 
         <!-- Impersonation Banner -->
         @if (session()->has('impersonate_original_user_id'))
@@ -116,14 +127,13 @@
              aria-modal="true" 
              style="display: none;">
             
-            <div class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm" @click="sidebarOpen = false"></div>
+            <div class="fixed inset-0 bg-dp-950/80 dark:bg-dp-950/90 backdrop-blur-sm" @click="sidebarOpen = false"></div>
 
             <div class="fixed inset-y-0 left-0 flex w-full max-w-xs transition duration-300 transform bg-emerald-950 text-white shadow-2xl">
-                <!-- Mobile Sidebar Content -->
                 <div class="relative flex flex-1 flex-col px-6 py-6 overflow-y-auto">
                     <!-- Close button -->
                     <div class="absolute top-5 right-5">
-                        <button type="button" @click="sidebarOpen = false" class="-m-2.5 p-2.5 text-emerald-200 hover:text-white">
+                        <button type="button" @click="sidebarOpen = false" class="no-transition -m-2.5 p-2.5 text-emerald-200 hover:text-white">
                             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -204,11 +214,11 @@
         <!-- Main Content Area -->
         <div class="md:pl-64 flex flex-col min-h-screen">
             
-            <!-- Desktop/Mobile Top Header -->
-            <header class="bg-white/80 backdrop-blur-md sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-x-4 border-b border-slate-100 px-4 sm:px-6 lg:px-8 shadow-sm">
+            <!-- Top Header -->
+            <header class="bg-white/80 dark:bg-dp-900/85 backdrop-blur-md sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-x-4 border-b border-slate-100 dark:border-dp-700/60 px-4 sm:px-6 lg:px-8 shadow-sm">
                 <!-- Left: Toggle menu for Mobile, Page Title for Desktop -->
                 <div class="flex items-center gap-x-4">
-                    <button type="button" @click="sidebarOpen = true" class="-m-2.5 p-2.5 text-slate-500 hover:text-slate-900 md:hidden">
+                    <button type="button" @click="sidebarOpen = true" class="no-transition -m-2.5 p-2.5 text-slate-500 dark:text-purple-300 hover:text-slate-900 dark:hover:text-purple-100 md:hidden">
                         <span class="sr-only">Open sidebar</span>
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
@@ -217,39 +227,61 @@
 
                     <!-- Header dynamic title slot -->
                     @isset($header)
-                        <div class="font-semibold text-lg sm:text-xl text-slate-800 leading-tight">
+                        <div class="font-semibold text-lg sm:text-xl text-slate-800 dark:text-purple-100 leading-tight">
                             {{ $header }}
                         </div>
                     @else
-                        <div class="font-semibold text-lg sm:text-xl text-slate-800 leading-tight">
+                        <div class="font-semibold text-lg sm:text-xl text-slate-800 dark:text-purple-100 leading-tight">
                             Pusat Kurma Cianjur
                         </div>
                     @endisset
                 </div>
 
                 <!-- Right Side Profile & Actions -->
-                <div class="flex items-center gap-x-4 lg:gap-x-6">
+                <div class="flex items-center gap-x-3 lg:gap-x-5">
                     
                     <!-- Notification bell -->
-                    <button class="relative rounded-full p-2 text-slate-400 hover:text-slate-500 hover:bg-slate-50 transition duration-150">
-                        <span class="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white"></span>
+                    <button class="relative rounded-full p-2 text-slate-400 dark:text-purple-400 hover:text-slate-500 dark:hover:text-purple-200 hover:bg-slate-50 dark:hover:bg-dp-800 transition duration-150">
+                        <span class="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-dp-900"></span>
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
                         </svg>
                     </button>
 
+                    <!-- DARK MODE TOGGLE BUTTON -->
+                    <button 
+                        id="dark-mode-toggle"
+                        onclick="toggleDarkMode()"
+                        title="Toggle Dark Mode"
+                        aria-label="Toggle dark mode"
+                        class="w-9 h-9 rounded-full border border-slate-200 dark:border-dp-600 bg-slate-100 dark:bg-dp-800 text-slate-600 dark:text-purple-300 hover:bg-amber-50 dark:hover:bg-dp-700 hover:border-amber-300 dark:hover:border-violet-500 transition-all duration-200 shadow-sm"
+                    >
+                        <!-- Sun Icon (light mode) -->
+                        <span class="sun-icon">
+                            <svg class="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                            </svg>
+                        </span>
+                        <!-- Moon Icon (dark mode) -->
+                        <span class="moon-icon">
+                            <svg class="w-5 h-5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+                            </svg>
+                        </span>
+                    </button>
+
                     <!-- Divider -->
-                    <div class="h-6 w-px bg-slate-100" aria-hidden="true"></div>
+                    <div class="h-6 w-px bg-slate-100 dark:bg-dp-700" aria-hidden="true"></div>
 
                     <!-- Settings Dropdown -->
                     <div class="relative" x-data="{ dropdownOpen: false }" @click.away="dropdownOpen = false">
-                        <button type="button" @click="dropdownOpen = !dropdownOpen" class="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-50 transition duration-150">
-                            <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs shadow-inner">
+                        <button type="button" @click="dropdownOpen = !dropdownOpen" class="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-50 dark:hover:bg-dp-800 transition duration-150">
+                            <div class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 flex items-center justify-center font-bold text-xs shadow-inner">
                                 {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                             </div>
                             <span class="hidden lg:flex lg:items-center">
-                                <span class="text-sm font-medium text-slate-700">{{ Auth::user()->name }}</span>
-                                <svg class="ms-2 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <span class="text-sm font-medium text-slate-700 dark:text-purple-200">{{ Auth::user()->name }}</span>
+                                <svg class="ms-2 h-4 w-4 text-slate-400 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                                 </svg>
                             </span>
@@ -263,21 +295,33 @@
                              x-transition:leave="transition ease-in duration-75"
                              x-transition:leave-start="transform opacity-100 scale-100"
                              x-transition:leave-end="transform opacity-0 scale-95"
-                             class="absolute right-0 z-30 mt-2 w-48 origin-top-right rounded-xl bg-white p-1 shadow-lg ring-1 ring-black/5 focus:outline-none"
+                             class="absolute right-0 z-30 mt-2 w-52 origin-top-right rounded-xl bg-white dark:bg-dp-800 p-1 shadow-lg dark:shadow-dp-950/80 ring-1 ring-black/5 dark:ring-dp-600/50 focus:outline-none border border-transparent dark:border-dp-700/60"
                              style="display: none;">
                             
+                            <!-- User info header in dropdown -->
+                            <div class="px-4 py-2.5 border-b border-slate-100 dark:border-dp-700/60 mb-1">
+                                <p class="text-xs font-bold text-slate-800 dark:text-purple-100 truncate">{{ Auth::user()->name }}</p>
+                                <p class="text-[11px] text-slate-500 dark:text-purple-400 truncate">{{ Auth::user()->email }}</p>
+                            </div>
+
                             <!-- Profile Link -->
-                            <a href="{{ route('profile.edit') }}" class="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg font-medium transition duration-150">
+                            <a href="{{ route('profile.edit') }}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 dark:text-purple-200 hover:bg-slate-50 dark:hover:bg-dp-700/60 rounded-lg font-medium transition duration-150">
+                                <svg class="w-4 h-4 text-slate-400 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                                </svg>
                                 {{ __('Your Profile') }}
                             </a>
 
                             <!-- Divider -->
-                            <div class="my-1 border-t border-slate-100"></div>
+                            <div class="my-1 border-t border-slate-100 dark:border-dp-700/60"></div>
 
                             <!-- Logout Form -->
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
-                                <button type="submit" class="w-full text-left block px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 rounded-lg font-medium transition duration-150">
+                                <button type="submit" class="w-full flex items-center gap-2.5 text-left px-4 py-2.5 text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg font-medium transition duration-150">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                                    </svg>
                                     {{ __('Log Out') }}
                                 </button>
                             </form>
@@ -287,18 +331,17 @@
             </header>
 
             <!-- Main view container -->
-            <main class="flex-grow py-8 px-4 sm:px-6 lg:px-8 pb-24 md:pb-8">
-                <!-- Page Slot -->
+            <main class="flex-grow py-8 px-4 sm:px-6 lg:px-8 pb-24 md:pb-8 bg-slate-50 dark:bg-transparent">
                 <div class="max-w-7xl mx-auto">
                     {{ $slot }}
                 </div>
             </main>
         </div>
 
-        <!-- Mobile Touch-Friendly Bottom Navigation Bar (Optimized for Mobile Thumbs) -->
-        <nav class="md:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-100 shadow-2xl flex justify-around items-center py-2 px-2 z-30">
+        <!-- Mobile Bottom Navigation Bar -->
+        <nav class="md:hidden fixed bottom-0 inset-x-0 bg-white/95 dark:bg-dp-900/97 backdrop-blur-md border-t border-slate-100 dark:border-dp-700/50 shadow-2xl flex justify-around items-center py-2 px-2 z-30">
             <!-- Home/Dashboard -->
-            <a href="{{ route('dashboard') }}" class="flex flex-col items-center gap-0.5 {{ (request()->routeIs('dashboard') || request()->routeIs('kasir.dashboard') || request()->routeIs('admin.dashboard') || request()->routeIs('owner.dashboard')) ? 'text-emerald-700 font-extrabold' : 'text-slate-500' }} hover:text-emerald-800 transition duration-150 py-1 px-3 rounded-xl">
+            <a href="{{ route('dashboard') }}" class="flex flex-col items-center gap-0.5 {{ (request()->routeIs('dashboard') || request()->routeIs('kasir.dashboard') || request()->routeIs('admin.dashboard') || request()->routeIs('owner.dashboard')) ? 'text-emerald-600 dark:text-violet-400 font-extrabold' : 'text-slate-500 dark:text-purple-400' }} hover:text-emerald-800 dark:hover:text-violet-300 transition duration-150 py-1 px-3 rounded-xl">
                 <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
                 </svg>
@@ -306,24 +349,21 @@
             </a>
 
             @if(Auth::user()->isAdmin())
-            <!-- Riwayat Transaksi (Admin) -->
-            <a href="{{ route('admin.transactions.index') }}" class="flex flex-col items-center gap-0.5 {{ request()->routeIs('admin.transactions.*') ? 'text-emerald-700 font-extrabold' : 'text-slate-500' }} hover:text-emerald-700 transition duration-150 py-1 px-3 rounded-xl">
+            <a href="{{ route('admin.transactions.index') }}" class="flex flex-col items-center gap-0.5 {{ request()->routeIs('admin.transactions.*') ? 'text-emerald-600 dark:text-violet-400 font-extrabold' : 'text-slate-500 dark:text-purple-400' }} hover:text-emerald-700 dark:hover:text-violet-300 transition duration-150 py-1 px-3 rounded-xl">
                 <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                 </svg>
                 <span class="text-[10px] font-bold tracking-wide">Riwayat</span>
             </a>
             @elseif(Auth::user()->isOwner())
-            <!-- Riwayat Transaksi (Owner) -->
-            <a href="{{ route('owner.transactions.index') }}" class="flex flex-col items-center gap-0.5 {{ request()->routeIs('owner.transactions.*') ? 'text-emerald-700 font-extrabold' : 'text-slate-500' }} hover:text-emerald-700 transition duration-150 py-1 px-3 rounded-xl">
+            <a href="{{ route('owner.transactions.index') }}" class="flex flex-col items-center gap-0.5 {{ request()->routeIs('owner.transactions.*') ? 'text-emerald-600 dark:text-violet-400 font-extrabold' : 'text-slate-500 dark:text-purple-400' }} hover:text-emerald-700 dark:hover:text-violet-300 transition duration-150 py-1 px-3 rounded-xl">
                 <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                 </svg>
                 <span class="text-[10px] font-bold tracking-wide">Riwayat</span>
             </a>
             @elseif(Auth::user()->isKasir())
-            <!-- Riwayat Transaksi (Kasir) -->
-            <a href="{{ route('kasir.transactions.index') }}" class="flex flex-col items-center gap-0.5 {{ request()->routeIs('kasir.transactions.*') ? 'text-emerald-700 font-extrabold' : 'text-slate-500' }} hover:text-emerald-700 transition duration-150 py-1 px-3 rounded-xl">
+            <a href="{{ route('kasir.transactions.index') }}" class="flex flex-col items-center gap-0.5 {{ request()->routeIs('kasir.transactions.*') ? 'text-emerald-600 dark:text-violet-400 font-extrabold' : 'text-slate-500 dark:text-purple-400' }} hover:text-emerald-700 dark:hover:text-violet-300 transition duration-150 py-1 px-3 rounded-xl">
                 <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                 </svg>
@@ -332,7 +372,7 @@
             @endif
 
             <!-- Profile -->
-            <a href="{{ route('profile.edit') }}" class="flex flex-col items-center gap-0.5 {{ request()->routeIs('profile.edit') ? 'text-emerald-700 font-extrabold' : 'text-slate-500' }} hover:text-emerald-700 transition duration-150 py-1 px-3 rounded-xl">
+            <a href="{{ route('profile.edit') }}" class="flex flex-col items-center gap-0.5 {{ request()->routeIs('profile.edit') ? 'text-emerald-600 dark:text-violet-400 font-extrabold' : 'text-slate-500 dark:text-purple-400' }} hover:text-emerald-700 dark:hover:text-violet-300 transition duration-150 py-1 px-3 rounded-xl">
                 <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
                 </svg>
@@ -342,7 +382,7 @@
             <!-- Logout -->
             <form method="POST" action="{{ route('logout') }}" class="flex flex-col items-center">
                 @csrf
-                <button type="submit" class="flex flex-col items-center gap-0.5 text-rose-500 hover:text-rose-600 transition duration-150 py-1 px-3 rounded-xl">
+                <button type="submit" class="flex flex-col items-center gap-0.5 text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 transition duration-150 py-1 px-3 rounded-xl">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
                     </svg>
@@ -353,22 +393,14 @@
 
         <!-- GLOBAL TOAST NOTIFICATION SYSTEM -->
         <div id="global-toast">
-             <!-- Colored Indicator Line on Left -->
              <div id="toast-indicator" class="absolute left-0 top-0 bottom-0 w-1.5"></div>
-
-             <!-- Icon Wrapper -->
              <div id="toast-icon-bg" class="w-10 h-10 rounded-full flex items-center justify-center shrink-0">
-                 <!-- Icon SVG is injected here -->
                  <span id="toast-icon-slot"></span>
              </div>
-
-             <!-- Message content -->
              <div class="flex-grow">
-                 <p id="toast-message" style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 0.875rem; font-weight: 700; color: #1e293b; line-height: 1.25rem;"></p>
+                 <p id="toast-message" style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 0.875rem; font-weight: 700; line-height: 1.25rem;"></p>
              </div>
-
-             <!-- Close button -->
-             <button type="button" onclick="hideGlobalToast()" style="background: none; border: none; padding: 0; cursor: pointer; color: #94a3b8; transition: color 0.2s;" onmouseover="this.style.color='#475569'" onmouseout="this.style.color='#94a3b8'" class="shrink-0">
+             <button type="button" onclick="hideGlobalToast()" style="background: none; border: none; padding: 0; cursor: pointer; transition: color 0.2s;" class="shrink-0 text-slate-400 hover:text-slate-600 dark:text-purple-400 dark:hover:text-purple-200">
                  <svg style="width: 1rem; height: 1rem;" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                  </svg>
@@ -376,6 +408,32 @@
         </div>
 
         <script>
+            /* ================================================
+               DARK MODE TOGGLE - PERSISTENT
+               ================================================ */
+            function toggleDarkMode() {
+                const html = document.documentElement;
+                const isDark = html.classList.toggle('dark');
+                localStorage.setItem('pk-theme', isDark ? 'dark' : 'light');
+
+                const toastMsg = document.getElementById('toast-message');
+                if (toastMsg) {
+                    toastMsg.style.color = isDark ? '#ede9fe' : '#1e293b';
+                }
+            }
+
+            // Sync toast message color on load
+            (function() {
+                const toastMsg = document.getElementById('toast-message');
+                if (toastMsg) {
+                    const isDark = document.documentElement.classList.contains('dark');
+                    toastMsg.style.color = isDark ? '#ede9fe' : '#1e293b';
+                }
+            })();
+
+            /* ================================================
+               GLOBAL TOAST NOTIFICATION SYSTEM
+               ================================================ */
             let globalToastTimer = null;
 
             const toastIcons = {
@@ -392,6 +450,13 @@
                 error: { indicator: '#f43f5e', bg: '#fff1f2', text: '#e11d48' }
             };
 
+            const toastColorsDark = {
+                success: { indicator: '#10b981', bg: '#052e1c', text: '#34d399' },
+                warning: { indicator: '#f59e0b', bg: '#2d1a02', text: '#fbbf24' },
+                info: { indicator: '#818cf8', bg: '#1e1a4e', text: '#a5b4fc' },
+                error: { indicator: '#f43f5e', bg: '#2d0a17', text: '#fb7185' }
+            };
+
             function showGlobalToast(message, type = 'success') {
                 const toast = document.getElementById('global-toast');
                 const indicator = document.getElementById('toast-indicator');
@@ -401,24 +466,21 @@
 
                 if (!toast) return;
 
-                // Clear previous timer
-                if (globalToastTimer) {
-                    clearTimeout(globalToastTimer);
-                }
+                if (globalToastTimer) clearTimeout(globalToastTimer);
 
-                // Update content
+                const isDark = document.documentElement.classList.contains('dark');
+                const colors = isDark ? toastColorsDark[type] : toastColors[type];
+
                 msgEl.innerText = message;
+                msgEl.style.color = isDark ? '#ede9fe' : '#1e293b';
                 iconSlot.innerHTML = toastIcons[type] || toastIcons.success;
 
-                // Update colors using inline styles for absolute reliability
-                indicator.style.backgroundColor = toastColors[type].indicator;
-                iconBg.style.backgroundColor = toastColors[type].bg;
-                iconBg.style.color = toastColors[type].text;
+                indicator.style.backgroundColor = colors.indicator;
+                iconBg.style.backgroundColor = colors.bg;
+                iconBg.style.color = colors.text;
 
-                // Show toast (slide-in)
                 toast.classList.add('show');
 
-                // Auto hide
                 globalToastTimer = setTimeout(() => {
                     hideGlobalToast();
                 }, 2800);
@@ -426,18 +488,14 @@
 
             function hideGlobalToast() {
                 const toast = document.getElementById('global-toast');
-                if (toast) {
-                    toast.classList.remove('show');
-                }
+                if (toast) toast.classList.remove('show');
                 globalToastTimer = null;
             }
 
-            // Global window-level listener
             window.addEventListener('toast', (e) => {
                 showGlobalToast(e.detail.message, e.detail.type);
             });
 
-            // Make toast helper functions globally accessible on the window
             window.showToast = showGlobalToast;
             window.hideToast = hideGlobalToast;
         </script>

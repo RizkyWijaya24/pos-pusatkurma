@@ -1,3 +1,435 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* =============================================
+   DARK MODE - SMOOTH GLOBAL TRANSITION
+   ============================================= */
+*, *::before, *::after {
+    transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Exclude transitions for animated elements */
+svg *, .no-transition, .no-transition * {
+    transition: none !important;
+}
+
+/* =============================================
+   DARK PURPLE AMBIENT BODY BACKGROUND
+   ============================================= */
+.dark body {
+    background-color: #09071a;
+    /* Subtle purple radial ambient glow */
+    background-image:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(109, 40, 217, 0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(76, 29, 149, 0.08) 0%, transparent 60%);
+    background-attachment: fixed;
+}
+
+/* =============================================
+   DARK PURPLE HEADER GLOW
+   ============================================= */
+.dark header {
+    background: rgba(15, 11, 40, 0.85) !important;
+    border-color: rgba(42, 29, 99, 0.7) !important;
+    box-shadow: 0 1px 0 0 rgba(109, 40, 217, 0.12), 0 4px 24px rgba(0,0,0,0.3) !important;
+}
+
+/* =============================================
+   DARK PURPLE MAIN CONTENT AREA
+   ============================================= */
+.dark main {
+    background-color: transparent !important;
+}
+
+/* =============================================
+   DARK PURPLE MOBILE BOTTOM NAV
+   ============================================= */
+.dark nav.fixed.bottom-0 {
+    background: rgba(15, 11, 40, 0.97) !important;
+    border-color: rgba(42, 29, 99, 0.6) !important;
+    box-shadow: 0 -1px 0 0 rgba(109, 40, 217, 0.15), 0 -8px 32px rgba(0,0,0,0.4) !important;
+}
+
+/* =============================================
+   CUSTOM SCROLLBAR - PURPLE DARK
+   ============================================= */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-track {
+    background: #09071a;
+}
+.dark ::-webkit-scrollbar-thumb {
+    background: #2a1d63;
+    border-radius: 999px;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+    background: #4a38a8;
+}
+
+/* =============================================
+   DARK MODE TOGGLE BUTTON
+   ============================================= */
+#dark-mode-toggle {
+    position: relative;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+}
+
+#dark-mode-toggle .sun-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+    transform: rotate(0deg) scale(1);
+    opacity: 1;
+}
+
+#dark-mode-toggle .moon-icon {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+}
+
+.dark #dark-mode-toggle .sun-icon {
+    display: none;
+}
+
+.dark #dark-mode-toggle .moon-icon {
+    display: flex;
+}
+
+/* =============================================
+   DARK PURPLE DROPDOWN & CARDS
+   ============================================= */
+.dark [class*="absolute"][class*="rounded-xl"][class*="shadow-lg"] {
+    background: #1a1240 !important;
+    border-color: rgba(42, 29, 99, 0.8) !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(109, 40, 217, 0.15) !important;
+}
+
+/* =============================================
+   DARK PURPLE TOAST
+   ============================================= */
+.dark #global-toast {
+    background-color: rgba(20, 14, 52, 0.97) !important;
+    border-color: rgba(42, 29, 99, 0.8) !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(109, 40, 217, 0.2) !important;
+}
+
+/* =============================================
+   PURPLE GLOW PULSE ON DARK TOGGLE
+   ============================================= */
+.dark #dark-mode-toggle:hover {
+    box-shadow: 0 0 12px rgba(139, 92, 246, 0.4) !important;
+}
+
+/* =================================================================
+   ADMIN DASHBOARD - DARK MODE COMPREHENSIVE OVERRIDES
+   Targets all card panels, tables, modals, forms, and tab buttons
+   ================================================================= */
+
+/* ── CARD / PANEL (bg-white rounded-*) ── */
+.dark .bg-white {
+    background-color: #1a1240 !important;
+    border-color: rgba(42, 29, 99, 0.5) !important;
+}
+
+/* ── TABLE HEADER ── */
+.dark .bg-slate-50,
+.dark thead.bg-slate-50,
+.dark thead tr.bg-slate-50,
+.dark thead [class*="bg-slate-50"] {
+    background-color: #140e34 !important;
+}
+
+/* ── TABLE ROWS ── */
+.dark tbody tr {
+    border-color: rgba(42, 29, 99, 0.3) !important;
+}
+
+.dark tbody tr:hover {
+    background-color: rgba(42, 29, 99, 0.25) !important;
+}
+
+.dark table {
+    color: #e9d5ff !important;
+}
+
+.dark thead th {
+    color: #c4b5fd !important;
+    border-color: rgba(42, 29, 99, 0.4) !important;
+}
+
+.dark tbody td {
+    color: #ddd6fe !important;
+    border-color: rgba(42, 29, 99, 0.25) !important;
+}
+
+/* ── TABLE DIVIDERS ── */
+.dark .divide-y.divide-slate-100 > * + * {
+    border-color: rgba(42, 29, 99, 0.3) !important;
+}
+
+/* ── TAB NAVIGATION BUTTONS (sidebar left panel) ── */
+.dark [class*="bg-transparent"][class*="text-slate-600"],
+.dark [class*="hover\\:bg-slate-50"] {
+    color: #c4b5fd;
+}
+
+.dark [class*="hover\\:bg-slate-50"]:hover {
+    background-color: rgba(42, 29, 99, 0.4) !important;
+    color: #ede9fe !important;
+}
+
+/* ── SEARCH & FILTER PANEL ── */
+.dark .border-slate-100 {
+    border-color: rgba(42, 29, 99, 0.4) !important;
+}
+
+.dark .border-slate-200 {
+    border-color: rgba(42, 29, 99, 0.5) !important;
+}
+
+/* ── TEXT COLORS ── */
+.dark .text-slate-800,
+.dark .text-slate-900 {
+    color: #ede9fe !important;
+}
+
+.dark .text-slate-700 {
+    color: #ddd6fe !important;
+}
+
+.dark .text-slate-600 {
+    color: #c4b5fd !important;
+}
+
+.dark .text-slate-500 {
+    color: #a78bfa !important;
+}
+
+.dark .text-slate-400 {
+    color: #8b5cf6 !important;
+}
+
+/* ── INPUTS & SELECTS ── */
+.dark input[type="text"],
+.dark input[type="number"],
+.dark input[type="email"],
+.dark input[type="password"],
+.dark select,
+.dark textarea {
+    background-color: #140e34 !important;
+    border-color: rgba(42, 29, 99, 0.6) !important;
+    color: #ede9fe !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+    color: #6d28d9 !important;
+    opacity: 0.7;
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+    border-color: #7c3aed !important;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2) !important;
+}
+
+/* ── INLINE BADGE: "bg-slate-50 text-slate-600" (branch badge) ── */
+.dark .bg-slate-50 {
+    background-color: rgba(42, 29, 99, 0.35) !important;
+}
+
+/* ── CATEGORY FILTER BUTTONS ── */
+.dark button[class*="bg-slate-50"] {
+    background-color: rgba(42, 29, 99, 0.3) !important;
+    color: #c4b5fd !important;
+    border: 1px solid rgba(42, 29, 99, 0.4);
+}
+
+.dark button[class*="bg-slate-50"]:hover {
+    background-color: rgba(67, 46, 145, 0.5) !important;
+    color: #ede9fe !important;
+}
+
+/* ── PAGINATION ── */
+.dark .bg-slate-50[class*="rounded-xl"] {
+    background-color: rgba(42, 29, 99, 0.3) !important;
+    color: #c4b5fd !important;
+}
+
+/* ── WHOLESALE FORM ITEMS (bg-slate-50/50 rows) ── */
+.dark [class*="bg-slate-50/50"] {
+    background-color: rgba(20, 14, 52, 0.6) !important;
+    border-color: rgba(42, 29, 99, 0.3) !important;
+}
+
+.dark [class*="bg-slate-50/50"]:hover {
+    background-color: rgba(42, 29, 99, 0.3) !important;
+    border-color: rgba(67, 46, 145, 0.5) !important;
+}
+
+/* ── SUMMARY CARDS DARK (wholesale right panel) ── */
+.dark .bg-emerald-50 {
+    background-color: rgba(6, 46, 30, 0.5) !important;
+    border-color: rgba(16, 185, 129, 0.2) !important;
+}
+
+.dark .text-emerald-700 {
+    color: #34d399 !important;
+}
+
+.dark .text-emerald-800 {
+    color: #6ee7b7 !important;
+}
+
+/* ── COST PRICE MODE TOGGLE BUTTONS ── */
+.dark .bg-white\/80 {
+    background-color: rgba(26, 18, 64, 0.8) !important;
+}
+
+/* ── MODAL OVERLAYS ── */
+.dark .bg-slate-900\/80 {
+    background-color: rgba(9, 7, 26, 0.9) !important;
+}
+
+/* ── MODAL CARDS ── */
+.dark .bg-white.rounded-3xl,
+.dark .bg-white.rounded-2xl {
+    background-color: #1e1545 !important;
+    border-color: rgba(42, 29, 99, 0.6) !important;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(109, 40, 217, 0.2) !important;
+}
+
+/* ── CANCEL BUTTONS ── */
+.dark .bg-slate-100 {
+    background-color: rgba(42, 29, 99, 0.35) !important;
+    color: #c4b5fd !important;
+}
+
+.dark .bg-slate-100:hover {
+    background-color: rgba(67, 46, 145, 0.5) !important;
+    color: #ede9fe !important;
+}
+
+/* ── SKELETON / AVATAR FALLBACK ── */
+.dark .bg-slate-200 {
+    background-color: rgba(42, 29, 99, 0.5) !important;
+}
+
+/* ── COST PRICE CHECKBOX AREA ── */
+.dark [class*="bg-slate-50"][class*="rounded-2xl"] {
+    background-color: rgba(20, 14, 52, 0.7) !important;
+    border-color: rgba(42, 29, 99, 0.5) !important;
+}
+
+/* ── WHOLESALE AUTOCOMPLETE SUGGESTIONS ── */
+.dark [class*="bg-white"][class*="border-slate-200"][class*="shadow-xl"] {
+    background-color: #1e1545 !important;
+    border-color: rgba(42, 29, 99, 0.7) !important;
+}
+
+.dark [class*="hover\\:bg-emerald-50"] {
+    --tw-bg-opacity: 1;
+}
+
+.dark [class*="hover\\:bg-emerald-50"]:hover {
+    background-color: rgba(42, 29, 99, 0.5) !important;
+    color: #a7f3d0 !important;
+}
+
+/* ── GREEN LABEL COLORS (keep readable) ── */
+.dark .text-emerald-600 {
+    color: #34d399 !important;
+}
+
+/* ── SECTION TITLES IN TAB CONTENT ── */
+.dark h3[class*="text-slate-800"] {
+    color: #ede9fe !important;
+}
+
+/* ── PAGINATION BORDER TOP ── */
+.dark .border-t.border-slate-100 {
+    border-color: rgba(42, 29, 99, 0.4) !important;
+}
+
+.dark .border-b.border-slate-100 {
+    border-color: rgba(42, 29, 99, 0.4) !important;
+}
+
+/* ── WHOLESALE RIGHT PANEL SUMMARY ── */
+.dark [class*="bg-emerald-950"] {
+    /* sidebar stays as-is */
+}
+
+/* ── FILE INPUT ── */
+.dark input[type="file"] {
+    background-color: #140e34 !important;
+    color: #c4b5fd !important;
+    border-color: rgba(42, 29, 99, 0.6) !important;
+}
+
+.dark .file\:bg-emerald-50 {
+    --file-bg: rgba(6, 78, 59, 0.5);
+}
+
+/* ── CAMERA SECTION ── */
+.dark [class*="bg-slate-50"][class*="border-slate-200"][class*="rounded-2xl"] {
+    background-color: rgba(20, 14, 52, 0.6) !important;
+    border-color: rgba(42, 29, 99, 0.5) !important;
+}
+
+/* ── PRICE TIER ROWS ── */
+.dark [class*="bg-white"][class*="p-3"][class*="rounded-2xl"] {
+    background-color: #140e34 !important;
+    border-color: rgba(42, 29, 99, 0.4) !important;
+}
+
+/* ── STATUS BADGES (keep colored) ── */
+.dark .bg-rose-50 { background-color: rgba(76, 5, 25, 0.5) !important; }
+.dark .bg-amber-50 { background-color: rgba(69, 26, 3, 0.5) !important; }
+.dark .bg-purple-50 { background-color: rgba(46, 16, 101, 0.5) !important; }
+.dark .bg-blue-50 { background-color: rgba(12, 74, 110, 0.4) !important; }
+
+/* ── WHOLESALE SUMMARY BOX ── */
+.dark [class*="bg-slate-50"][class*="rounded-2xl"][class*="p-5"] {
+    background-color: rgba(20, 14, 52, 0.8) !important;
+    border-color: rgba(42, 29, 99, 0.5) !important;
+}
+
+/* ── GRAND TOTAL ROW ── */
+.dark .bg-emerald-50[class*="rounded"] {
+    background-color: rgba(6, 46, 30, 0.4) !important;
+}
+
+/* ── FONT-MONO SKU TEXT ── */
+.dark .font-mono {
+    color: #a78bfa !important;
+}
+
