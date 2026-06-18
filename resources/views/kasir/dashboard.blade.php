@@ -167,7 +167,7 @@
                     const item = this.cart.find(c => c.cart_id === this.qtyCartId);
                     if (item) {
                         if (qty > this.qtyProduct.stock) {
-                            this.showToast('Stok tidak mencukupi! Tersedia: ' + this.qtyProduct.stock + ' ' + this.qtyProduct.price_unit, 'warning');
+                            this.showToast('Stok tidak mencukupi! Tersedia: ' + this.formatStock(this.qtyProduct.stock, this.qtyProduct.price_unit), 'warning');
                             return;
                         }
                         item.qty = qty;
@@ -175,7 +175,7 @@
                 } else {
                     // Always add as a new separate item row for weight products
                     if (qty > this.qtyProduct.stock) {
-                        this.showToast('Stok tidak mencukupi! Tersedia: ' + this.qtyProduct.stock + ' ' + this.qtyProduct.price_unit, 'warning');
+                        this.showToast('Stok tidak mencukupi! Tersedia: ' + this.formatStock(this.qtyProduct.stock, this.qtyProduct.price_unit), 'warning');
                         return;
                     }
                     this.cart.push({
@@ -222,7 +222,7 @@
             },
 
             get subtotal() {
-                return this.cart.reduce((sum, item) => sum + Math.round(this.getItemPrice(item) * item.qty), 0);
+                return this.cart.reduce((sum, item) => sum + Math.round((this.getItemPrice(item) * item.qty) / 500) * 500, 0);
             },
 
             get discountAmount() {
@@ -239,7 +239,7 @@
             },
 
             get total() {
-                return this.discountedSubtotal;
+                return Math.round(this.discountedSubtotal / 500) * 500;
             },
 
             get changeAmount() {
@@ -304,7 +304,8 @@
                                 id: item.id,
                                 name: item.name,
                                 qty: item.qty,
-                                price_unit: item.price_unit
+                                price_unit: item.price_unit,
+                                price: this.getItemPrice(item)
                             }))
                         })
                     })
@@ -464,6 +465,20 @@
             formatRupiah(num) {
                 if (num === null || num === undefined) return 'Rp 0';
                 return 'Rp ' + Math.round(num).toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+            },
+
+            formatStock(stock, unit) {
+                if (unit === 'gram' && stock >= 1000) {
+                    return (stock / 1000).toFixed(2).replace(/\.?0+$/, '') + ' kg';
+                }
+                return stock + ' ' + unit;
+            },
+
+            formatQty(qty, unit) {
+                if (unit === 'gram' && qty >= 1000) {
+                    return (qty / 1000).toFixed(2).replace(/\.?0+$/, '') + ' kg';
+                }
+                return qty + ' ' + unit;
             },
 
             generateWaMessage() {
@@ -705,7 +720,7 @@
                                     <template x-if="product.price_tiers && product.price_tiers.length > 0">
                                         <span class="text-[10px] text-emerald-600 font-bold bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded self-start mt-0.5 select-none">Harga Grosir Aktif</span>
                                     </template>
-                                    <span class="text-[11px] text-slate-400 font-bold" x-text="'Stok Tersedia: ' + product.stock + ' ' + product.price_unit"></span>
+                                     <span class="text-[11px] text-slate-400 font-bold" x-text="'Stok Tersedia: ' + formatStock(product.stock, product.price_unit)"></span>
                                 </div>
                             </div>
 
@@ -755,22 +770,16 @@
                         <div class="flex gap-3 justify-between items-center p-3 rounded-2xl bg-slate-50 border border-slate-100/50 hover:bg-slate-100/30 transition duration-150">
                             <div class="overflow-hidden flex-grow cursor-pointer" @click="qtyProduct = products.find(p => p.id === item.id); qtyValue = item.qty.toString(); qtyCartId = item.cart_id; qtyMode = 'edit'; showQtyModal = true;">
                                 <h4 class="font-bold text-sm text-slate-800 truncate" x-text="item.name"></h4>
-                                <template x-if="getItemPrice(item) < item.price">
-                                    <div class="flex items-center gap-1.5 mt-0.5">
-                                        <span class="text-xs font-extrabold text-emerald-700" x-text="formatRupiah(getItemPrice(item)) + ' / ' + item.price_unit"></span>
-                                        <span class="text-[10px] text-slate-400 font-semibold line-through" x-text="formatRupiah(item.price)"></span>
-                                        <span class="text-[9px] bg-rose-50 text-rose-600 px-1 py-0.5 rounded font-black uppercase tracking-wider scale-90 border border-rose-100">Grosir</span>
-                                    </div>
-                                </template>
-                                <template x-if="getItemPrice(item) >= item.price">
-                                    <span class="text-xs font-semibold text-emerald-700" x-text="formatRupiah(item.price) + ' / ' + item.price_unit"></span>
-                                </template>
+                                <div class="text-xs text-slate-600 font-semibold mt-1">
+                                    <span x-text="formatQty(item.qty, item.price_unit) + ' = ' + formatRupiah(Math.round((getItemPrice(item) * item.qty) / 500) * 500)"></span>
+                                </div>
+                                <div class="text-[10px] text-slate-400 font-medium mt-0.5" x-text="'(Harga: ' + formatRupiah(getItemPrice(item)) + '/' + item.price_unit + ')'"></div>
                             </div>
 
                             <!-- Quantity control -->
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2 shrink-0">
                                 <button type="button" @click="updateQty(item.cart_id, item.qty - (item.price_unit === 'gram' ? 100 : 1))" class="w-7 h-7 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold flex items-center justify-center">-</button>
-                                <span class="font-bold text-xs text-slate-800 w-16 text-center whitespace-nowrap cursor-pointer hover:underline" @click="qtyProduct = products.find(p => p.id === item.id); qtyValue = item.qty.toString(); qtyCartId = item.cart_id; qtyMode = 'edit'; showQtyModal = true;" x-text="item.qty + ' ' + item.price_unit"></span>
+                                <span class="font-bold text-xs text-slate-800 w-16 text-center whitespace-nowrap cursor-pointer hover:underline" @click="qtyProduct = products.find(p => p.id === item.id); qtyValue = item.qty.toString(); qtyCartId = item.cart_id; qtyMode = 'edit'; showQtyModal = true;" x-text="formatQty(item.qty, item.price_unit)"></span>
                                 <button type="button" @click="updateQty(item.cart_id, item.qty + (item.price_unit === 'gram' ? 100 : 1))" class="w-7 h-7 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold flex items-center justify-center">+</button>
                             </div>
                         </div>

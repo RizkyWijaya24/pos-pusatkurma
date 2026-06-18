@@ -200,7 +200,7 @@
     <!-- Printable Receipt Structure -->
     <div class="receipt-container">
         <div class="text-center">
-            <div class="brand-title">Pusat Kurma Cianjur</div>
+            <div class="brand-title">Pusat Kurma Al karim</div>
             <div class="brand-subtitle">{{ $transaction->branch ?? 'Cabang Cianjur' }}</div>
         </div>
         
@@ -237,21 +237,24 @@
             <tbody>
                 @foreach ($items as $item)
                     <tr>
-                        <td>
-                            <div class="font-bold">{{ $item['name'] }}</div>
-                            <div style="font-size: 8px; padding-top: 1px;">
-                                @if (isset($item['unit_price']) && $item['unit_price'] > 0)
-                                    {{ $item['qty'] }} {{ $item['unit'] }} x Rp {{ number_format($item['unit_price'], 0, ',', '.') }}
-                                @else
-                                    {{ $item['qty'] }} {{ $item['unit'] }}
-                                @endif
+                        <td colspan="2" style="font-size: 8.5px; padding: 4px 0; border-bottom: 1px dotted #eee;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>
+                                    <span class="font-bold">{{ $item['name'] }}</span>
+                                    <span style="font-size: 8px; color: #444; margin-left: 2px;">{{ $item['qty'] }} {{ $item['unit'] }}</span>
+                                </span>
+                                <span class="font-bold">
+                                    @if (isset($item['total_price']) && $item['total_price'] > 0)
+                                        Rp {{ number_format($item['total_price'], 0, ',', '.') }}
+                                    @else
+                                        -
+                                    @endif
+                                </span>
                             </div>
-                        </td>
-                        <td class="text-right" style="vertical-align: bottom;">
-                            @if (isset($item['total_price']) && $item['total_price'] > 0)
-                                Rp {{ number_format($item['total_price'], 0, ',', '.') }}
-                            @else
-                                -
+                            @if (isset($item['unit_price']) && $item['unit_price'] > 0)
+                                <div style="font-size: 7.5px; color: #666; margin-top: 1px;">
+                                    (Harga: Rp {{ number_format($item['unit_price'], 0, ',', '.') }}/{{ $item['unit'] }})
+                                </div>
                             @endif
                         </td>
                     </tr>
@@ -285,9 +288,8 @@
         
         <div class="footer">
             *** TERIMA KASIH ***<br>
-            Selamat Menikmati Kurma Pilihan Anda!<br>
-            Barang yang sudah dibeli tidak dapat<br>
-            ditukar atau dikembalikan.<br>
+            Silahkan Datang Kembali<br>
+            .<br>
             
             <div class="barcode-container text-center">
                 *{{ $transaction->transaction_code }}*<br>

@@ -587,10 +587,11 @@ class TransactionController extends Controller
             'items.*.name' => 'required|string',
             'items.*.qty' => 'required|numeric|min:0',
             'items.*.price_unit' => 'required|string',
+            'items.*.price' => 'required|numeric|min:0',
         ]);
 
         $itemsSummary = collect($request->items)->map(function ($item) {
-            return $item['name'] . ' (' . $item['qty'] . ' ' . $item['price_unit'] . ')';
+            return $item['name'] . ' (' . $item['qty'] . ' ' . $item['price_unit'] . ' x ' . $item['price'] . ')';
         })->join(', ');
 
         $totalCost = 0;
@@ -816,12 +817,33 @@ class TransactionController extends Controller
             abort(403, 'Anda tidak memiliki akses untuk mencetak struk ini.');
         }
 
-        // Parse items from items_summary and lookup prices dynamically from database
+        // Parse items from items_summary
         $items = [];
         if (!empty($transaction->items_summary)) {
             $parts = explode(', ', $transaction->items_summary);
             foreach ($parts as $part) {
-                if (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*(\w+)\)$/', $part, $matches)) {
+                // Try to parse format with explicit price: Name (Qty Unit x Price)
+                if (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*(\w+)\s*x\s*(\d+(?:\.\d+)?)\)$/', $part, $matches)) {
+                    $name = trim($matches[1]);
+                    $qty = floatval($matches[2]);
+                    $unit = $matches[3];
+                    $unitPrice = floatval($matches[4]);
+                    
+                    if ($unit === 'gram' && $qty >= 1000) {
+                        $qty = $qty / 1000;
+                        $unit = 'kg';
+                        $unitPrice = $unitPrice * 1000;
+                    }
+                    
+                    $items[] = [
+                        'name' => $name,
+                        'qty' => $qty,
+                        'unit' => $unit,
+                        'unit_price' => $unitPrice,
+                        'total_price' => round(($unitPrice * $qty) / 500) * 500,
+                    ];
+                } elseif (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*(\w+)\)$/', $part, $matches)) {
+                    // Fallback for old transactions: Name (Qty Unit)
                     $name = trim($matches[1]);
                     $qty = floatval($matches[2]);
                     $unit = $matches[3];
@@ -830,12 +852,20 @@ class TransactionController extends Controller
                     $product = \App\Models\Product::where('name', $name)->first();
                     $unitPrice = $product ? $product->getPriceForQuantity($qty) : null;
                     
+                    if ($unit === 'gram' && $qty >= 1000) {
+                        $qty = $qty / 1000;
+                        $unit = 'kg';
+                        if ($unitPrice !== null) {
+                            $unitPrice = $unitPrice * 1000;
+                        }
+                    }
+                    
                     $items[] = [
                         'name' => $name,
                         'qty' => $qty,
                         'unit' => $unit,
                         'unit_price' => $unitPrice,
-                        'total_price' => $unitPrice ? round($unitPrice * $qty) : null,
+                        'total_price' => $unitPrice ? round(($unitPrice * $qty) / 500) * 500 : null,
                     ];
                 } else {
                     $name = trim($part);
@@ -847,13 +877,138 @@ class TransactionController extends Controller
                         'qty' => 1,
                         'unit' => 'pcs',
                         'unit_price' => $unitPrice,
-                        'total_price' => $unitPrice,
+                        'total_price' => $unitPrice ? round($unitPrice / 500) * 500 : null,
                     ];
-
                 }
             }
         }
 
         return view('kasir.receipt', compact('transaction', 'items'));
+    }
+
+    /**
+     * Store a newly created wholesale transaction (Admin only).
+     */
+    public function storeWholesale(Request $request)
+    {
+        $validated = $request->validate([
+            'customer_name' => 'required|string|max:255',
+            'customer_phone' => 'nullable|string|max:20',
+            'payment_method' => 'required|string',
+            'discount' => 'nullable|integer|min:0',
+            'shipping_cost' => 'nullable|integer|min:0',
+            'items' => 'required|array|min:1',
+            'items.*.name' => 'required|string',
+            'items.*.qty' => 'required|numeric|min:0',
+            'items.*.price_unit' => 'required|string',
+            'items.*.selling_price' => 'required|integer|min:0',
+            'items.*.cost_price' => 'nullable|integer|min:0',
+        ]);
+
+        $totalPrice = 0;
+        $totalCost = 0;
+        
+        $itemsSummary = collect($request->items)->map(function ($item) use (&$totalPrice, &$totalCost) {
+            $qty = floatval($item['qty']);
+            $sellPrice = intval($item['selling_price']);
+            $costPrice = isset($item['cost_price']) && $item['cost_price'] !== '' ? intval($item['cost_price']) : 0;
+            
+            $totalPrice += round($sellPrice * $qty);
+            $totalCost += round($costPrice * $qty);
+            
+            return $item['name'] . ' (' . $qty . ' ' . $item['price_unit'] . ' x ' . $sellPrice . ')';
+        })->join(', ');
+
+        $discount = intval($request->input('discount', 0));
+        $shippingCost = intval($request->input('shipping_cost', 0));
+        $grandTotal = max(0, $totalPrice - $discount + $shippingCost);
+
+        // Deduct stock if the product exists in DB
+        foreach ($request->items as $item) {
+            $product = \App\Models\Product::where('name', $item['name'])->first();
+            if ($product) {
+                $product->decrement('stock', floatval($item['qty']));
+            }
+        }
+
+        $transaction = Transaction::create([
+            'cashier_id'       => auth()->id(),
+            'transaction_code' => 'PRT-' . Carbon::now()->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6)),
+            'transaction_type' => 'wholesale',
+            'customer_name'    => $request->customer_name,
+            'customer_phone'   => $request->customer_phone,
+            'items_summary'    => $itemsSummary,
+            'total_price'      => $grandTotal,
+            'discount'         => $discount,
+            'shipping_cost'    => $shippingCost,
+            'total_cost'       => $totalCost,
+            'payment_method'   => $request->payment_method,
+            'branch'           => 'Pusat Cianjur', // Defaults to Pusat
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Nota partai berhasil dicatat!',
+            'transaction' => $transaction
+        ]);
+    }
+
+    /**
+     * Print wholesale transaction receipt.
+     */
+    public function printWholesale(Transaction $transaction)
+    {
+        // Security check: Only admin or owner can view wholesale invoices
+        if (!auth()->user()->isAdmin() && !auth()->user()->isOwner()) {
+            abort(403, 'Anda tidak memiliki akses untuk mencetak nota ini.');
+        }
+
+        // Parse items from items_summary
+        $items = [];
+        if (!empty($transaction->items_summary)) {
+            $parts = explode(', ', $transaction->items_summary);
+            foreach ($parts as $part) {
+                // Format: Name (Qty Unit x Price)
+                if (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z\s]+)\s*x\s*(\d+)\)$/', $part, $matches)) {
+                    $name = trim($matches[1]);
+                    $qty = floatval($matches[2]);
+                    $unit = trim($matches[3]);
+                    $price = intval($matches[4]);
+                    
+                    $items[] = [
+                        'name' => $name,
+                        'qty' => $qty,
+                        'unit' => $unit,
+                        'unit_price' => $price,
+                        'total_price' => round($price * $qty),
+                    ];
+                } else if (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z\s]+)\)$/', $part, $matches)) {
+                    $name = trim($matches[1]);
+                    $qty = floatval($matches[2]);
+                    $unit = trim($matches[3]);
+                    
+                    $items[] = [
+                        'name' => $name,
+                        'qty' => $qty,
+                        'unit' => $unit,
+                        'unit_price' => 0,
+                        'total_price' => 0,
+                    ];
+                } else {
+                    $items[] = [
+                        'name' => trim($part),
+                        'qty' => 1,
+                        'unit' => 'pcs',
+                        'unit_price' => 0,
+                        'total_price' => 0,
+                    ];
+                }
+            }
+        }
+
+        // Calculate actual subtotal before discount/shipping if items have prices
+        $subtotal = collect($items)->sum('total_price');
+
+        return view('admin.wholesale_receipt', compact('transaction', 'items', 'subtotal'));
     }
 }

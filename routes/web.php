@@ -46,6 +46,10 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'admin'])->name('dashboard');
         
+        // Wholesale Order Routes
+        Route::post('/wholesale-transactions', [\App\Http\Controllers\TransactionController::class, 'storeWholesale'])->name('wholesale-transactions.store');
+        Route::get('/wholesale-transactions/{transaction}/print', [\App\Http\Controllers\TransactionController::class, 'printWholesale'])->name('wholesale-transactions.print');
+
         // Product CRUD
         Route::post('/products', [\App\Http\Controllers\ProductController::class, 'store'])->name('products.store');
         Route::post('/products/{product}', [\App\Http\Controllers\ProductController::class, 'update'])->name('products.update');
