@@ -1491,10 +1491,10 @@
                                 <div class="grid grid-cols-12 gap-3 items-end p-4 rounded-2xl bg-slate-50/50 border border-slate-100/50 hover:bg-slate-50 hover:border-slate-200 transition duration-150">
                                     
                                     <!-- No -->
-                                    <div class="col-span-1 text-center font-bold text-slate-400 text-xs pb-3.5" x-text="idx + 1"></div>
+                                    <div class="col-span-1 md:col-span-1 order-1 md:order-1 text-center font-bold text-slate-400 text-xs pb-3.5" x-text="idx + 1"></div>
                                     
                                     <!-- Nama Produk (Autocomplete & Custom input) -->
-                                    <div class="col-span-4 relative flex flex-col gap-1">
+                                    <div class="col-span-9 md:col-span-4 order-2 md:order-2 relative flex flex-col gap-1">
                                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nama Produk / Custom Nama</label>
                                         <input type="text" 
                                                x-model="item.name" 
@@ -1518,8 +1518,19 @@
                                         </div>
                                     </div>
 
+                                    <!-- Action Hapus (Delete Button) -->
+                                    <div class="col-span-2 md:col-span-1 order-3 md:order-7 flex justify-center pb-3 md:pb-1">
+                                        <button type="button" 
+                                                @click="removeWholesaleItem(idx)" 
+                                                class="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition duration-150">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+
                                     <!-- Qty -->
-                                    <div class="col-span-1 flex flex-col gap-1">
+                                    <div class="col-span-6 md:col-span-1 order-4 md:order-3 flex flex-col gap-1">
                                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Qty</label>
                                         <input type="number" 
                                                step="any"
@@ -1529,7 +1540,7 @@
                                     </div>
 
                                     <!-- Satuan -->
-                                    <div class="col-span-1 flex flex-col gap-1">
+                                    <div class="col-span-6 md:col-span-1 order-5 md:order-4 flex flex-col gap-1">
                                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Satuan</label>
                                         <select x-model="item.price_unit" class="w-full border-slate-200 rounded-lg text-xs font-bold py-2 px-1 focus:border-emerald-500 focus:ring-emerald-500 bg-white">
                                             <option value="pcs">Pcs</option>
@@ -1542,7 +1553,7 @@
                                     </div>
 
                                     <!-- Harga Jual Satuan -->
-                                    <div class="col-span-2 flex flex-col gap-1">
+                                    <div class="col-span-6 md:col-span-2 order-6 md:order-5 flex flex-col gap-1">
                                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Harga Jual (Rp)</label>
                                         <input type="number" 
                                                x-model="item.selling_price" 
@@ -1551,23 +1562,12 @@
                                     </div>
 
                                     <!-- Harga Modal Satuan (Untuk Profit) -->
-                                    <div class="col-span-2 flex flex-col gap-1">
+                                    <div class="col-span-6 md:col-span-2 order-7 md:order-6 flex flex-col gap-1">
                                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Harga Modal (Rp)</label>
                                         <input type="number" 
                                                x-model="item.cost_price" 
                                                placeholder="Modal..." 
                                                class="w-full border-slate-200 rounded-lg text-xs font-bold py-2 px-3 focus:border-emerald-500 focus:ring-emerald-500 text-right">
-                                    </div>
-
-                                    <!-- Action Hapus -->
-                                    <div class="col-span-1 flex justify-center pb-1">
-                                        <button type="button" 
-                                                @click="removeWholesaleItem(idx)" 
-                                                class="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition duration-150">
-                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                        </button>
                                     </div>
 
                                 </div>
