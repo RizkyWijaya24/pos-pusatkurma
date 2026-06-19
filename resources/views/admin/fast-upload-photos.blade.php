@@ -8,10 +8,10 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                     </svg>
                 </a>
-                <div>
+                <!-- <div>
                     <h2 class="font-bold text-xl text-slate-800 leading-tight">Upload Foto Produk Cepat</h2>
                     <p class="text-sm text-slate-400 font-medium mt-0.5">Isi foto produk dengan mudah — unggah biasa atau rebuild otomatis dengan Gemini AI</p>
-                </div>
+                </div> -->
             </div>
         </div>
     </x-slot>
