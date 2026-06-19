@@ -5,6 +5,39 @@
             </h2>
         </x-slot>
 
+        {{-- ============================================================
+             KASIR DASHBOARD - DARK MODE STYLE OVERRIDES
+             Higher specificity using html.dark to override Tailwind
+             ============================================================ --}}
+        <style>
+            /* ── KASIR DASHBOARD METRIC CARDS DARK MODE (SOLID COLORS) ── */
+            html.dark #pos-card-omset {
+                background: #0d2b1a !important; /* Solid dark green */
+                border-color: rgba(52, 211, 153, 0.25) !important;
+            }
+            html.dark #pos-card-omset .text-emerald-700 {
+                color: #a7f3d0 !important;
+            }
+
+            html.dark #pos-card-expenses {
+                background: #350914 !important; /* Solid dark rose */
+                border-color: rgba(251, 113, 133, 0.25) !important;
+            }
+            html.dark #pos-card-expenses .text-rose-700 {
+                color: #fecdd3 !important;
+            }
+
+            /* Dynamic state backgrounds for net cash card */
+            html.dark #pos-card-net[style*="#ecfeff"] {
+                background: #09252c !important; /* Solid dark cyan */
+                border-color: rgba(6, 182, 212, 0.25) !important;
+            }
+            html.dark #pos-card-net[style*="#fffbeb"] {
+                background: #301705 !important; /* Solid dark amber */
+                border-color: rgba(251, 191, 36, 0.25) !important;
+            }
+        </style>
+
         <!-- Global JS Error Catcher to diagnose hosting issues -->
         <script>
             window.onerror = function(message, source, lineno, colno, error) {
@@ -613,17 +646,17 @@
                 <!-- Real-time Shift Summary / Ringkasan Kas Toko Hari Ini -->
                 <div class="grid grid-cols-3 gap-4">
                     <!-- Total Penjualan -->
-                    <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0;" class="p-4 rounded-2xl flex flex-col gap-1 shadow-sm relative overflow-hidden select-none">
+                    <div id="pos-card-omset" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0;" class="p-4 rounded-2xl flex flex-col gap-1 shadow-sm relative overflow-hidden select-none">
                         <span class="text-[9px] font-black text-emerald-700 uppercase tracking-wider">Omset Hari Ini</span>
                         <h4 class="text-base sm:text-lg font-black text-slate-800 leading-tight whitespace-nowrap" x-text="formatRupiah(todaySalesTotal)">Rp 0</h4>
                     </div>
                     <!-- Total Pengeluaran -->
-                    <div style="background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%); border: 1px solid #fecdd3;" class="p-4 rounded-2xl flex flex-col gap-1 shadow-sm relative overflow-hidden select-none">
+                    <div id="pos-card-expenses" style="background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%); border: 1px solid #fecdd3;" class="p-4 rounded-2xl flex flex-col gap-1 shadow-sm relative overflow-hidden select-none">
                         <span class="text-[9px] font-black text-rose-700 uppercase tracking-wider">Total Pengeluaran</span>
                         <h4 class="text-base sm:text-lg font-black text-slate-800 leading-tight whitespace-nowrap" x-text="formatRupiah(todayExpensesTotal)">Rp 0</h4>
                     </div>
                     <!-- Uang di Laci / Kas Bersih -->
-                    <div :style="todayNetCash >= 0 ? 'background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%); border: 1px solid #a5f3fc;' : 'background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 1px solid #fde68a;'"
+                    <div id="pos-card-net" :style="todayNetCash >= 0 ? 'background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%); border: 1px solid #a5f3fc;' : 'background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 1px solid #fde68a;'"
                          class="p-4 rounded-2xl flex flex-col gap-1 shadow-sm relative overflow-hidden select-none transition-all duration-300">
                         <span class="text-[9px] font-black uppercase tracking-wider" :class="todayNetCash >= 0 ? 'text-cyan-700' : 'text-amber-700'">Uang di Laci / Kas Bersih</span>
                         <h4 class="text-base sm:text-lg font-black text-slate-800 leading-tight whitespace-nowrap" x-text="formatRupiah(todayNetCash)">Rp 0</h4>

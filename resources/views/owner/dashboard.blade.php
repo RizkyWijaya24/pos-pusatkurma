@@ -7,6 +7,106 @@
         </h2>
     </x-slot>
 
+    {{-- ============================================================
+         OWNER DASHBOARD - DARK MODE STYLE OVERRIDES
+         Higher specificity using html.dark to override Tailwind
+         ============================================================ --}}
+    <style>
+        /* ── OWNER DASHBOARD METRIC CARDS DARK MODE (SOLID COLORS) ── */
+        html.dark #card-omset {
+            background: #0d2b1a !important; /* Solid dark green */
+            border-color: rgba(52, 211, 153, 0.25) !important;
+        }
+        html.dark #card-omset .text-emerald-700 {
+            color: #a7f3d0 !important;
+        }
+        html.dark #card-omset .bg-emerald-100\/50 {
+            background-color: rgba(16, 185, 129, 0.15) !important;
+            border-color: rgba(16, 185, 129, 0.25) !important;
+            color: #a7f3d0 !important;
+        }
+        html.dark #card-omset .text-emerald-800 {
+            color: #a7f3d0 !important;
+        }
+        html.dark #card-omset .w-10.h-10 {
+            background-color: rgba(16, 185, 129, 0.15) !important;
+            color: #34d399 !important;
+            border-color: rgba(16, 185, 129, 0.25) !important;
+        }
+        html.dark #card-omset .w-10.h-10:hover {
+            background-color: #10b981 !important;
+            color: #ffffff !important;
+        }
+        html.dark #card-omset .text-emerald-600 {
+            color: #34d399 !important;
+        }
+
+        html.dark #card-profit {
+            background: #092523 !important; /* Solid dark teal */
+            border-color: rgba(45, 212, 191, 0.25) !important;
+        }
+        html.dark #card-profit .text-teal-700 {
+            color: #99f6e4 !important;
+        }
+        html.dark #card-profit .text-teal-600 {
+            color: #2dd4bf !important;
+        }
+        html.dark #card-profit .bg-teal-100\/60 {
+            background-color: rgba(20, 184, 166, 0.15) !important;
+            border-color: rgba(20, 184, 166, 0.25) !important;
+            color: #99f6e4 !important;
+        }
+        html.dark #card-profit .w-10.h-10 {
+            background-color: rgba(20, 184, 166, 0.15) !important;
+            color: #2dd4bf !important;
+            border-color: rgba(20, 184, 166, 0.25) !important;
+        }
+        html.dark #card-profit .w-10.h-10:hover {
+            background-color: #14b8a6 !important;
+            color: #ffffff !important;
+        }
+
+        html.dark #card-transactions {
+            background: #350914 !important; /* Solid dark rose */
+            border-color: rgba(251, 113, 133, 0.25) !important;
+        }
+        html.dark #card-transactions .text-rose-700 {
+            color: #fecdd3 !important;
+        }
+        html.dark #card-transactions .text-rose-600 {
+            color: #fb7185 !important;
+        }
+        html.dark #card-transactions .w-10.h-10 {
+            background-color: rgba(244, 63, 94, 0.15) !important;
+            color: #fb7185 !important;
+            border-color: rgba(244, 63, 94, 0.25) !important;
+        }
+        html.dark #card-transactions .w-10.h-10:hover {
+            background-color: #f43f5e !important;
+            color: #ffffff !important;
+        }
+
+        html.dark #card-expenses {
+            background: #301705 !important; /* Solid dark amber */
+            border-color: rgba(251, 191, 36, 0.25) !important;
+        }
+        html.dark #card-expenses .text-amber-700 {
+            color: #fde68a !important;
+        }
+        html.dark #card-expenses .text-amber-600 {
+            color: #fbbf24 !important;
+        }
+        html.dark #card-expenses .w-10.h-10 {
+            background-color: rgba(245, 158, 11, 0.15) !important;
+            color: #fbbf24 !important;
+            border-color: rgba(245, 158, 11, 0.25) !important;
+        }
+        html.dark #card-expenses .w-10.h-10:hover {
+            background-color: #f59e0b !important;
+            color: #ffffff !important;
+        }
+    </style>
+
     <!-- JSON Data Islands for Security and HTML parsing safety -->
     <script type="application/json" id="weekly-trend-data">@json($weeklyTrend)</script>
     <script type="application/json" id="monthly-trend-data">@json($monthlyTrend)</script>

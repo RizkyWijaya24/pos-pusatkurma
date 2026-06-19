@@ -364,10 +364,26 @@ svg *, .no-transition, .no-transition * {
     color: #a7f3d0 !important;
 }
 
-/* ── GREEN LABEL COLORS (keep readable) ── */
-.dark .text-emerald-600 {
-    color: #34d399 !important;
-}
+/* ── COLOR LABEL TEXTS (keep readable in dark mode) ── */
+.dark .text-emerald-600 { color: #34d399 !important; }
+.dark .text-emerald-700 { color: #6ee7b7 !important; }
+.dark .text-emerald-800 { color: #a7f3d0 !important; }
+.dark .text-teal-600 { color: #2dd4bf !important; }
+.dark .text-teal-700 { color: #99f6e4 !important; }
+.dark .text-teal-800 { color: #ccfbf1 !important; }
+.dark .text-sky-600 { color: #38bdf8 !important; }
+.dark .text-sky-700 { color: #7dd3fc !important; }
+.dark .text-sky-800 { color: #e0f2fe !important; }
+.dark .text-rose-600 { color: #fb7185 !important; }
+.dark .text-rose-700 { color: #fecdd3 !important; }
+.dark .text-rose-800 { color: #ffe4e6 !important; }
+.dark .text-amber-600 { color: #fbbf24 !important; }
+.dark .text-amber-700 { color: #fde68a !important; }
+.dark .text-amber-800 { color: #fef3c7 !important; }
+.dark .text-cyan-600 { color: #22d3ee !important; }
+.dark .text-cyan-700 { color: #67e8f9 !important; }
+.dark .text-cyan-800 { color: #cffafe !important; }
+
 
 /* ── SECTION TITLES IN TAB CONTENT ── */
 .dark h3[class*="text-slate-800"] {
@@ -416,6 +432,8 @@ svg *, .no-transition, .no-transition * {
 .dark .bg-amber-50 { background-color: rgba(69, 26, 3, 0.5) !important; }
 .dark .bg-purple-50 { background-color: rgba(46, 16, 101, 0.5) !important; }
 .dark .bg-blue-50 { background-color: rgba(12, 74, 110, 0.4) !important; }
+.dark .bg-teal-50 { background-color: rgba(13, 59, 56, 0.5) !important; }
+.dark .bg-sky-50 { background-color: rgba(12, 74, 110, 0.4) !important; }
 
 /* ── WHOLESALE SUMMARY BOX ── */
 .dark [class*="bg-slate-50"][class*="rounded-2xl"][class*="p-5"] {

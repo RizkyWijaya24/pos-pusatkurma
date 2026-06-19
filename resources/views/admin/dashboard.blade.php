@@ -1127,10 +1127,10 @@
             
             <!-- Tab Controls -->
             <div class="flex justify-between items-center gap-4">
-                <div>
+                <!-- <div>
                     <h3 class="font-extrabold text-slate-800 dark:text-purple-100 text-lg leading-tight">Daftar Stok Produk Kurma</h3>
                     <p class="text-sm text-slate-400 dark:text-purple-400 font-medium mt-1">Kelola stok, harga, dan SKU semua produk kurma</p>
-                </div>
+                </div> -->
                 <div class="flex items-center gap-2 flex-shrink-0">
                     <a href="{{ route('admin.products.fast-upload') }}"
                        class="px-5 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold text-sm transition duration-150 flex items-center gap-2 shadow-md shadow-violet-600/20 whitespace-nowrap">
@@ -1303,10 +1303,10 @@
             
             <!-- Tab Controls -->
             <div class="flex justify-between items-center gap-4">
-                <div>
+                <!-- <div>
                     <h3 class="font-extrabold text-slate-800 dark:text-purple-100 text-lg leading-tight">Daftar Akun Kasir Toko</h3>
                     <p class="text-sm text-slate-400 dark:text-purple-400 font-medium mt-1">Kelola kredensial akun kasir yang bertugas melayani transaksi</p>
-                </div>
+                </div> -->
                 <button type="button" 
                         @click="showCashierModal = true"
                         class="px-5 py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-sm transition duration-150 flex items-center gap-2 shadow-md shadow-emerald-700/10 whitespace-nowrap">
@@ -1378,10 +1378,10 @@
             
             <!-- Tab Controls -->
             <div class="flex justify-between items-center gap-4">
-                <div>
+                <!-- <div>
                     <h3 class="font-extrabold text-slate-800 dark:text-purple-100 text-lg leading-tight">Daftar Kategori Produk</h3>
                     <p class="text-sm text-slate-400 dark:text-purple-400 font-medium mt-1">Kelola kategori produk kurma dan lihat jumlah produk terkait</p>
-                </div>
+                </div> -->
                 <button type="button" 
                         @click="resetCategoryForm(); showCategoryModal = true"
                         class="px-5 py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-sm transition duration-150 flex items-center gap-2 shadow-md shadow-emerald-700/10 whitespace-nowrap">
@@ -1438,10 +1438,10 @@
         <div x-show="activeTab === 'wholesale'" class="flex flex-col gap-6" style="display: none;">
             <!-- Tab Controls -->
             <div class="flex justify-between items-center gap-4">
-                <div>
+                <!-- <div>
                     <h3 class="font-extrabold text-slate-800 dark:text-purple-100 text-lg leading-tight">Pembuatan Nota Penjualan Partai (Grosir)</h3>
                     <p class="text-sm text-slate-400 dark:text-purple-400 font-medium mt-1">Buat nota dengan penentuan produk, kuantitas, harga jual, dan modal secara manual/kustom</p>
-                </div>
+                </div> -->
             </div>
 
             <!-- Wholesale Form Layout -->
