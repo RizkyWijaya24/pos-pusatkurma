@@ -13,19 +13,6 @@
                     <p class="text-sm text-slate-400 font-medium mt-0.5">Isi foto produk dengan mudah — unggah biasa atau rebuild otomatis dengan Gemini AI</p>
                 </div>
             </div>
-            {{-- AI Mode Global Toggle --}}
-            <div id="ai-toggle-wrapper"
-                 class="flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-4 py-2.5 shadow-sm">
-                <div class="flex flex-col">
-                    <span class="text-xs font-bold text-slate-700 leading-tight">Rebuild dengan Gemini AI</span>
-                    <span class="text-[10px] text-slate-400 font-medium" id="ai-toggle-label">Nonaktif — unggah biasa</span>
-                </div>
-                <button type="button" id="global-ai-toggle" role="switch" aria-checked="false"
-                        onclick="toggleGlobalAI(this)"
-                        class="relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-slate-200 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
-                    <span class="pointer-events-none inline-block h-6 w-6 translate-x-0 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out"></span>
-                </button>
-            </div>
         </div>
     </x-slot>
 
@@ -47,6 +34,35 @@
         .upload-card.ai-processing { border-color: #a78bfa; background: #f5f3ff; }
         .upload-card.success { border-color: #10b981; background: #ecfdf5; }
         .upload-card.error { border-color: #f87171; background: #fff1f2; }
+
+        /* Dark Mode overrides for upload-card */
+        .dark .upload-card {
+            background: #1a1240;
+            border-color: rgba(42, 29, 99, 0.6);
+        }
+        .dark .upload-card:hover {
+            box-shadow: 0 8px 28px 0 rgba(139, 92, 246, 0.15);
+        }
+        .dark .upload-card.has-photo {
+            border-color: #059669;
+            background: rgba(5, 150, 105, 0.1);
+        }
+        .dark .upload-card.uploading {
+            border-color: #2563eb;
+            background: rgba(37, 99, 235, 0.1);
+        }
+        .dark .upload-card.ai-processing {
+            border-color: #7c3aed;
+            background: rgba(124, 58, 237, 0.1);
+        }
+        .dark .upload-card.success {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.15);
+        }
+        .dark .upload-card.error {
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.15);
+        }
 
         .upload-zone {
             border: 2px dashed #cbd5e1;
@@ -76,7 +92,32 @@
     {{-- JSON DATA ISLANDS --}}
     <script type="application/json" id="products-data">@json($products->items())</script>
 
-    <div class="py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <div class="py-2 max-w-7xl mx-auto">
+
+        {{-- AI Toggle Bar --}}
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700 rounded-3xl p-5 mb-6 shadow-sm gap-4">
+            <div class="flex items-center gap-3.5">
+                <div class="w-12 h-12 rounded-2xl bg-violet-100 dark:bg-violet-950/60 flex items-center justify-center text-xl shadow-inner shrink-0">
+                    ✨
+                </div>
+                <div>
+                    <h3 class="font-extrabold text-sm text-slate-800 dark:text-purple-100">Rebuild Foto dengan Gemini AI</h3>
+                    <p class="text-xs text-slate-400 dark:text-purple-300 font-semibold mt-0.5">Ubah foto produk biasa secara otomatis menjadi foto studio premium bertenaga AI</p>
+                </div>
+            </div>
+            
+            <div id="ai-toggle-wrapper" class="flex items-center justify-between sm:justify-start gap-3.5 bg-slate-50 dark:bg-dp-900 border border-slate-100 dark:border-dp-700 rounded-2xl px-4 py-2.5 shadow-sm shrink-0 w-full sm:w-auto">
+                <div class="flex flex-col text-left">
+                    <span class="text-xs font-bold text-slate-700 dark:text-purple-200">Rebuild dengan Gemini AI</span>
+                    <span class="text-[10px] text-slate-400 dark:text-purple-400 font-medium" id="ai-toggle-label">Nonaktif — unggah biasa</span>
+                </div>
+                <button type="button" id="global-ai-toggle" role="switch" aria-checked="false"
+                        onclick="toggleGlobalAI(this)"
+                        class="relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-slate-200 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+                    <span class="pointer-events-none inline-block h-6 w-6 translate-x-0 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out"></span>
+                </button>
+            </div>
+        </div>
 
         {{-- Stats Bar --}}
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
@@ -109,14 +150,14 @@
 
         {{-- Filter & Search Bar --}}
         <form method="GET" action="{{ route('admin.products.fast-upload') }}" id="filter-form"
-              class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-6 flex flex-col sm:flex-row gap-4 items-center">
+              class="bg-white dark:bg-dp-800 rounded-2xl border border-slate-100 dark:border-dp-700 shadow-sm p-4 mb-6 flex flex-col md:flex-row gap-4 items-stretch md:items-center">
 
             {{-- Filter Status Foto --}}
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap sm:flex-nowrap items-center gap-2">
                 @foreach(['no_photo' => '📷 Belum Ada Foto', 'has_photo' => '✅ Sudah Ada Foto', 'all' => 'Semua'] as $val => $label)
                     <button type="button"
                             onclick="setFilter('{{ $val }}')"
-                            class="px-4 py-2 rounded-xl text-xs font-bold transition duration-150 filter-btn {{ $filter === $val ? 'bg-emerald-700 text-white shadow-sm' : 'bg-slate-50 text-slate-600 hover:bg-slate-100' }}"
+                            class="flex-1 sm:flex-initial text-center px-3 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition duration-150 filter-btn {{ $filter === $val ? 'bg-emerald-700 text-white shadow-sm' : 'bg-slate-50 dark:bg-dp-900 text-slate-600 dark:text-purple-300 hover:bg-slate-100 dark:hover:bg-dp-950' }}"
                             data-filter="{{ $val }}">
                         {{ $label }}
                     </button>
@@ -126,7 +167,7 @@
 
             {{-- Category Filter --}}
             <select name="category" onchange="document.getElementById('filter-form').submit()"
-                    class="border-slate-200 rounded-xl text-sm focus:border-emerald-500 focus:ring-emerald-500 font-semibold">
+                    class="w-full md:w-auto border-slate-200 dark:border-dp-700 rounded-xl text-sm focus:border-emerald-500 focus:ring-emerald-500 font-semibold bg-white dark:bg-dp-900 text-slate-800 dark:text-purple-100">
                 <option value="Semua" {{ $category === '' || $category === 'Semua' ? 'selected' : '' }}>Semua Kategori</option>
                 @foreach($categories as $cat)
                     <option value="{{ $cat->name }}" {{ $category === $cat->name ? 'selected' : '' }}>{{ $cat->name }}</option>
@@ -134,18 +175,18 @@
             </select>
 
             {{-- Search --}}
-            <div class="relative flex-1 max-w-sm">
+            <div class="relative w-full md:flex-1 md:max-w-sm">
                 <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                 </span>
                 <input type="text" name="search" value="{{ $search }}" placeholder="Cari nama produk atau SKU..."
-                       class="w-full pl-9 pr-4 py-2 text-sm border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500"
+                       class="w-full pl-9 pr-4 py-2 text-sm border-slate-200 dark:border-dp-700 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 bg-white dark:bg-dp-900 text-slate-800 dark:text-purple-100"
                        onkeydown="if(event.key==='Enter'){document.getElementById('filter-form').submit()}">
             </div>
 
-            <button type="submit" class="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition duration-150">
+            <button type="submit" class="w-full md:w-auto px-5 py-2.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition duration-150">
                 Cari
             </button>
         </form>
@@ -174,7 +215,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5" id="products-grid">
                 @foreach($products as $product)
                     @php $hasImg = !empty($product->image_path); @endphp
-                    <div class="upload-card {{ $hasImg ? 'has-photo' : '' }}" id="card-{{ $product->id }}"
+                    <div class="upload-card flex flex-col h-full {{ $hasImg ? 'has-photo' : '' }}" id="card-{{ $product->id }}"
                          data-product-id="{{ $product->id }}"
                          data-product-name="{{ $product->name }}"
                          data-has-photo="{{ $hasImg ? '1' : '0' }}">
@@ -211,7 +252,7 @@
                         </div>
 
                         {{-- Card Body --}}
-                        <div class="p-4 flex flex-col gap-3">
+                        <div class="p-4 flex flex-col justify-between flex-grow gap-3">
                             {{-- Product Info --}}
                             <div>
                                 <div class="flex items-center justify-between mb-1">
@@ -230,7 +271,7 @@
                             <p id="status-text-{{ $product->id }}" class="text-xs text-slate-400 font-medium hidden"></p>
 
                             {{-- Upload Buttons --}}
-                            <div class="flex gap-2">
+                            <div class="flex flex-col gap-2">
                                 {{-- Input: Gallery / File --}}
                                 <input type="file"
                                        id="file-{{ $product->id }}"
@@ -250,7 +291,7 @@
                                 <button type="button"
                                         id="upload-btn-{{ $product->id }}"
                                         onclick="document.getElementById('file-{{ $product->id }}').click()"
-                                        class="flex-1 py-2.5 rounded-xl text-xs font-bold transition duration-150 flex items-center justify-center gap-1.5
+                                        class="w-full py-2.5 rounded-xl text-xs font-bold transition duration-150 flex items-center justify-center gap-1.5
                                                {{ $hasImg ? 'bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700' : 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-md shadow-emerald-700/10' }}">
                                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
@@ -262,11 +303,8 @@
                                 <button type="button"
                                         id="camera-btn-{{ $product->id }}"
                                         onclick="document.getElementById('camera-{{ $product->id }}').click()"
-                                        style="background:#0ea5e9;color:#fff;padding:0 14px;border-radius:12px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:5px;border:none;cursor:pointer;box-shadow:0 2px 8px rgba(14,165,233,0.3);transition:background 0.15s;"
-                                        onmouseover="this.style.background='#0284c7'"
-                                        onmouseout="this.style.background='#0ea5e9'"
-                                        title="Foto langsung dari kamera">
-                                    <svg style="width:14px;height:14px;flex-shrink:0;" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        class="w-full py-2.5 rounded-xl text-xs font-bold transition duration-150 flex items-center justify-center gap-1.5 bg-sky-500 hover:bg-sky-600 text-white shadow-md shadow-sky-500/10">
+                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
                                     </svg>
@@ -288,13 +326,13 @@
 
         {{-- Toast Notification --}}
         <div id="toast"
-             class="fixed bottom-6 right-6 z-50 hidden max-w-sm bg-white border border-slate-200 rounded-2xl shadow-2xl p-4 flex items-center gap-3 transition-all duration-300">
+             class="fixed bottom-24 sm:bottom-6 left-4 right-4 sm:left-auto sm:right-6 z-50 hidden sm:max-w-sm bg-white dark:bg-dp-800 border border-slate-200 dark:border-dp-700 rounded-2xl shadow-2xl p-4 flex items-center gap-3 transition-all duration-300">
             <div id="toast-icon" class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"></div>
             <div class="flex-1">
-                <p id="toast-title" class="font-extrabold text-slate-800 text-sm"></p>
-                <p id="toast-msg" class="text-xs text-slate-400 mt-0.5"></p>
+                <p id="toast-title" class="font-extrabold text-slate-800 dark:text-purple-100 text-sm"></p>
+                <p id="toast-msg" class="text-xs text-slate-400 dark:text-purple-300 mt-0.5"></p>
             </div>
-            <button onclick="hideToast()" class="text-slate-300 hover:text-slate-600 transition">
+            <button onclick="hideToast()" class="text-slate-300 hover:text-slate-600 dark:text-purple-400 dark:hover:text-purple-200 transition">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -394,8 +432,8 @@
             if (camBtn) camBtn.disabled = true;
 
             if (useAI) {
-                card.className = card.className.replace('has-photo', '').replace('upload-card', '').trim();
-                card.classList.add('upload-card', 'ai-processing');
+                card.classList.remove('has-photo');
+                card.classList.add('ai-processing');
                 spinner.classList.add('spinner-purple');
 
                 // Step-by-step progress for AI
@@ -464,7 +502,7 @@
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                         </svg>
-                        Ganti Foto`;
+                        Ganti`;
 
                     // Show success checkmark
                     const check = document.getElementById('success-check-' + productId);
