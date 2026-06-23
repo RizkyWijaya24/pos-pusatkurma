@@ -32,14 +32,14 @@ class DashboardController extends Controller
         return view('admin.dashboard', compact('products', 'cashiers', 'categories'));
     }
 
-    /**
-     * Display the Kasir Dashboard.
-     */
     public function kasir(Request $request)
     {
         $category = $request->input('category');
+        $kasir    = auth()->user();
+        $myLocation = \App\Models\StockLocation::findByBranchName($kasir->branch ?? '');
+        $locationId = $myLocation ? $myLocation->id : null;
 
-        $query = Product::query();
+        $query = Product::with(['productStocks']);
 
         // Proteksi Strict Mode Database cPanel:
         // Jika parameter kategori diisi dan nilainya bukan "Semua"/"all"/"empty", lakukan filter WHERE
@@ -52,7 +52,15 @@ class DashboardController extends Controller
 
         // STRICT SECURITY: Mapping dilakukan di level PHP untuk memastikan cost_price 
         // sama sekali tidak dikirimkan ke client-side/kasir view demi keamanan data modal.
-        $products = $productsFromDb->map(function ($product) {
+        $products = $productsFromDb->map(function ($product) use ($locationId) {
+            $stock = 0.0;
+            if ($locationId) {
+                $ps = $product->productStocks->firstWhere('location_id', $locationId);
+                $stock = $ps ? (float) $ps->stock : 0.0;
+            } else {
+                $stock = (float) $product->stock; // fallback to legacy stock column
+            }
+
             return [
                 'id' => $product->id,
                 'sku' => $product->sku,
@@ -61,7 +69,7 @@ class DashboardController extends Controller
                 'price' => (int) $product->selling_price, // map selling_price to price in PHP
                 'price_unit' => $product->price_unit,
                 'image_path' => $product->image_path,
-                'stock' => (float) $product->stock,
+                'stock' => $stock,
                 'price_tiers' => $product->price_tiers ?? []
             ];
         });

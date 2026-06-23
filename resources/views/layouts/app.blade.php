@@ -6,7 +6,7 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <meta name="google" content="notranslate">
 
-        <title>{{ config('app.name', 'Pusat Kurma Cianjur') }}</title>
+        <title>@hasSection('title') @yield('title') | @endif {{ config('app.name', 'Pusat Kurma Cianjur') }}</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -232,7 +232,7 @@
                         </div>
                     @else
                         <div class="font-semibold text-lg sm:text-xl text-slate-800 dark:text-purple-100 leading-tight">
-                            Pusat Kurma Cianjur
+                            @yield('title', 'Pusat Kurma Cianjur')
                         </div>
                     @endisset
                 </div>
@@ -332,8 +332,9 @@
 
             <!-- Main view container -->
             <main class="flex-grow py-8 px-4 sm:px-6 lg:px-8 pb-24 md:pb-8 bg-slate-50 dark:bg-transparent">
-                <div class="max-w-7xl mx-auto">
-                    {{ $slot }}
+                <div class="max-w-[90rem] mx-auto">
+                    {{ $slot ?? '' }}
+                    @yield('content')
                 </div>
             </main>
         </div>

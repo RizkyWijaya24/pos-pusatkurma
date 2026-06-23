@@ -36,16 +36,21 @@ Route::middleware('auth')->group(function () {
         Route::get('/transactions/export', [\App\Http\Controllers\TransactionController::class, 'exportKasir'])->name('transactions.export');
         Route::post('/transactions', [\App\Http\Controllers\TransactionController::class, 'store'])->name('transactions.store');
         Route::get('/transactions/{transaction}/print', [\App\Http\Controllers\TransactionController::class, 'print'])->name('transactions.print');
-        
+
         // Expense management routes
         Route::post('/expenses', [\App\Http\Controllers\ExpenseController::class, 'store'])->name('expenses.store');
         Route::delete('/expenses/{expense}', [\App\Http\Controllers\ExpenseController::class, 'destroy'])->name('expenses.destroy');
+
+        // ── Kasir: Request Stok Barang ──────────────────────────
+        Route::get('/stock-request', [\App\Http\Controllers\StockTransferController::class, 'kasirRequestPage'])->name('stock-request');
+        Route::post('/stock-request', [\App\Http\Controllers\StockTransferController::class, 'kasirRequestStore'])->name('stock-request.store');
+        Route::post('/stock-request/{stockTransfer}/cancel', [\App\Http\Controllers\StockTransferController::class, 'cancel'])->name('stock-request.cancel');
     });
 
     // Admin routes (Accessible only by admin)
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'admin'])->name('dashboard');
-        
+
         // Wholesale Order Routes
         Route::post('/wholesale-transactions', [\App\Http\Controllers\TransactionController::class, 'storeWholesale'])->name('wholesale-transactions.store');
         Route::get('/wholesale-transactions/{transaction}/print', [\App\Http\Controllers\TransactionController::class, 'printWholesale'])->name('wholesale-transactions.print');
@@ -74,6 +79,19 @@ Route::middleware('auth')->group(function () {
         Route::get('/transactions', [\App\Http\Controllers\TransactionController::class, 'adminIndex'])->name('transactions.index');
         Route::put('/transactions/{transaction}', [\App\Http\Controllers\TransactionController::class, 'update'])->name('transactions.update');
         Route::delete('/transactions/{transaction}', [\App\Http\Controllers\TransactionController::class, 'destroy'])->name('transactions.destroy');
+
+        // ── Admin: Manajemen Transfer Stok ──────────────────────
+        Route::get('/stock-transfers', [\App\Http\Controllers\StockTransferController::class, 'index'])->name('stock-transfers.index');
+        Route::get('/stock-transfers/create', [\App\Http\Controllers\StockTransferController::class, 'create'])->name('stock-transfers.create');
+        Route::post('/stock-transfers', [\App\Http\Controllers\StockTransferController::class, 'store'])->name('stock-transfers.store');
+        Route::get('/stock-transfers/{stockTransfer}', [\App\Http\Controllers\StockTransferController::class, 'show'])->name('stock-transfers.show');
+        Route::post('/stock-transfers/{stockTransfer}/approve', [\App\Http\Controllers\StockTransferController::class, 'approve'])->name('stock-transfers.approve');
+        Route::post('/stock-transfers/{stockTransfer}/reject',  [\App\Http\Controllers\StockTransferController::class, 'reject'])->name('stock-transfers.reject');
+        Route::post('/stock-transfers/{stockTransfer}/cancel',  [\App\Http\Controllers\StockTransferController::class, 'cancel'])->name('stock-transfers.cancel');
+
+        // AJAX: Stok per lokasi & koreksi stok manual
+        Route::get('/stock-by-location', [\App\Http\Controllers\StockTransferController::class, 'getStockByLocation'])->name('stock-by-location');
+        Route::post('/stock-adjust', [\App\Http\Controllers\StockTransferController::class, 'adjustStock'])->name('stock-adjust');
     });
 
     // Owner routes (Accessible by owner and admin)
@@ -85,6 +103,17 @@ Route::middleware('auth')->group(function () {
         // Transaction History (Owner read-only)
         Route::get('/transactions/export', [\App\Http\Controllers\TransactionController::class, 'export'])->name('transactions.export');
         Route::get('/transactions', [\App\Http\Controllers\TransactionController::class, 'ownerIndex'])->name('transactions.index');
+
+        // ── Owner: Laporan Stok Multi-Cabang ────────────────────
+        Route::get('/stock-report', [\App\Http\Controllers\StockReportController::class, 'index'])->name('stock-report');
+        Route::get('/stock-report/export', [\App\Http\Controllers\StockReportController::class, 'export'])->name('stock-report.export');
+        Route::get('/stock-adjustment-log', [\App\Http\Controllers\StockReportController::class, 'adjustmentLog'])->name('stock-adjustment-log');
+
+        // Owner juga bisa approve/reject transfer
+        Route::post('/stock-transfers/{stockTransfer}/approve', [\App\Http\Controllers\StockTransferController::class, 'approve'])->name('stock-transfers.approve');
+        Route::post('/stock-transfers/{stockTransfer}/reject',  [\App\Http\Controllers\StockTransferController::class, 'reject'])->name('stock-transfers.reject');
+        Route::get('/stock-transfers', [\App\Http\Controllers\StockTransferController::class, 'index'])->name('stock-transfers.index');
+        Route::get('/stock-transfers/{stockTransfer}', [\App\Http\Controllers\StockTransferController::class, 'show'])->name('stock-transfers.show');
     });
 
     Route::post('/leave-impersonate', [\App\Http\Controllers\CashierController::class, 'leaveImpersonate'])->name('admin.impersonate.leave');

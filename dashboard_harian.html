@@ -1,0 +1,1790 @@
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50 dark:bg-dp-950" translate="no">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+        <meta name="csrf-token" content="aKwRS3h22CDyCoEoCpJzAGrFqNGWdsr2QWi3Fopq">
+        <meta name="google" content="notranslate">
+
+        <title> Laravel</title>
+
+        <!-- Fonts -->
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+        <!-- Scripts -->
+        <link rel="preload" as="style" href="http://localhost/build/assets/app-DBpNwFZ9.css" /><link rel="modulepreload" as="script" href="http://localhost/build/assets/app-BjMeHjpC.js" /><link rel="stylesheet" href="http://localhost/build/assets/app-DBpNwFZ9.css" /><script type="module" src="http://localhost/build/assets/app-BjMeHjpC.js"></script>
+        <style>
+            body {
+                font-family: 'Outfit', sans-serif;
+            }
+
+            /* GLOBAL TOAST */
+            #global-toast {
+                position: fixed;
+                top: 5rem;
+                right: 1.25rem;
+                z-index: 999999;
+                max-width: 24rem;
+                width: calc(100% - 2.5rem);
+                background-color: rgba(255, 255, 255, 0.97);
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+                border-radius: 1rem;
+                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+                border: 1px solid rgba(241, 245, 249, 0.8);
+                padding: 1rem;
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                overflow: hidden;
+                transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
+                transform: translateX(150%);
+                opacity: 0;
+                pointer-events: none;
+                box-sizing: border-box;
+            }
+
+            #global-toast.show {
+                transform: translateX(0);
+                opacity: 1;
+                pointer-events: auto;
+            }
+        </style>
+
+        
+        <script>
+            (function() {
+                const stored = localStorage.getItem('pk-theme');
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (stored === 'dark' || (!stored && prefersDark)) {
+                    document.documentElement.classList.add('dark');
+                }
+            })();
+        </script>
+    </head>
+    <body class="h-full text-slate-800 dark:text-purple-100 antialiased overflow-x-hidden bg-slate-50 dark:bg-dp-950" x-data="{ sidebarOpen: false }">
+
+        <!-- Impersonation Banner -->
+        
+        <!-- Laravel Session Flash to Global Toast triggers -->
+        
+        
+        <!-- Sidebar for Mobile (Off-canvas) -->
+        <div x-show="sidebarOpen" 
+             x-transition:enter="transition-opacity ease-linear duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition-opacity ease-linear duration-300"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="relative z-50 md:hidden" 
+             role="dialog" 
+             aria-modal="true" 
+             style="display: none;">
+            
+            <div class="fixed inset-0 bg-dp-950/80 dark:bg-dp-950/90 backdrop-blur-sm" @click="sidebarOpen = false"></div>
+
+            <div class="fixed inset-y-0 left-0 flex w-full max-w-xs transition duration-300 transform bg-emerald-950 text-white shadow-2xl">
+                <div class="relative flex flex-1 flex-col px-6 py-6 overflow-y-auto">
+                    <!-- Close button -->
+                    <div class="absolute top-5 right-5">
+                        <button type="button" @click="sidebarOpen = false" class="no-transition -m-2.5 p-2.5 text-emerald-200 hover:text-white">
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Brand / Title -->
+                    <div class="flex items-center gap-3 py-4 border-b border-emerald-800/50">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-400 to-teal-300 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                            <span class="text-xl font-bold text-emerald-900">PK</span>
+                        </div>
+                        <div>
+                            <h1 class="text-lg font-bold bg-gradient-to-r from-white to-emerald-200 bg-clip-text text-transparent">Pusat Kurma</h1>
+                            <p class="text-xs text-emerald-300 tracking-wide font-medium">Cianjur</p>
+                        </div>
+                    </div>
+
+                    <!-- Navigation Links inside Mobile Sidebar -->
+                    <nav class="mt-8 flex flex-col gap-2">
+                        <!-- Dashboard Link -->
+<a href="http://localhost/dashboard" 
+   class="flex items-center gap-3.5 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 text-emerald-100 hover:bg-emerald-900/40 hover:text-white">
+    <svg class="h-5 w-5 shrink-0 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+    </svg>
+    <span>General Dashboard</span>
+</a>
+
+<!-- Role-Specific Kasir Dashboard (Admin & Kasir) -->
+
+<!-- Role-Specific Admin Dashboard (Admin only) -->
+
+<!-- Role-Specific Owner Dashboard (Admin & Owner) -->
+<a href="http://localhost/owner/dashboard" 
+   class="flex items-center gap-3.5 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 bg-emerald-800 text-white shadow-md">
+    <svg class="h-5 w-5 shrink-0 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5M9 10.5h6" />
+    </svg>
+    <span>Dashboard Owner</span>
+</a>
+
+<!-- Divider -->
+<div class="my-2 border-t border-emerald-800/30"></div>
+
+<!-- Riwayat Transaksi — role-aware link -->
+<a href="http://localhost/owner/transactions" 
+   class="flex items-center gap-3.5 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 text-emerald-100 hover:bg-emerald-900/40 hover:text-white">
+    <svg class="h-5 w-5 shrink-0 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+    </svg>
+    <span>Riwayat Transaksi</span>
+</a>
+
+
+<!-- Stock Management (Role-aware) -->
+
+
+<a href="http://localhost/owner/stock-transfers" 
+   class="flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 text-emerald-100 hover:bg-emerald-900/40 hover:text-white">
+    <div class="flex items-center gap-3.5">
+        <svg class="h-5 w-5 shrink-0 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.03 0 1.9.732 2.076 1.714m-5.8 0a2.251 2.251 0 0 0-2.338-.043M9 6.75h-.75a2.25 2.25 0 0 0-2.25 2.25v10.5a2.25 2.25 0 0 0 2.25 2.25h3.75a2.25 2.25 0 0 0 2.25-2.25V9A2.25 2.25 0 0 0 12 6.75h-.75M9 6.75c0-.414.336-.75.75-.75h1.5a.75.75 0 0 1 .75.75M9 6.75h3" />
+        </svg>
+        <span>Persetujuan Stok</span>
+    </div>
+            <span class="bg-yellow-500 text-slate-950 font-extrabold text-[11px] px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+            2
+        </span>
+    </a>
+
+<a href="http://localhost/owner/stock-report" 
+   class="flex items-center gap-3.5 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 text-emerald-100 hover:bg-emerald-900/40 hover:text-white">
+    <svg class="h-5 w-5 shrink-0 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5M9 10.5h6" />
+    </svg>
+    <span>Laporan Stok</span>
+</a>
+
+<a href="http://localhost/owner/stock-adjustment-log" 
+   class="flex items-center gap-3.5 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 text-emerald-100 hover:bg-emerald-900/40 hover:text-white">
+    <svg class="h-5 w-5 shrink-0 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 17.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+    </svg>
+    <span>Log Koreksi Stok</span>
+</a>
+
+<!-- Divider -->
+<div class="my-2 border-t border-emerald-800/30"></div>
+
+<!-- Profile Link -->
+<a href="http://localhost/profile" 
+   class="flex items-center gap-3.5 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 text-emerald-100 hover:bg-emerald-900/40 hover:text-white">
+    <svg class="h-5 w-5 shrink-0 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+    </svg>
+    <span>Profil Saya</span>
+</a>
+                    </nav>
+
+                    <!-- Footer / Account details in Mobile Sidebar -->
+                    <div class="mt-auto pt-6 border-t border-emerald-800/50 flex flex-col gap-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-emerald-800 flex items-center justify-center font-bold text-emerald-200 border border-emerald-700">
+                                OW
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-sm leading-tight text-white">Owner Pusat Kurma</h4>
+                                <span class="inline-flex mt-1 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded bg-emerald-500/25 text-emerald-300 border border-emerald-500/35">
+                                    owner
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Static Sidebar for Desktop -->
+        <div class="hidden md:fixed md:inset-y-0 md:z-20 md:flex md:w-64 md:flex-col bg-emerald-950 text-white border-r border-emerald-900/30">
+            <div class="flex flex-col flex-grow px-6 py-6 overflow-y-auto">
+                
+                <!-- Brand / Logo -->
+                <div class="flex items-center gap-3 py-4 border-b border-emerald-900/50">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-400 to-teal-300 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                        <span class="text-xl font-bold text-emerald-900">PK</span>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold bg-gradient-to-r from-white to-emerald-200 bg-clip-text text-transparent">Pusat Kurma</h1>
+                        <p class="text-xs text-emerald-300 tracking-wide font-medium">Cianjur</p>
+                    </div>
+                </div>
+
+                <!-- Desktop Sidebar Navigation -->
+                <nav class="mt-8 flex flex-col gap-2">
+                    <!-- Dashboard Link -->
+<a href="http://localhost/dashboard" 
+   class="flex items-center gap-3.5 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 text-emerald-100 hover:bg-emerald-900/40 hover:text-white">
+    <svg class="h-5 w-5 shrink-0 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+    </svg>
+    <span>General Dashboard</span>
+</a>
+
+<!-- Role-Specific Kasir Dashboard (Admin & Kasir) -->
+
+<!-- Role-Specific Admin Dashboard (Admin only) -->
+
+<!-- Role-Specific Owner Dashboard (Admin & Owner) -->
+<a href="http://localhost/owner/dashboard" 
+   class="flex items-center gap-3.5 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 bg-emerald-800 text-white shadow-md">
+    <svg class="h-5 w-5 shrink-0 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5M9 10.5h6" />
+    </svg>
+    <span>Dashboard Owner</span>
+</a>
+
+<!-- Divider -->
+<div class="my-2 border-t border-emerald-800/30"></div>
+
+<!-- Riwayat Transaksi — role-aware link -->
+<a href="http://localhost/owner/transactions" 
+   class="flex items-center gap-3.5 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 text-emerald-100 hover:bg-emerald-900/40 hover:text-white">
+    <svg class="h-5 w-5 shrink-0 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+    </svg>
+    <span>Riwayat Transaksi</span>
+</a>
+
+
+<!-- Stock Management (Role-aware) -->
+
+
+<a href="http://localhost/owner/stock-transfers" 
+   class="flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 text-emerald-100 hover:bg-emerald-900/40 hover:text-white">
+    <div class="flex items-center gap-3.5">
+        <svg class="h-5 w-5 shrink-0 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.03 0 1.9.732 2.076 1.714m-5.8 0a2.251 2.251 0 0 0-2.338-.043M9 6.75h-.75a2.25 2.25 0 0 0-2.25 2.25v10.5a2.25 2.25 0 0 0 2.25 2.25h3.75a2.25 2.25 0 0 0 2.25-2.25V9A2.25 2.25 0 0 0 12 6.75h-.75M9 6.75c0-.414.336-.75.75-.75h1.5a.75.75 0 0 1 .75.75M9 6.75h3" />
+        </svg>
+        <span>Persetujuan Stok</span>
+    </div>
+            <span class="bg-yellow-500 text-slate-950 font-extrabold text-[11px] px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+            2
+        </span>
+    </a>
+
+<a href="http://localhost/owner/stock-report" 
+   class="flex items-center gap-3.5 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 text-emerald-100 hover:bg-emerald-900/40 hover:text-white">
+    <svg class="h-5 w-5 shrink-0 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5M9 10.5h6" />
+    </svg>
+    <span>Laporan Stok</span>
+</a>
+
+<a href="http://localhost/owner/stock-adjustment-log" 
+   class="flex items-center gap-3.5 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 text-emerald-100 hover:bg-emerald-900/40 hover:text-white">
+    <svg class="h-5 w-5 shrink-0 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 17.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+    </svg>
+    <span>Log Koreksi Stok</span>
+</a>
+
+<!-- Divider -->
+<div class="my-2 border-t border-emerald-800/30"></div>
+
+<!-- Profile Link -->
+<a href="http://localhost/profile" 
+   class="flex items-center gap-3.5 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 text-emerald-100 hover:bg-emerald-900/40 hover:text-white">
+    <svg class="h-5 w-5 shrink-0 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+    </svg>
+    <span>Profil Saya</span>
+</a>
+                </nav>
+
+                <!-- Sidebar Footer -->
+                <div class="mt-auto pt-6 border-t border-emerald-900/50 flex flex-col gap-3">
+                    <div class="flex items-center gap-3 p-2 rounded-xl bg-emerald-900/30 border border-emerald-800/10">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-700 to-teal-600 flex items-center justify-center font-bold text-emerald-100 shadow-md">
+                            OW
+                        </div>
+                        <div class="overflow-hidden">
+                            <h4 class="font-semibold text-sm leading-none text-white truncate">Owner Pusat Kurma</h4>
+                            <span class="inline-flex mt-1.5 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                owner
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="md:pl-64 flex flex-col min-h-screen">
+            
+            <!-- Top Header -->
+            <header class="bg-white/80 dark:bg-dp-900/85 backdrop-blur-md sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-x-4 border-b border-slate-100 dark:border-dp-700/60 px-4 sm:px-6 lg:px-8 shadow-sm">
+                <!-- Left: Toggle menu for Mobile, Page Title for Desktop -->
+                <div class="flex items-center gap-x-4">
+                    <button type="button" @click="sidebarOpen = true" class="no-transition -m-2.5 p-2.5 text-slate-500 dark:text-purple-300 hover:text-slate-900 dark:hover:text-purple-100 md:hidden">
+                        <span class="sr-only">Open sidebar</span>
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                        </svg>
+                    </button>
+
+                    <!-- Header dynamic title slot -->
+                                            <div class="font-semibold text-lg sm:text-xl text-slate-800 dark:text-purple-100 leading-tight">
+                            <h2 class="font-bold text-xl text-slate-800 leading-tight">
+            Analisis Kinerja Penjualan
+        </h2>
+                        </div>
+                                    </div>
+
+                <!-- Right Side Profile & Actions -->
+                <div class="flex items-center gap-x-3 lg:gap-x-5">
+                    
+                    <!-- Notification bell -->
+                    <button class="relative rounded-full p-2 text-slate-400 dark:text-purple-400 hover:text-slate-500 dark:hover:text-purple-200 hover:bg-slate-50 dark:hover:bg-dp-800 transition duration-150">
+                        <span class="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-dp-900"></span>
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                        </svg>
+                    </button>
+
+                    <!-- DARK MODE TOGGLE BUTTON -->
+                    <button 
+                        id="dark-mode-toggle"
+                        onclick="toggleDarkMode()"
+                        title="Toggle Dark Mode"
+                        aria-label="Toggle dark mode"
+                        class="w-9 h-9 rounded-full border border-slate-200 dark:border-dp-600 bg-slate-100 dark:bg-dp-800 text-slate-600 dark:text-purple-300 hover:bg-amber-50 dark:hover:bg-dp-700 hover:border-amber-300 dark:hover:border-violet-500 transition-all duration-200 shadow-sm"
+                    >
+                        <!-- Sun Icon (light mode) -->
+                        <span class="sun-icon">
+                            <svg class="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                            </svg>
+                        </span>
+                        <!-- Moon Icon (dark mode) -->
+                        <span class="moon-icon">
+                            <svg class="w-5 h-5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+                            </svg>
+                        </span>
+                    </button>
+
+                    <!-- Divider -->
+                    <div class="h-6 w-px bg-slate-100 dark:bg-dp-700" aria-hidden="true"></div>
+
+                    <!-- Settings Dropdown -->
+                    <div class="relative" x-data="{ dropdownOpen: false }" @click.away="dropdownOpen = false">
+                        <button type="button" @click="dropdownOpen = !dropdownOpen" class="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-50 dark:hover:bg-dp-800 transition duration-150">
+                            <div class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 flex items-center justify-center font-bold text-xs shadow-inner">
+                                O
+                            </div>
+                            <span class="hidden lg:flex lg:items-center">
+                                <span class="text-sm font-medium text-slate-700 dark:text-purple-200">Owner Pusat Kurma</span>
+                                <svg class="ms-2 h-4 w-4 text-slate-400 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <!-- Dropdown panel -->
+                        <div x-show="dropdownOpen"
+                             x-transition:enter="transition ease-out duration-100"
+                             x-transition:enter-start="transform opacity-0 scale-95"
+                             x-transition:enter-end="transform opacity-100 scale-100"
+                             x-transition:leave="transition ease-in duration-75"
+                             x-transition:leave-start="transform opacity-100 scale-100"
+                             x-transition:leave-end="transform opacity-0 scale-95"
+                             class="absolute right-0 z-30 mt-2 w-52 origin-top-right rounded-xl bg-white dark:bg-dp-800 p-1 shadow-lg dark:shadow-dp-950/80 ring-1 ring-black/5 dark:ring-dp-600/50 focus:outline-none border border-transparent dark:border-dp-700/60"
+                             style="display: none;">
+                            
+                            <!-- User info header in dropdown -->
+                            <div class="px-4 py-2.5 border-b border-slate-100 dark:border-dp-700/60 mb-1">
+                                <p class="text-xs font-bold text-slate-800 dark:text-purple-100 truncate">Owner Pusat Kurma</p>
+                                <p class="text-[11px] text-slate-500 dark:text-purple-400 truncate">owner@kurma.com</p>
+                            </div>
+
+                            <!-- Profile Link -->
+                            <a href="http://localhost/profile" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 dark:text-purple-200 hover:bg-slate-50 dark:hover:bg-dp-700/60 rounded-lg font-medium transition duration-150">
+                                <svg class="w-4 h-4 text-slate-400 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                                </svg>
+                                Your Profile
+                            </a>
+
+                            <!-- Divider -->
+                            <div class="my-1 border-t border-slate-100 dark:border-dp-700/60"></div>
+
+                            <!-- Logout Form -->
+                            <form method="POST" action="http://localhost/logout">
+                                <input type="hidden" name="_token" value="aKwRS3h22CDyCoEoCpJzAGrFqNGWdsr2QWi3Fopq" autocomplete="off">                                <button type="submit" class="w-full flex items-center gap-2.5 text-left px-4 py-2.5 text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg font-medium transition duration-150">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                                    </svg>
+                                    Log Out
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main view container -->
+            <main class="flex-grow py-8 px-4 sm:px-6 lg:px-8 pb-24 md:pb-8 bg-slate-50 dark:bg-transparent">
+                <div class="max-w-[90rem] mx-auto">
+                    <style>
+        /* ── OWNER DASHBOARD METRIC CARDS DARK MODE (SOLID COLORS) ── */
+        html.dark #card-omset {
+            background: #0d2b1a !important; /* Solid dark green */
+            border-color: rgba(52, 211, 153, 0.25) !important;
+        }
+        html.dark #card-omset .text-emerald-700 {
+            color: #a7f3d0 !important;
+        }
+        html.dark #card-omset .bg-emerald-100\/50 {
+            background-color: rgba(16, 185, 129, 0.15) !important;
+            border-color: rgba(16, 185, 129, 0.25) !important;
+            color: #a7f3d0 !important;
+        }
+        html.dark #card-omset .text-emerald-800 {
+            color: #a7f3d0 !important;
+        }
+        html.dark #card-omset .w-10.h-10 {
+            background-color: rgba(16, 185, 129, 0.15) !important;
+            color: #34d399 !important;
+            border-color: rgba(16, 185, 129, 0.25) !important;
+        }
+        html.dark #card-omset .w-10.h-10:hover {
+            background-color: #10b981 !important;
+            color: #ffffff !important;
+        }
+        html.dark #card-omset .text-emerald-600 {
+            color: #34d399 !important;
+        }
+
+        html.dark #card-profit {
+            background: #092523 !important; /* Solid dark teal */
+            border-color: rgba(45, 212, 191, 0.25) !important;
+        }
+        html.dark #card-profit .text-teal-700 {
+            color: #99f6e4 !important;
+        }
+        html.dark #card-profit .text-teal-600 {
+            color: #2dd4bf !important;
+        }
+        html.dark #card-profit .bg-teal-100\/60 {
+            background-color: rgba(20, 184, 166, 0.15) !important;
+            border-color: rgba(20, 184, 166, 0.25) !important;
+            color: #99f6e4 !important;
+        }
+        html.dark #card-profit .w-10.h-10 {
+            background-color: rgba(20, 184, 166, 0.15) !important;
+            color: #2dd4bf !important;
+            border-color: rgba(20, 184, 166, 0.25) !important;
+        }
+        html.dark #card-profit .w-10.h-10:hover {
+            background-color: #14b8a6 !important;
+            color: #ffffff !important;
+        }
+
+        html.dark #card-transactions {
+            background: #350914 !important; /* Solid dark rose */
+            border-color: rgba(251, 113, 133, 0.25) !important;
+        }
+        html.dark #card-transactions .text-rose-700 {
+            color: #fecdd3 !important;
+        }
+        html.dark #card-transactions .text-rose-600 {
+            color: #fb7185 !important;
+        }
+        html.dark #card-transactions .w-10.h-10 {
+            background-color: rgba(244, 63, 94, 0.15) !important;
+            color: #fb7185 !important;
+            border-color: rgba(244, 63, 94, 0.25) !important;
+        }
+        html.dark #card-transactions .w-10.h-10:hover {
+            background-color: #f43f5e !important;
+            color: #ffffff !important;
+        }
+
+        html.dark #card-expenses {
+            background: #301705 !important; /* Solid dark amber */
+            border-color: rgba(251, 191, 36, 0.25) !important;
+        }
+        html.dark #card-expenses .text-amber-700 {
+            color: #fde68a !important;
+        }
+        html.dark #card-expenses .text-amber-600 {
+            color: #fbbf24 !important;
+        }
+        html.dark #card-expenses .w-10.h-10 {
+            background-color: rgba(245, 158, 11, 0.15) !important;
+            color: #fbbf24 !important;
+            border-color: rgba(245, 158, 11, 0.25) !important;
+        }
+        html.dark #card-expenses .w-10.h-10:hover {
+            background-color: #f59e0b !important;
+            color: #ffffff !important;
+        }
+    </style>
+
+    <!-- JSON Data Islands for Security and HTML parsing safety -->
+    <script type="application/json" id="weekly-trend-data">[{"day_name":"Mon","full_day_name":"Monday","date":"22 Jun","omset":108500,"is_today":true,"height_percent":100},{"day_name":"Tue","full_day_name":"Tuesday","date":"23 Jun","omset":0,"is_today":false,"height_percent":0},{"day_name":"Wed","full_day_name":"Wednesday","date":"24 Jun","omset":0,"is_today":false,"height_percent":0},{"day_name":"Thu","full_day_name":"Thursday","date":"25 Jun","omset":0,"is_today":false,"height_percent":0},{"day_name":"Fri","full_day_name":"Friday","date":"26 Jun","omset":0,"is_today":false,"height_percent":0},{"day_name":"Sat","full_day_name":"Saturday","date":"27 Jun","omset":0,"is_today":false,"height_percent":0},{"day_name":"Sun","full_day_name":"Sunday","date":"28 Jun","omset":0,"is_today":false,"height_percent":0}]</script>
+    <script type="application/json" id="monthly-trend-data">[{"label":"Minggu 1","full_name":"Minggu Pertama","date":"01-07","omset":36154759,"is_today":false,"height_percent":78},{"label":"Minggu 2","full_name":"Minggu Kedua","date":"08-14","omset":46558723,"is_today":false,"height_percent":100},{"label":"Minggu 3","full_name":"Minggu Ketiga","date":"15-21","omset":43964442,"is_today":false,"height_percent":94},{"label":"Minggu 4","full_name":"Minggu Keempat","date":"22-28","omset":108500,"is_today":true,"height_percent":0},{"label":"Minggu 5","full_name":"Minggu Kelima","date":"29-30","omset":0,"is_today":false,"height_percent":0}]</script>
+
+    <!-- Alpine.js Owner State (Optional for interactivity) -->
+    <div x-data="{
+        revenue: 108500,
+        transactions: 3,
+        expenses: 0,
+        lowStockCount: 7,
+        timeframe: 'Mingguan',
+        showTable: localStorage.getItem('owner_active_card') !== null,
+        activeCard: localStorage.getItem('owner_active_card'),
+        formatRupiah(num) {
+            const val = parseFloat(num);
+            return 'Rp ' + (isNaN(val) ? '0' : val.toLocaleString('id-ID'));
+        },
+        toggleCard(card) {
+            if (this.activeCard === card) {
+                this.activeCard = null;
+                this.showTable = false;
+                localStorage.removeItem('owner_active_card');
+            } else {
+                this.activeCard = card;
+                this.showTable = true;
+                localStorage.setItem('owner_active_card', card);
+            }
+        },
+        chart: null,
+        initChart() {
+            this.$nextTick(() => {
+                const ctx = document.getElementById('trendChart').getContext('2d');
+                
+                // Generate beautiful gradient
+                const gradient = ctx.createLinearGradient(0, 0, 0, 220);
+                gradient.addColorStop(0, 'rgba(16, 185, 129, 0.35)'); // Emerald-500
+                gradient.addColorStop(1, 'rgba(16, 185, 129, 0.00)');
+                
+                const weeklyData = JSON.parse(document.getElementById('weekly-trend-data').textContent);
+                const monthlyData = JSON.parse(document.getElementById('monthly-trend-data').textContent);
+                
+                const datasets = {
+                    'Mingguan': {
+                        labels: weeklyData.map(d => d.day_name),
+                        fullLabels: weeklyData.map(d => d.full_day_name + ' (' + d.date + ')'),
+                        data: weeklyData.map(d => d.omset)
+                    },
+                    'Bulanan': {
+                        labels: monthlyData.map(w => w.label),
+                        fullLabels: monthlyData.map(w => w.full_name + ' (Tanggal ' + w.date + ')'),
+                        data: monthlyData.map(w => w.omset)
+                    }
+                };
+
+                this.chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: datasets['Mingguan'].labels,
+                        datasets: [{
+                            label: 'Omset',
+                            data: datasets['Mingguan'].data,
+                            borderColor: '#059669', // Emerald-600
+                            borderWidth: 3,
+                            pointBackgroundColor: '#ffffff',
+                            pointBorderColor: '#059669',
+                            pointBorderWidth: 2,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            pointHoverBackgroundColor: '#059669',
+                            pointHoverBorderColor: '#ffffff',
+                            pointHoverBorderWidth: 2,
+                            fill: true,
+                            backgroundColor: gradient,
+                            tension: 0.35
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                backgroundColor: '#0f172a',
+                                titleFont: { size: 11, weight: 'bold', family: 'Outfit, Segoe UI' },
+                                bodyFont: { size: 12, weight: 'bold', family: 'Outfit, Segoe UI' },
+                                padding: 10,
+                                cornerRadius: 12,
+                                displayColors: false,
+                                callbacks: {
+                                    title: (tooltipItems) => {
+                                        const index = tooltipItems[0].dataIndex;
+                                        return datasets[this.timeframe].fullLabels[index];
+                                    },
+                                    label: (context) => {
+                                        return 'Omset: Rp ' + context.raw.toLocaleString('id-ID');
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                grid: {
+                                    color: 'rgba(241, 245, 249, 0.8)',
+                                },
+                                ticks: {
+                                    font: { size: 10, weight: '600', family: 'Outfit, Segoe UI' },
+                                    color: '#94a3b8',
+                                    callback: function(value) {
+                                        if (value >= 1000000) {
+                                            return (value / 1000000) + 'jt';
+                                        }
+                                        if (value >= 1000) {
+                                            return (value / 1000) + 'rb';
+                                        }
+                                        return value;
+                                    }
+                                },
+                                border: {
+                                    dash: [5, 5]
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    font: { size: 11, weight: '700', family: 'Outfit, Segoe UI' },
+                                    color: '#64748b'
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Watch Alpine timeframe variable to update chart data
+                this.$watch('timeframe', (value) => {
+                    this.chart.data.labels = datasets[value].labels;
+                    this.chart.data.datasets[0].data = datasets[value].data;
+                    this.chart.update();
+                });
+            });
+        }
+    }" x-init="initChart()" class="flex flex-col gap-8 max-w-full overflow-hidden">
+
+        <!-- Filter Toggles (Forest Green Brand Theme) -->
+        <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-md">
+            <!-- Left Side: Title and badge -->
+            <div class="flex flex-col gap-1">
+                <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="font-extrabold text-slate-800 text-lg leading-tight">
+                        Laporan Penjualan — Harian (22 June 2026)
+                    </h3>
+                                    </div>
+                <p class="text-xs text-slate-400 font-medium">Gunakan tab filter dan filter cabang untuk menganalisis performa bisnis Anda</p>
+            </div>
+            
+            <!-- Right Side: Dropdowns and Filters Controls -->
+            <div x-data="{ filterType: 'harian' }" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+                <!-- Single Merged GET Form for both Filters -->
+                <form method="GET" action="http://localhost/owner/dashboard" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                    <!-- Dropdown Filter Cabang -->
+                    <select name="branch" onchange="this.form.submit()" 
+                            class="w-full sm:w-auto text-xs font-bold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner px-4 py-2.5 bg-slate-50 text-slate-700 hover:bg-slate-100/50 transition cursor-pointer">
+                        <option value="">🌐 Semua Cabang</option>
+                                                                                    <option value="Cabang Cianjur" >
+                                    📍 Cabang Cianjur
+                                </option>
+                                                                                                                <option value="Cabang Ciranjang" >
+                                    📍 Cabang Ciranjang
+                                </option>
+                                                                                                                <option value="Cabang Online" >
+                                    📍 Cabang Online
+                                </option>
+                                                                                                                <option value="Cabang Rumah" >
+                                    📍 Cabang Rumah
+                                </option>
+                                                                        </select>
+
+                    <!-- Dropdown Filter Tipe Waktu -->
+                    <select name="filter_type" x-model="filterType" onchange="this.form.submit()"
+                            class="w-full sm:w-auto text-xs font-bold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner px-4 py-2.5 bg-slate-50 text-slate-700 hover:bg-slate-100/50 transition cursor-pointer">
+                        <option value="harian">📅 Harian</option>
+                        <option value="mingguan">📅 Mingguan</option>
+                        <option value="bulanan">📅 Bulanan</option>
+                    </select>
+
+                    <!-- Input Tanggal Spesifik (Harian) -->
+                    <input type="date" name="date" value="2026-06-22" x-show="filterType === 'harian'" onchange="this.form.submit()"
+                           class="w-full sm:w-auto text-xs font-bold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner px-4 py-2 bg-slate-50 text-slate-700 hover:bg-slate-100/50 transition cursor-pointer">
+
+                    <!-- Input Minggu Spesifik (Mingguan) -->
+                    <input type="week" name="week" value="2026-W26" x-show="filterType === 'mingguan'" onchange="this.form.submit()"
+                           class="w-full sm:w-auto text-xs font-bold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner px-4 py-2 bg-slate-50 text-slate-700 hover:bg-slate-100/50 transition cursor-pointer">
+
+                    <!-- Input Bulan Spesifik (Bulanan) -->
+                    <input type="month" name="month" value="2026-06" x-show="filterType === 'bulanan'" onchange="this.form.submit()"
+                           class="w-full sm:w-auto text-xs font-bold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner px-4 py-2 bg-slate-50 text-slate-700 hover:bg-slate-100/50 transition cursor-pointer">
+                </form>
+            </div>
+        </div>
+
+        <!-- Hint Banner to encourage clicking cards -->
+        <div class="bg-gradient-to-r from-emerald-800 to-teal-900 text-white px-6 py-3.5 rounded-2xl shadow-sm flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                    <span class="animate-bounce text-emerald-300 font-extrabold text-sm">👇</span>
+                </div>
+                <div>
+                    <h4 class="text-xs font-black tracking-wider uppercase text-emerald-300">Tips Analisis Performa</h4>
+                    <p class="text-xs text-emerald-50 font-medium">Klik salah satu kartu metrik utama di bawah ini untuk menampilkan detail laporan dan menganalisis rincian kolom secara interaktif!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 1. TOP ROW: Summary Metrics Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            
+            <!-- Card 1: Total Omset -->
+            <div id="card-omset"
+                 x-on:click="toggleCard('omset')"
+                 style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0;"
+                 :class="activeCard === 'omset' ? 'ring-4 ring-emerald-500/40 scale-[1.03] shadow-xl border-emerald-500' : 'hover:scale-[1.02] shadow-md border-emerald-200/50'"
+                 class="p-5 sm:p-6 rounded-3xl flex flex-col justify-between gap-4 group transition duration-300 cursor-pointer select-none relative overflow-hidden">
+                <!-- Soft Glow Backdrop Decoration -->
+                <div class="absolute -right-10 -top-10 w-24 h-24 rounded-full bg-emerald-500/10 blur-2xl group-hover:bg-emerald-500/20 transition duration-300"></div>
+                <div class="flex flex-col gap-1 min-w-0 flex-1 z-10 pr-10">
+                    <span class="text-[10px] font-black text-emerald-700 uppercase tracking-widest pr-10">Total Omset</span>
+                    <h3 class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight mt-0.5 whitespace-nowrap" x-text="formatRupiah(108500)">Rp 108.500</h3>
+                    <div class="flex items-center gap-1 select-none whitespace-nowrap bg-emerald-100/50 border border-emerald-200/40 rounded-lg px-2 py-0.5 mt-1 self-start text-[10px] font-bold text-emerald-800">
+                        <span>🛡️ Kas Bersih:</span>
+                        <span class="font-extrabold" x-text="formatRupiah(108500)">Rp 108.500</span>
+                    </div>
+                    <div class="flex items-center gap-1 text-[11px] font-extrabold text-rose-600 mt-1">
+                                                    <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-15 15m0 0H11.25m-11.25 0V8.25" />
+                            </svg>
+                            <span class="truncate">-97.2% vs hari sebelumnya</span>
+                                            </div>
+                </div>
+                <div class="w-10 h-10 shrink-0 bg-white/80 text-emerald-600 border border-emerald-200 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition duration-300 absolute top-5 right-5 z-10">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Card 2: Total Profit Bersih -->
+            <div id="card-profit"
+                 x-on:click="toggleCard('profit')"
+                 style="background: linear-gradient(135deg, #f0fdf4 0%, #ccfbf1 100%); border: 1px solid #99f6e4;"
+                 :class="activeCard === 'profit' ? 'ring-4 ring-teal-500/40 scale-[1.03] shadow-xl border-teal-500' : 'hover:scale-[1.02] shadow-md border-teal-200/50'"
+                 class="p-5 sm:p-6 rounded-3xl flex flex-col justify-between gap-4 group transition duration-300 cursor-pointer select-none relative overflow-hidden">
+                <!-- Soft Glow Backdrop Decoration -->
+                <div class="absolute -right-10 -top-10 w-24 h-24 rounded-full bg-teal-500/10 blur-2xl group-hover:bg-teal-500/20 transition duration-300"></div>
+
+                <div class="flex flex-col gap-1 min-w-0 flex-1 z-10 pr-10">
+                    <div class="flex items-center gap-1.5 pr-10">
+                        <span class="text-[10px] font-black text-teal-700 uppercase tracking-widest">Total Profit Bersih</span>
+                        <span class="text-[8px] font-black text-teal-700 leading-none bg-teal-100/60 border border-teal-200 px-1 py-0.5 rounded tracking-wide shrink-0">NET</span>
+                    </div>
+                    <h3 class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight mt-0.5 whitespace-nowrap" x-text="formatRupiah(10200)">Rp 10.200</h3>
+                    <div class="flex items-center gap-1 text-[11px] font-extrabold text-rose-600 mt-1">
+                                                    <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-15 15m0 0H11.25m-11.25 0V8.25" />
+                            </svg>
+                            <span class="truncate">-97.0% vs hari sebelumnya</span>
+                                            </div>
+                </div>
+                <div class="w-10 h-10 shrink-0 bg-white/80 text-teal-600 border border-teal-200 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-teal-600 group-hover:text-white transition duration-300 absolute top-5 right-5 z-10">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.306a11.95 11.95 0 015.814-5.518l2.74-1.22m0 0l-5.94-2.281m5.94 2.28l-2.28 5.941" />
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Card 3: Total Transaksi -->
+            <div id="card-transactions"
+                 x-on:click="toggleCard('transactions')"
+                 style="background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%); border: 1px solid #fecdd3;"
+                 :class="activeCard === 'transactions' ? 'ring-4 ring-rose-500/40 scale-[1.03] shadow-xl border-rose-500' : 'hover:scale-[1.02] shadow-md border-rose-200/50'"
+                 class="p-5 sm:p-6 rounded-3xl flex flex-col justify-between gap-4 group transition duration-300 cursor-pointer select-none relative overflow-hidden">
+                <!-- Soft Glow Backdrop Decoration -->
+                <div class="absolute -right-10 -top-10 w-24 h-24 rounded-full bg-rose-500/10 blur-2xl group-hover:bg-rose-500/20 transition duration-300"></div>
+
+                <div class="flex flex-col gap-1 min-w-0 flex-1 z-10 pr-10">
+                    <span class="text-[10px] font-black text-rose-700 uppercase tracking-widest pr-10">Total Transaksi</span>
+                    <h3 class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight mt-0.5 whitespace-nowrap" x-text="transactions + ' Transaksi'">3 Transaksi</h3>
+                    <div class="flex items-center gap-1 text-[11px] font-extrabold text-rose-600 mt-1">
+                                                    <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-15 15m0 0H11.25m-11.25 0V8.25" />
+                            </svg>
+                            <span class="truncate">-93.6% vs hari sebelumnya</span>
+                                            </div>
+                </div>
+                <div class="w-10 h-10 shrink-0 bg-white/80 text-rose-600 border border-rose-200 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-rose-600 group-hover:text-white transition duration-300 absolute top-5 right-5 z-10">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5h6.75M8.625 12.75h6.75" />
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Card 4: Total Pengeluaran -->
+            <div id="card-expenses"
+                 x-on:click="toggleCard('expenses')"
+                 style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 1px solid #fde68a;"
+                 :class="activeCard === 'expenses' ? 'ring-4 ring-amber-500/40 scale-[1.03] shadow-xl border-amber-500' : 'hover:scale-[1.02] shadow-md border-amber-200/50'"
+                 class="p-5 sm:p-6 rounded-3xl flex flex-col justify-between gap-4 group transition duration-300 cursor-pointer select-none relative overflow-hidden">
+                <!-- Soft Glow Backdrop Decoration -->
+                <div class="absolute -right-10 -top-10 w-24 h-24 rounded-full bg-amber-500/10 blur-2xl group-hover:bg-amber-500/20 transition duration-300"></div>
+
+                <div class="flex flex-col gap-1 min-w-0 flex-1 z-10 pr-10">
+                    <span class="text-[10px] font-black text-amber-700 uppercase tracking-widest pr-10">Total Pengeluaran</span>
+                    <h3 class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight mt-0.5 whitespace-nowrap" x-text="formatRupiah(0)">Rp 0</h3>
+                    <div class="flex items-center gap-1 text-[11px] font-extrabold text-emerald-600 mt-1">
+                                                    <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-15 15m0 0H11.25m-11.25 0V8.25" />
+                            </svg>
+                            <span class="truncate">-100.0% vs hari sebelumnya</span>
+                                            </div>
+                </div>
+                <div class="w-10 h-10 shrink-0 bg-white/80 text-amber-600 border border-amber-200 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-amber-600 group-hover:text-white transition duration-300 absolute top-5 right-5 z-10">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H3m0 0h-.375c-.621 0-1.125.504-1.125 1.125V18m0 0H3.375c.621 0 1.125-.504 1.125-1.125V18M3 18.75h-.375A1.125 1.125 0 011.5 17.625V6M2.25 18.75h2.25m-2.25 0v-4.5m18 4.5v-4.5m-18 4.5h18" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. MIDDLE ROW: Sales Trends Bar Graph & Low Stock Table -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- Beautiful Sales Trend Bar Graph (HTML/CSS) -->
+            <div class="lg:col-span-8 bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col justify-between gap-6">
+                <!-- Chart Header -->
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h4 class="font-extrabold text-slate-800 text-base leading-tight" x-text="timeframe === 'Mingguan' ? 'Tren Omset Mingguan' : 'Tren Omset Bulanan'">Tren Omset Mingguan</h4>
+                        <p class="text-xs text-slate-400 font-medium mt-1" x-text="timeframe === 'Mingguan' ? 'Laporan omset harian dalam minggu ini' : 'Laporan omset mingguan dalam bulan ini'">Laporan omset harian dalam minggu ini</p>
+                    </div>
+                    <div class="flex gap-1.5 p-1 bg-slate-50 border border-slate-100 rounded-xl">
+                        <button type="button" x-on:click="timeframe = 'Mingguan'" :class="timeframe === 'Mingguan' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500'" class="px-3 py-1.5 text-xs font-bold rounded-lg transition duration-150">Mingguan</button>
+                        <button type="button" x-on:click="timeframe = 'Bulanan'" :class="timeframe === 'Bulanan' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500'" class="px-3 py-1.5 text-xs font-bold rounded-lg transition duration-150">Bulanan</button>
+                    </div>
+                </div>
+
+                <!-- Live Chart.js Responsive Line Chart -->
+                <div class="relative w-full h-64">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Side alert section: Low Stock products detailed listing -->
+            <div class="lg:col-span-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-4">
+                <div>
+                    <h4 class="font-extrabold text-slate-800 text-base leading-tight">Detail Peringatan Stok</h4>
+                    <p class="text-xs text-slate-400 font-medium mt-1">Segera restok produk yang hampir habis:</p>
+                </div>
+                
+                <div class="flex flex-col gap-3 overflow-y-auto max-h-[220px] pr-1">
+                                            <div class="p-4 rounded-2xl bg-rose-50/50 border border-rose-100 flex flex-col gap-2">
+                            <div class="flex justify-between items-start gap-2">
+                                <h5 class="font-extrabold text-sm text-slate-800 truncate" title="kurma vacum 1kg">kurma vacum 1kg</h5>
+                                <span class="bg-rose-100 text-rose-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-rose-200 shrink-0">
+                                    Sisa 1 pack
+                                </span>
+                            </div>
+                            <div class="flex justify-between text-xs text-slate-500 font-semibold">
+                                <span>SKU: PK-E9C3B7</span>
+                                <span>Kategori: kurma</span>
+                            </div>
+                        </div>
+                                            <div class="p-4 rounded-2xl bg-rose-50/50 border border-rose-100 flex flex-col gap-2">
+                            <div class="flex justify-between items-start gap-2">
+                                <h5 class="font-extrabold text-sm text-slate-800 truncate" title="kurma vacum 500 gram">kurma vacum 500 gram</h5>
+                                <span class="bg-rose-100 text-rose-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-rose-200 shrink-0">
+                                    Sisa 8 pack
+                                </span>
+                            </div>
+                            <div class="flex justify-between text-xs text-slate-500 font-semibold">
+                                <span>SKU: PK-B15A02</span>
+                                <span>Kategori: kurma</span>
+                            </div>
+                        </div>
+                                            <div class="p-4 rounded-2xl bg-rose-50/50 border border-rose-100 flex flex-col gap-2">
+                            <div class="flex justify-between items-start gap-2">
+                                <h5 class="font-extrabold text-sm text-slate-800 truncate" title="Kurma mesir 1 dus">Kurma mesir 1 dus</h5>
+                                <span class="bg-rose-100 text-rose-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-rose-200 shrink-0">
+                                    Sisa 2 dus
+                                </span>
+                            </div>
+                            <div class="flex justify-between text-xs text-slate-500 font-semibold">
+                                <span>SKU: PK-03CD28</span>
+                                <span>Kategori: kurma</span>
+                            </div>
+                        </div>
+                                            <div class="p-4 rounded-2xl bg-rose-50/50 border border-rose-100 flex flex-col gap-2">
+                            <div class="flex justify-between items-start gap-2">
+                                <h5 class="font-extrabold text-sm text-slate-800 truncate" title="Coklat truffles pack 1kg">Coklat truffles pack 1kg</h5>
+                                <span class="bg-rose-100 text-rose-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-rose-200 shrink-0">
+                                    Sisa 8 pack
+                                </span>
+                            </div>
+                            <div class="flex justify-between text-xs text-slate-500 font-semibold">
+                                <span>SKU: PK-8F3469</span>
+                                <span>Kategori: coklat</span>
+                            </div>
+                        </div>
+                                            <div class="p-4 rounded-2xl bg-rose-50/50 border border-rose-100 flex flex-col gap-2">
+                            <div class="flex justify-between items-start gap-2">
+                                <h5 class="font-extrabold text-sm text-slate-800 truncate" title="Wadah bukhur">Wadah bukhur</h5>
+                                <span class="bg-rose-100 text-rose-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-rose-200 shrink-0">
+                                    Sisa 7 pcs
+                                </span>
+                            </div>
+                            <div class="flex justify-between text-xs text-slate-500 font-semibold">
+                                <span>SKU: PK-403BF5</span>
+                                <span>Kategori: Bukhur</span>
+                            </div>
+                        </div>
+                                            <div class="p-4 rounded-2xl bg-rose-50/50 border border-rose-100 flex flex-col gap-2">
+                            <div class="flex justify-between items-start gap-2">
+                                <h5 class="font-extrabold text-sm text-slate-800 truncate" title="Pistachio pouch 75gram">Pistachio pouch 75gram</h5>
+                                <span class="bg-rose-100 text-rose-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-rose-200 shrink-0">
+                                    Sisa 6 pcs
+                                </span>
+                            </div>
+                            <div class="flex justify-between text-xs text-slate-500 font-semibold">
+                                <span>SKU: PK-67237F</span>
+                                <span>Kategori: snack</span>
+                            </div>
+                        </div>
+                                            <div class="p-4 rounded-2xl bg-rose-50/50 border border-rose-100 flex flex-col gap-2">
+                            <div class="flex justify-between items-start gap-2">
+                                <h5 class="font-extrabold text-sm text-slate-800 truncate" title="Pistachio pouch 300 gram">Pistachio pouch 300 gram</h5>
+                                <span class="bg-rose-100 text-rose-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-rose-200 shrink-0">
+                                    Sisa 2 pcs
+                                </span>
+                            </div>
+                            <div class="flex justify-between text-xs text-slate-500 font-semibold">
+                                <span>SKU: PK-4D1367</span>
+                                <span>Kategori: snack</span>
+                            </div>
+                        </div>
+                                    </div>
+            </div>
+
+        </div>
+
+        <!-- Section Header: Best Seller -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-md">
+            <div>
+                <h4 class="font-extrabold text-slate-800 text-base leading-tight">Analisis Produk Terlaris (Best Seller)</h4>
+                <p class="text-xs text-slate-400 font-medium mt-1">Daftar produk paling populer berdasarkan jumlah transaksi dan volume penjualan</p>
+            </div>
+            <div class="flex items-center gap-3 shrink-0 w-full sm:w-auto justify-end">
+                <a href="http://localhost/owner/dashboard/export-best-sellers?filter_type=harian&amp;date=2026-06-22&amp;week=2026-W26&amp;month=2026-06" 
+                   class="px-4 py-2.5 bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-800 hover:text-white text-xs font-bold rounded-xl shadow-sm transition duration-150 flex items-center gap-2">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                    </svg>
+                    <span>Ekspor Excel Terlaris (Harian)</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- 2.5. Best Seller Products Section (Harian, Mingguan, Bulanan) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            
+            <!-- Column 1: Best Seller Hari Ini / Kemarin -->
+            <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-5">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shadow-sm">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="font-extrabold text-slate-800 text-sm leading-tight">
+                            Terlaris Harian
+                        </h4>
+                        <p class="text-[10px] text-slate-400 font-medium font-mono">
+                            Tanggal: 22 Jun 2026
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                                            <div class="flex items-center justify-between p-2 rounded-2xl hover:bg-slate-50 transition duration-150 border border-transparent hover:border-slate-100">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <!-- Rank Indicator -->
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 border
+                                     bg-amber-100 text-amber-800 border-amber-200
+                                    ">
+                                    #1
+                                </div>
+                                
+                                <!-- Product Image / Initial -->
+                                                                    <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 font-extrabold text-[10px] shrink-0 shadow-sm">
+                                        KU
+                                    </div>
+                                
+                                <!-- Product Info -->
+                                <div class="min-w-0">
+                                    <h5 class="font-bold text-xs text-slate-800 truncate" title="kurma madu ecer (250 gram x 56)">kurma madu ecer (250 gram x 56)</h5>
+                                    <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block mt-0.5">Umum</span>
+                                </div>
+                            </div>
+
+                            <!-- Popularity & Qty Info -->
+                            <div class="text-right shrink-0 flex flex-col items-end gap-0.5">
+                                <span class="bg-amber-100/70 text-amber-800 border border-amber-200/50 rounded-lg px-2 py-0.5 text-[10px] font-black shadow-sm whitespace-nowrap">
+                                    1x Transaksi
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-bold">
+                                    Total: 1 pcs
+                                </span>
+                            </div>
+                        </div>
+                                            <div class="flex items-center justify-between p-2 rounded-2xl hover:bg-slate-50 transition duration-150 border border-transparent hover:border-slate-100">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <!-- Rank Indicator -->
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 border
+                                     bg-slate-200 text-slate-800 border-slate-300
+                                    ">
+                                    #2
+                                </div>
+                                
+                                <!-- Product Image / Initial -->
+                                                                    <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 font-extrabold text-[10px] shrink-0 shadow-sm">
+                                        BE
+                                    </div>
+                                
+                                <!-- Product Info -->
+                                <div class="min-w-0">
+                                    <h5 class="font-bold text-xs text-slate-800 truncate" title="Beras don malai 1kg (1 pack x 40000)">Beras don malai 1kg (1 pack x 40000)</h5>
+                                    <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block mt-0.5">Umum</span>
+                                </div>
+                            </div>
+
+                            <!-- Popularity & Qty Info -->
+                            <div class="text-right shrink-0 flex flex-col items-end gap-0.5">
+                                <span class="bg-amber-100/70 text-amber-800 border border-amber-200/50 rounded-lg px-2 py-0.5 text-[10px] font-black shadow-sm whitespace-nowrap">
+                                    1x Transaksi
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-bold">
+                                    Total: 1 pcs
+                                </span>
+                            </div>
+                        </div>
+                                            <div class="flex items-center justify-between p-2 rounded-2xl hover:bg-slate-50 transition duration-150 border border-transparent hover:border-slate-100">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <!-- Rank Indicator -->
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 border
+                                     bg-orange-100 text-orange-800 border-orange-200
+                                    ">
+                                    #3
+                                </div>
+                                
+                                <!-- Product Image / Initial -->
+                                                                    <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 font-extrabold text-[10px] shrink-0 shadow-sm">
+                                        BU
+                                    </div>
+                                
+                                <!-- Product Info -->
+                                <div class="min-w-0">
+                                    <h5 class="font-bold text-xs text-slate-800 truncate" title="Bumbu shan (1 pack x 22000)">Bumbu shan (1 pack x 22000)</h5>
+                                    <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block mt-0.5">Umum</span>
+                                </div>
+                            </div>
+
+                            <!-- Popularity & Qty Info -->
+                            <div class="text-right shrink-0 flex flex-col items-end gap-0.5">
+                                <span class="bg-amber-100/70 text-amber-800 border border-amber-200/50 rounded-lg px-2 py-0.5 text-[10px] font-black shadow-sm whitespace-nowrap">
+                                    1x Transaksi
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-bold">
+                                    Total: 1 pcs
+                                </span>
+                            </div>
+                        </div>
+                                            <div class="flex items-center justify-between p-2 rounded-2xl hover:bg-slate-50 transition duration-150 border border-transparent hover:border-slate-100">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <!-- Rank Indicator -->
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 border
+                                     bg-slate-50 text-slate-500 border-slate-100 ">
+                                    #4
+                                </div>
+                                
+                                <!-- Product Image / Initial -->
+                                                                    <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 font-extrabold text-[10px] shrink-0 shadow-sm">
+                                        KU
+                                    </div>
+                                
+                                <!-- Product Info -->
+                                <div class="min-w-0">
+                                    <h5 class="font-bold text-xs text-slate-800 truncate" title="kurma sukari ecer (500 gram x 65)">kurma sukari ecer (500 gram x 65)</h5>
+                                    <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block mt-0.5">Umum</span>
+                                </div>
+                            </div>
+
+                            <!-- Popularity & Qty Info -->
+                            <div class="text-right shrink-0 flex flex-col items-end gap-0.5">
+                                <span class="bg-amber-100/70 text-amber-800 border border-amber-200/50 rounded-lg px-2 py-0.5 text-[10px] font-black shadow-sm whitespace-nowrap">
+                                    1x Transaksi
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-bold">
+                                    Total: 1 pcs
+                                </span>
+                            </div>
+                        </div>
+                                    </div>
+            </div>
+
+            <!-- Column 2: Best Seller Pekan Ini / Pekan Lalu -->
+            <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-5">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shadow-sm">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.306a11.95 11.95 0 015.814-5.518l2.74-1.22m0 0l-5.94-2.281m5.94 2.28l-2.28 5.941" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="font-extrabold text-slate-800 text-sm leading-tight">
+                            Terlaris Mingguan
+                        </h4>
+                        <p class="text-[10px] text-slate-400 font-medium font-mono">
+                            Pekan: 22 Jun - 28 Jun 2026
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                                            <div class="flex items-center justify-between p-2 rounded-2xl hover:bg-slate-50 transition duration-150 border border-transparent hover:border-slate-100">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <!-- Rank Indicator -->
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 border
+                                     bg-amber-100 text-amber-800 border-amber-200
+                                    ">
+                                    #1
+                                </div>
+                                
+                                <!-- Product Image / Initial -->
+                                                                    <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 font-extrabold text-[10px] shrink-0 shadow-sm">
+                                        KU
+                                    </div>
+                                
+                                <!-- Product Info -->
+                                <div class="min-w-0">
+                                    <h5 class="font-bold text-xs text-slate-800 truncate" title="kurma madu ecer (250 gram x 56)">kurma madu ecer (250 gram x 56)</h5>
+                                    <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block mt-0.5">Umum</span>
+                                </div>
+                            </div>
+
+                            <!-- Popularity & Qty Info -->
+                            <div class="text-right shrink-0 flex flex-col items-end gap-0.5">
+                                <span class="bg-emerald-100/70 text-emerald-800 border border-emerald-200/50 rounded-lg px-2 py-0.5 text-[10px] font-black shadow-sm whitespace-nowrap">
+                                    1x Transaksi
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-bold">
+                                    Total: 1 pcs
+                                </span>
+                            </div>
+                        </div>
+                                            <div class="flex items-center justify-between p-2 rounded-2xl hover:bg-slate-50 transition duration-150 border border-transparent hover:border-slate-100">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <!-- Rank Indicator -->
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 border
+                                     bg-slate-200 text-slate-800 border-slate-300
+                                    ">
+                                    #2
+                                </div>
+                                
+                                <!-- Product Image / Initial -->
+                                                                    <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 font-extrabold text-[10px] shrink-0 shadow-sm">
+                                        BE
+                                    </div>
+                                
+                                <!-- Product Info -->
+                                <div class="min-w-0">
+                                    <h5 class="font-bold text-xs text-slate-800 truncate" title="Beras don malai 1kg (1 pack x 40000)">Beras don malai 1kg (1 pack x 40000)</h5>
+                                    <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block mt-0.5">Umum</span>
+                                </div>
+                            </div>
+
+                            <!-- Popularity & Qty Info -->
+                            <div class="text-right shrink-0 flex flex-col items-end gap-0.5">
+                                <span class="bg-emerald-100/70 text-emerald-800 border border-emerald-200/50 rounded-lg px-2 py-0.5 text-[10px] font-black shadow-sm whitespace-nowrap">
+                                    1x Transaksi
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-bold">
+                                    Total: 1 pcs
+                                </span>
+                            </div>
+                        </div>
+                                            <div class="flex items-center justify-between p-2 rounded-2xl hover:bg-slate-50 transition duration-150 border border-transparent hover:border-slate-100">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <!-- Rank Indicator -->
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 border
+                                     bg-orange-100 text-orange-800 border-orange-200
+                                    ">
+                                    #3
+                                </div>
+                                
+                                <!-- Product Image / Initial -->
+                                                                    <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 font-extrabold text-[10px] shrink-0 shadow-sm">
+                                        BU
+                                    </div>
+                                
+                                <!-- Product Info -->
+                                <div class="min-w-0">
+                                    <h5 class="font-bold text-xs text-slate-800 truncate" title="Bumbu shan (1 pack x 22000)">Bumbu shan (1 pack x 22000)</h5>
+                                    <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block mt-0.5">Umum</span>
+                                </div>
+                            </div>
+
+                            <!-- Popularity & Qty Info -->
+                            <div class="text-right shrink-0 flex flex-col items-end gap-0.5">
+                                <span class="bg-emerald-100/70 text-emerald-800 border border-emerald-200/50 rounded-lg px-2 py-0.5 text-[10px] font-black shadow-sm whitespace-nowrap">
+                                    1x Transaksi
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-bold">
+                                    Total: 1 pcs
+                                </span>
+                            </div>
+                        </div>
+                                            <div class="flex items-center justify-between p-2 rounded-2xl hover:bg-slate-50 transition duration-150 border border-transparent hover:border-slate-100">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <!-- Rank Indicator -->
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 border
+                                     bg-slate-50 text-slate-500 border-slate-100 ">
+                                    #4
+                                </div>
+                                
+                                <!-- Product Image / Initial -->
+                                                                    <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 font-extrabold text-[10px] shrink-0 shadow-sm">
+                                        KU
+                                    </div>
+                                
+                                <!-- Product Info -->
+                                <div class="min-w-0">
+                                    <h5 class="font-bold text-xs text-slate-800 truncate" title="kurma sukari ecer (500 gram x 65)">kurma sukari ecer (500 gram x 65)</h5>
+                                    <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block mt-0.5">Umum</span>
+                                </div>
+                            </div>
+
+                            <!-- Popularity & Qty Info -->
+                            <div class="text-right shrink-0 flex flex-col items-end gap-0.5">
+                                <span class="bg-emerald-100/70 text-emerald-800 border border-emerald-200/50 rounded-lg px-2 py-0.5 text-[10px] font-black shadow-sm whitespace-nowrap">
+                                    1x Transaksi
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-bold">
+                                    Total: 1 pcs
+                                </span>
+                            </div>
+                        </div>
+                                    </div>
+            </div>
+
+            <!-- Column 3: Best Seller Bulan Ini / Bulan Lalu -->
+            <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-5">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 border border-teal-100 flex items-center justify-center shadow-sm">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499c.173-.439.82-.439.993 0l1.905 4.821 5.215.356c.478.033.668.627.294.948l-3.927 3.374 1.22 5.097c.112.469-.4.842-.816.578L12 16.03l-4.526 2.766c-.416.264-.928-.109-.816-.578l1.22-5.097-3.927-3.374c-.374-.32-.184-.915.294-.948l5.215-.356 1.905-4.821z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="font-extrabold text-slate-800 text-sm leading-tight">
+                            Terlaris Bulanan
+                        </h4>
+                        <p class="text-[10px] text-slate-400 font-medium font-mono">
+                            Bulan: June 2026
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                                            <div class="flex items-center justify-between p-2 rounded-2xl hover:bg-slate-50 transition duration-150 border border-transparent hover:border-slate-100">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <!-- Rank Indicator -->
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 border
+                                     bg-amber-100 text-amber-800 border-amber-200
+                                    ">
+                                    #1
+                                </div>
+                                
+                                <!-- Product Image / Initial -->
+                                                                    <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 font-extrabold text-[10px] shrink-0 shadow-sm">
+                                        BE
+                                    </div>
+                                
+                                <!-- Product Info -->
+                                <div class="min-w-0">
+                                    <h5 class="font-bold text-xs text-slate-800 truncate" title="Beras basmati 1kg">Beras basmati 1kg</h5>
+                                    <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block mt-0.5">bahan masakan</span>
+                                </div>
+                            </div>
+
+                            <!-- Popularity & Qty Info -->
+                            <div class="text-right shrink-0 flex flex-col items-end gap-0.5">
+                                <span class="bg-teal-100/70 text-teal-800 border border-teal-200/50 rounded-lg px-2 py-0.5 text-[10px] font-black shadow-sm whitespace-nowrap">
+                                    125x Transaksi
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-bold">
+                                    Total: 213 pack
+                                </span>
+                            </div>
+                        </div>
+                                            <div class="flex items-center justify-between p-2 rounded-2xl hover:bg-slate-50 transition duration-150 border border-transparent hover:border-slate-100">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <!-- Rank Indicator -->
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 border
+                                     bg-slate-200 text-slate-800 border-slate-300
+                                    ">
+                                    #2
+                                </div>
+                                
+                                <!-- Product Image / Initial -->
+                                                                    <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 font-extrabold text-[10px] shrink-0 shadow-sm">
+                                        BU
+                                    </div>
+                                
+                                <!-- Product Info -->
+                                <div class="min-w-0">
+                                    <h5 class="font-bold text-xs text-slate-800 truncate" title="Bumbu all rasa">Bumbu all rasa</h5>
+                                    <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block mt-0.5">bahan masakan</span>
+                                </div>
+                            </div>
+
+                            <!-- Popularity & Qty Info -->
+                            <div class="text-right shrink-0 flex flex-col items-end gap-0.5">
+                                <span class="bg-teal-100/70 text-teal-800 border border-teal-200/50 rounded-lg px-2 py-0.5 text-[10px] font-black shadow-sm whitespace-nowrap">
+                                    103x Transaksi
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-bold">
+                                    Total: 168 pcs
+                                </span>
+                            </div>
+                        </div>
+                                            <div class="flex items-center justify-between p-2 rounded-2xl hover:bg-slate-50 transition duration-150 border border-transparent hover:border-slate-100">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <!-- Rank Indicator -->
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 border
+                                     bg-orange-100 text-orange-800 border-orange-200
+                                    ">
+                                    #3
+                                </div>
+                                
+                                <!-- Product Image / Initial -->
+                                                                    <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 font-extrabold text-[10px] shrink-0 shadow-sm">
+                                        KU
+                                    </div>
+                                
+                                <!-- Product Info -->
+                                <div class="min-w-0">
+                                    <h5 class="font-bold text-xs text-slate-800 truncate" title="kurma sukari ecer">kurma sukari ecer</h5>
+                                    <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block mt-0.5">kurma</span>
+                                </div>
+                            </div>
+
+                            <!-- Popularity & Qty Info -->
+                            <div class="text-right shrink-0 flex flex-col items-end gap-0.5">
+                                <span class="bg-teal-100/70 text-teal-800 border border-teal-200/50 rounded-lg px-2 py-0.5 text-[10px] font-black shadow-sm whitespace-nowrap">
+                                    72x Transaksi
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-bold">
+                                    Total: 47.542 kg
+                                </span>
+                            </div>
+                        </div>
+                                            <div class="flex items-center justify-between p-2 rounded-2xl hover:bg-slate-50 transition duration-150 border border-transparent hover:border-slate-100">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <!-- Rank Indicator -->
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 border
+                                     bg-slate-50 text-slate-500 border-slate-100 ">
+                                    #4
+                                </div>
+                                
+                                <!-- Product Image / Initial -->
+                                                                    <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 font-extrabold text-[10px] shrink-0 shadow-sm">
+                                        CO
+                                    </div>
+                                
+                                <!-- Product Info -->
+                                <div class="min-w-0">
+                                    <h5 class="font-bold text-xs text-slate-800 truncate" title="coklat turky satuan">coklat turky satuan</h5>
+                                    <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block mt-0.5">coklat</span>
+                                </div>
+                            </div>
+
+                            <!-- Popularity & Qty Info -->
+                            <div class="text-right shrink-0 flex flex-col items-end gap-0.5">
+                                <span class="bg-teal-100/70 text-teal-800 border border-teal-200/50 rounded-lg px-2 py-0.5 text-[10px] font-black shadow-sm whitespace-nowrap">
+                                    53x Transaksi
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-bold">
+                                    Total: 320 pcs
+                                </span>
+                            </div>
+                        </div>
+                                            <div class="flex items-center justify-between p-2 rounded-2xl hover:bg-slate-50 transition duration-150 border border-transparent hover:border-slate-100">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <!-- Rank Indicator -->
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 border
+                                     bg-slate-50 text-slate-500 border-slate-100 ">
+                                    #5
+                                </div>
+                                
+                                <!-- Product Image / Initial -->
+                                                                    <img src="/storage/products/6a33a08f9e004.jpg" class="w-10 h-10 object-cover rounded-xl border border-slate-100 shadow-sm shrink-0" alt="Foto">
+                                
+                                <!-- Product Info -->
+                                <div class="min-w-0">
+                                    <h5 class="font-bold text-xs text-slate-800 truncate" title="kacang arab ranuna 1kg">kacang arab ranuna 1kg</h5>
+                                    <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block mt-0.5">kacang</span>
+                                </div>
+                            </div>
+
+                            <!-- Popularity & Qty Info -->
+                            <div class="text-right shrink-0 flex flex-col items-end gap-0.5">
+                                <span class="bg-teal-100/70 text-teal-800 border border-teal-200/50 rounded-lg px-2 py-0.5 text-[10px] font-black shadow-sm whitespace-nowrap">
+                                    48x Transaksi
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-bold">
+                                    Total: 72 pack
+                                </span>
+                            </div>
+                        </div>
+                                    </div>
+            </div> <!-- Closes Column 3 Card -->
+        </div> <!-- Closes Best Sellers Grid -->
+
+        <!-- 3. BOTTOM ROW: Dynamic Financial Breakdown Table (Collapsible on Card Click) -->
+        <div id="breakdown-table-container" x-show="showTable" x-transition style="display: none;"
+             class="bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-4">
+            
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h4 class="font-extrabold text-slate-800 text-base leading-tight">
+                                                    Daftar Transaksi Harian
+                                                <span id="table-focus-badge" class="text-xs font-bold px-2.5 py-0.5 rounded-full uppercase ml-1.5 border"
+                             x-show="activeCard !== null"
+                             :class="activeCard === 'omset' ? 'bg-emerald-50 text-emerald-800 border-emerald-100' : (activeCard === 'profit' ? 'bg-teal-50 text-teal-800 border-teal-100' : 'bg-rose-50 text-rose-800 border-rose-100')"
+                             x-text="activeCard === 'omset' ? 'Fokus Omset' : (activeCard === 'profit' ? 'Fokus Profit' : 'Fokus Transaksi')">
+                        </span>
+                    </h4>
+                    <p class="text-xs text-slate-400 font-medium mt-1">
+                                                    Daftar transaksi kasir yang tercatat pada tanggal terpilih
+                                            </p>
+                </div>
+                
+                <div class="flex items-center gap-3 shrink-0 w-full sm:w-auto justify-end">
+                    <!-- Button Ekspor Excel (Visible on all filters) -->
+                    <a href="http://localhost/owner/dashboard/export?filter_type=harian&amp;date=2026-06-22&amp;week=2026-W26&amp;month=2026-06" 
+                       class="px-4 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-800 hover:text-white text-xs font-bold rounded-xl shadow-sm transition duration-150 flex items-center gap-2">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        </svg>
+                        <span>Ekspor Excel</span>
+                    </a>
+
+                                            <a href="http://localhost/owner/transactions" class="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow transition duration-150 flex items-center gap-1.5">
+                            <span>Lihat Semua Riwayat</span>
+                            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                            </svg>
+                        </a>
+                                    </div>
+            </div>
+
+            <div class="overflow-x-auto w-full max-w-full rounded-2xl border border-slate-100">
+                <table class="min-w-full divide-y divide-slate-100 text-left text-sm text-slate-700">
+                                            <!-- Headers for Today's Transactions -->
+                        <thead class="bg-slate-50 font-bold text-slate-500 uppercase tracking-wider text-xs">
+                            <tr>
+                                <th class="px-5 py-4">Waktu</th>
+                                <th class="px-5 py-4">Kode Transaksi</th>
+                                <th class="px-5 py-4">Kasir</th>
+                                <th class="px-5 py-4">Ringkasan Item</th>
+                                <th class="px-5 py-4">Metode</th>
+                                <th data-focus="omset" class="px-5 py-4 text-right transition-colors duration-150" :class="activeCard === 'omset' || activeCard === 'transactions' ? 'bg-emerald-50/50 text-emerald-800' : ''">Total Tagihan</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 font-semibold text-slate-800">
+                                                            <tr class="hover:bg-slate-50/50 transition duration-150">
+                                    <td class="px-5 py-4 text-slate-500 text-xs whitespace-nowrap">
+                                        22 Jun 2026 - 09:20
+                                    </td>
+                                    <td class="px-5 py-4 text-emerald-700 font-mono text-xs">
+                                        TRX-20260622-9AAECE
+                                    </td>
+                                    <td class="px-5 py-4 text-xs">
+                                        <span class="inline-flex items-center gap-1.5">
+                                            <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px] font-extrabold shrink-0">
+                                                D
+                                            </span>
+                                            <span class="text-slate-700">dila</span>
+                                        </span>
+                                    </td>
+                                    <td class="px-5 py-4 text-slate-700 text-xs">
+                                        <div class="flex flex-wrap gap-1 max-w-[280px]">
+                                                                                                                                                <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-50/60 text-emerald-800 border border-emerald-100/50">
+                                                        kurma sukari ecer (500 gram x 65)
+                                                    </span>
+                                                                                                                                    </div>
+                                    </td>
+                                    <td class="px-5 py-4">
+                                        <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase border
+                                             bg-emerald-50 text-emerald-700 border-emerald-100
+                                             
+                                             
+                                        ">
+                                            Cash
+                                        </span>
+                                    </td>
+                                    <td data-focus="omset" class="px-5 py-4 text-right font-extrabold whitespace-nowrap transition-colors duration-150 text-emerald-700" :class="activeCard === 'omset' || activeCard === 'transactions' ? 'bg-emerald-50/30 text-emerald-800' : 'text-emerald-700'">
+                                        Rp 32.500
+                                    </td>
+                                </tr>
+                                                            <tr class="hover:bg-slate-50/50 transition duration-150">
+                                    <td class="px-5 py-4 text-slate-500 text-xs whitespace-nowrap">
+                                        22 Jun 2026 - 09:00
+                                    </td>
+                                    <td class="px-5 py-4 text-emerald-700 font-mono text-xs">
+                                        TRX-20260622-CBEE5D
+                                    </td>
+                                    <td class="px-5 py-4 text-xs">
+                                        <span class="inline-flex items-center gap-1.5">
+                                            <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px] font-extrabold shrink-0">
+                                                D
+                                            </span>
+                                            <span class="text-slate-700">dila</span>
+                                        </span>
+                                    </td>
+                                    <td class="px-5 py-4 text-slate-700 text-xs">
+                                        <div class="flex flex-wrap gap-1 max-w-[280px]">
+                                                                                                                                                <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-50/60 text-emerald-800 border border-emerald-100/50">
+                                                        Beras don malai 1kg (1 pack x 40000)
+                                                    </span>
+                                                                                                                                                                                                <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-50/60 text-emerald-800 border border-emerald-100/50">
+                                                        Bumbu shan (1 pack x 22000)
+                                                    </span>
+                                                                                                                                    </div>
+                                    </td>
+                                    <td class="px-5 py-4">
+                                        <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase border
+                                             bg-emerald-50 text-emerald-700 border-emerald-100
+                                             
+                                             
+                                        ">
+                                            Cash
+                                        </span>
+                                    </td>
+                                    <td data-focus="omset" class="px-5 py-4 text-right font-extrabold whitespace-nowrap transition-colors duration-150 text-emerald-700" :class="activeCard === 'omset' || activeCard === 'transactions' ? 'bg-emerald-50/30 text-emerald-800' : 'text-emerald-700'">
+                                        Rp 62.000
+                                    </td>
+                                </tr>
+                                                            <tr class="hover:bg-slate-50/50 transition duration-150">
+                                    <td class="px-5 py-4 text-slate-500 text-xs whitespace-nowrap">
+                                        22 Jun 2026 - 08:41
+                                    </td>
+                                    <td class="px-5 py-4 text-emerald-700 font-mono text-xs">
+                                        TRX-20260622-0D25A4
+                                    </td>
+                                    <td class="px-5 py-4 text-xs">
+                                        <span class="inline-flex items-center gap-1.5">
+                                            <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px] font-extrabold shrink-0">
+                                                D
+                                            </span>
+                                            <span class="text-slate-700">dila</span>
+                                        </span>
+                                    </td>
+                                    <td class="px-5 py-4 text-slate-700 text-xs">
+                                        <div class="flex flex-wrap gap-1 max-w-[280px]">
+                                                                                                                                                <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-50/60 text-emerald-800 border border-emerald-100/50">
+                                                        kurma madu ecer (250 gram x 56)
+                                                    </span>
+                                                                                                                                    </div>
+                                    </td>
+                                    <td class="px-5 py-4">
+                                        <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase border
+                                             bg-emerald-50 text-emerald-700 border-emerald-100
+                                             
+                                             
+                                        ">
+                                            Cash
+                                        </span>
+                                    </td>
+                                    <td data-focus="omset" class="px-5 py-4 text-right font-extrabold whitespace-nowrap transition-colors duration-150 text-emerald-700" :class="activeCard === 'omset' || activeCard === 'transactions' ? 'bg-emerald-50/30 text-emerald-800' : 'text-emerald-700'">
+                                        Rp 14.000
+                                    </td>
+                                </tr>
+                                                    </tbody>
+                                    </table>
+            </div>
+        </div>
+    </div>
+                                    </div>
+            </main>
+        </div>
+
+        <!-- Mobile Bottom Navigation Bar -->
+        <nav class="md:hidden fixed bottom-0 inset-x-0 bg-white/95 dark:bg-dp-900/97 backdrop-blur-md border-t border-slate-100 dark:border-dp-700/50 shadow-2xl flex justify-around items-center py-2 px-2 z-30">
+            <!-- Home/Dashboard -->
+            <a href="http://localhost/dashboard" class="flex flex-col items-center gap-0.5 text-emerald-600 dark:text-violet-400 font-extrabold hover:text-emerald-800 dark:hover:text-violet-300 transition duration-150 py-1 px-3 rounded-xl">
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                </svg>
+                <span class="text-[10px] font-bold tracking-wide">Dashboard</span>
+            </a>
+
+                        <a href="http://localhost/owner/transactions" class="flex flex-col items-center gap-0.5 text-slate-500 dark:text-purple-400 hover:text-emerald-700 dark:hover:text-violet-300 transition duration-150 py-1 px-3 rounded-xl">
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+                <span class="text-[10px] font-bold tracking-wide">Riwayat</span>
+            </a>
+            
+            <!-- Profile -->
+            <a href="http://localhost/profile" class="flex flex-col items-center gap-0.5 text-slate-500 dark:text-purple-400 hover:text-emerald-700 dark:hover:text-violet-300 transition duration-150 py-1 px-3 rounded-xl">
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                </svg>
+                <span class="text-[10px] font-bold tracking-wide">Profile</span>
+            </a>
+
+            <!-- Logout -->
+            <form method="POST" action="http://localhost/logout" class="flex flex-col items-center">
+                <input type="hidden" name="_token" value="aKwRS3h22CDyCoEoCpJzAGrFqNGWdsr2QWi3Fopq" autocomplete="off">                <button type="submit" class="flex flex-col items-center gap-0.5 text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 transition duration-150 py-1 px-3 rounded-xl">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                    </svg>
+                    <span class="text-[10px] font-bold tracking-wide">Keluar</span>
+                </button>
+            </form>
+        </nav>
+
+        <!-- GLOBAL TOAST NOTIFICATION SYSTEM -->
+        <div id="global-toast">
+             <div id="toast-indicator" class="absolute left-0 top-0 bottom-0 w-1.5"></div>
+             <div id="toast-icon-bg" class="w-10 h-10 rounded-full flex items-center justify-center shrink-0">
+                 <span id="toast-icon-slot"></span>
+             </div>
+             <div class="flex-grow">
+                 <p id="toast-message" style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 0.875rem; font-weight: 700; line-height: 1.25rem;"></p>
+             </div>
+             <button type="button" onclick="hideGlobalToast()" style="background: none; border: none; padding: 0; cursor: pointer; transition: color 0.2s;" class="shrink-0 text-slate-400 hover:text-slate-600 dark:text-purple-400 dark:hover:text-purple-200">
+                 <svg style="width: 1rem; height: 1rem;" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                 </svg>
+             </button>
+        </div>
+
+        <script>
+            /* ================================================
+               DARK MODE TOGGLE - PERSISTENT
+               ================================================ */
+            function toggleDarkMode() {
+                const html = document.documentElement;
+                const isDark = html.classList.toggle('dark');
+                localStorage.setItem('pk-theme', isDark ? 'dark' : 'light');
+
+                const toastMsg = document.getElementById('toast-message');
+                if (toastMsg) {
+                    toastMsg.style.color = isDark ? '#ede9fe' : '#1e293b';
+                }
+            }
+
+            // Sync toast message color on load
+            (function() {
+                const toastMsg = document.getElementById('toast-message');
+                if (toastMsg) {
+                    const isDark = document.documentElement.classList.contains('dark');
+                    toastMsg.style.color = isDark ? '#ede9fe' : '#1e293b';
+                }
+            })();
+
+            /* ================================================
+               GLOBAL TOAST NOTIFICATION SYSTEM
+               ================================================ */
+            let globalToastTimer = null;
+
+            const toastIcons = {
+                success: `<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`,
+                warning: `<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>`,
+                info: `<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 111.063.852l-.708 2.836a.75.75 0 001.063.852l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>`,
+                error: `<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`
+            };
+
+            const toastColors = {
+                success: { indicator: '#10b981', bg: '#ecfdf5', text: '#059669' },
+                warning: { indicator: '#f59e0b', bg: '#fffbeb', text: '#d97706' },
+                info: { indicator: '#0ea5e9', bg: '#f0f9ff', text: '#0284c7' },
+                error: { indicator: '#f43f5e', bg: '#fff1f2', text: '#e11d48' }
+            };
+
+            const toastColorsDark = {
+                success: { indicator: '#10b981', bg: '#052e1c', text: '#34d399' },
+                warning: { indicator: '#f59e0b', bg: '#2d1a02', text: '#fbbf24' },
+                info: { indicator: '#818cf8', bg: '#1e1a4e', text: '#a5b4fc' },
+                error: { indicator: '#f43f5e', bg: '#2d0a17', text: '#fb7185' }
+            };
+
+            function showGlobalToast(message, type = 'success') {
+                const toast = document.getElementById('global-toast');
+                const indicator = document.getElementById('toast-indicator');
+                const iconBg = document.getElementById('toast-icon-bg');
+                const iconSlot = document.getElementById('toast-icon-slot');
+                const msgEl = document.getElementById('toast-message');
+
+                if (!toast) return;
+
+                if (globalToastTimer) clearTimeout(globalToastTimer);
+
+                const isDark = document.documentElement.classList.contains('dark');
+                const colors = isDark ? toastColorsDark[type] : toastColors[type];
+
+                msgEl.innerText = message;
+                msgEl.style.color = isDark ? '#ede9fe' : '#1e293b';
+                iconSlot.innerHTML = toastIcons[type] || toastIcons.success;
+
+                indicator.style.backgroundColor = colors.indicator;
+                iconBg.style.backgroundColor = colors.bg;
+                iconBg.style.color = colors.text;
+
+                toast.classList.add('show');
+
+                globalToastTimer = setTimeout(() => {
+                    hideGlobalToast();
+                }, 2800);
+            }
+
+            function hideGlobalToast() {
+                const toast = document.getElementById('global-toast');
+                if (toast) toast.classList.remove('show');
+                globalToastTimer = null;
+            }
+
+            window.addEventListener('toast', (e) => {
+                showGlobalToast(e.detail.message, e.detail.type);
+            });
+
+            window.showToast = showGlobalToast;
+            window.hideToast = hideGlobalToast;
+        </script>
+
+    </body>
+</html>

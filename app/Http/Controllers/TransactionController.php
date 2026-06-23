@@ -575,6 +575,7 @@ class TransactionController extends Controller
     /**
      * Store a newly completed transaction in storage.
      * Automatically copies the cashier's branch to the transaction.
+     * Stok dikurangi dari cabang kasir (bukan global) via StockService.
      */
     public function store(Request $request)
     {
@@ -594,25 +595,19 @@ class TransactionController extends Controller
             return $item['name'] . ' (' . $item['qty'] . ' ' . $item['price_unit'] . ' x ' . $item['price'] . ')';
         })->join(', ');
 
-        $totalCost = 0;
-        foreach ($request->items as $item) {
-            $product = null;
-            if (isset($item['id'])) {
-                $product = \App\Models\Product::find($item['id']);
-            } else {
-                $product = \App\Models\Product::where('name', $item['name'])->first();
-            }
-
-            if ($product) {
-                $totalCost += round($product->cost_price * floatval($item['qty']));
-                
-                // Decrement product stock in the database upon purchase
-                $product->decrement('stock', floatval($item['qty']));
-            }
-        }
-
         // Automatically inherit cashier's branch
         $cashierBranch = auth()->user()->branch ?? 'Pusat Cianjur';
+
+        // Hitung total cost
+        $totalCost = 0;
+        foreach ($request->items as $item) {
+            $product = isset($item['id'])
+                ? \App\Models\Product::find($item['id'])
+                : \App\Models\Product::where('name', $item['name'])->first();
+            if ($product) {
+                $totalCost += round($product->cost_price * floatval($item['qty']));
+            }
+        }
 
         $transaction = Transaction::create([
             'cashier_id'       => auth()->id(),
@@ -624,6 +619,37 @@ class TransactionController extends Controller
             'payment_method'   => $request->payment_method,
             'branch'           => $cashierBranch,
         ]);
+
+        // Kurangi stok per cabang kasir via StockService
+        $stockService    = app(\App\Services\StockService::class);
+        $branchLocation  = \App\Models\StockLocation::findByBranchName($cashierBranch);
+
+        foreach ($request->items as $item) {
+            $product = isset($item['id'])
+                ? \App\Models\Product::find($item['id'])
+                : \App\Models\Product::where('name', $item['name'])->first();
+
+            if ($product) {
+                if ($branchLocation) {
+                    // Gunakan StockService untuk kurangi stok cabang & catat log mutasi
+                    try {
+                        $stockService->deductSaleStock(
+                            $product,
+                            $branchLocation,
+                            floatval($item['qty']),
+                            $transaction->id,
+                            auth()->user()
+                        );
+                    } catch (\Exception $e) {
+                        // Fallback ke global jika error
+                        $product->decrement('stock', floatval($item['qty']));
+                    }
+                } else {
+                    // Fallback: lokasi cabang belum terdaftar di sistem
+                    $product->decrement('stock', floatval($item['qty']));
+                }
+            }
+        }
 
         return response()->json([
             'success' => true,

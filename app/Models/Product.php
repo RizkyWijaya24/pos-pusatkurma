@@ -36,6 +36,52 @@ class Product extends Model
         ];
     }
 
+    // ═══════════════════════════════════════════════════════
+    // RELATIONSHIPS
+    // ═══════════════════════════════════════════════════════
+
+    /** Stok produk ini di semua lokasi */
+    public function productStocks()
+    {
+        return $this->hasMany(ProductStock::class);
+    }
+
+    /** Log mutasi stok produk ini */
+    public function stockLogs()
+    {
+        return $this->hasMany(StockAdjustmentLog::class);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // STOCK HELPERS
+    // ═══════════════════════════════════════════════════════
+
+    /**
+     * Ambil stok produk di lokasi tertentu.
+     *
+     * @param int $locationId
+     * @return float
+     */
+    public function getStockAtLocation(int $locationId): float
+    {
+        $ps = $this->productStocks()->where('location_id', $locationId)->first();
+        return $ps ? (float) $ps->stock : 0.0;
+    }
+
+    /**
+     * Hitung total stok dari semua lokasi (agregat).
+     *
+     * @return float
+     */
+    public function getTotalStock(): float
+    {
+        return (float) $this->productStocks()->sum('stock');
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // PRICING
+    // ═══════════════════════════════════════════════════════
+
     /**
      * Get the active price based on the purchased quantity.
      * If tiered pricing is empty or invalid, defaults to selling_price.

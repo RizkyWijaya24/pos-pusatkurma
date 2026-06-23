@@ -754,7 +754,10 @@
                         </div>
                     @endforelse
                 </div>
-                <!-- 3. BOTTOM ROW: Dynamic Financial Breakdown Table (Collapsible on Card Click) -->
+            </div> <!-- Closes Column 3 Card -->
+        </div> <!-- Closes Best Sellers Grid -->
+
+        <!-- 3. BOTTOM ROW: Dynamic Financial Breakdown Table (Collapsible on Card Click) -->
         <div id="breakdown-table-container" x-show="showTable" x-transition style="display: none;"
              class="bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-4">
             

@@ -28,7 +28,7 @@ class TransactionSeeder extends Seeder
         }
 
         $paymentMethods = ['Cash', 'QRIS', 'Debit'];
-        $branches = ['Pusat Cianjur', 'Cabang Bandung', 'Cabang Jakarta'];
+        $branches = ['Pusat Cianjur', 'Cabang Cianjur', 'Cabang Ciranjang', 'Cabang Rumah', 'Cabang Online'];
 
         // Seed transactions for the last 60 days (from 59 days ago until today)
         for ($i = 59; $i >= 0; $i--) {
