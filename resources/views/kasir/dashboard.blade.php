@@ -1143,6 +1143,16 @@
                         </div>
                     </template>
 
+                    <!-- Quick selectors for common weights when unit is kg (converts gram to decimal kg) -->
+                    <template x-if="qtyProduct && qtyProduct.price_unit === 'kg'">
+                        <div class="grid grid-cols-4 gap-1.5 text-xs font-bold text-emerald-800 mt-1">
+                            <button type="button" @click="qtyValue = '0.1'" class="py-2 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-100 transition duration-150" title="100 gram">100g</button>
+                            <button type="button" @click="qtyValue = '0.25'" class="py-2 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-100 transition duration-150" title="250 gram">250g</button>
+                            <button type="button" @click="qtyValue = '0.5'" class="py-2 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-100 transition duration-150" title="500 gram">500g</button>
+                            <button type="button" @click="qtyValue = '1'" class="py-2 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-100 transition duration-150" title="1 Kilogram">1kg</button>
+                        </div>
+                    </template>
+
                     <div class="grid grid-cols-2 gap-3 mt-4">
                         <button type="button" @click="showQtyModal = false" class="py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold transition duration-150">Batal</button>
                         <button type="button" @click="confirmQty()" class="py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl font-bold shadow-md shadow-emerald-700/10 transition duration-150">Konfirmasi</button>

@@ -54,7 +54,43 @@ class ProductController extends Controller
             $validated['image_path'] = $path;
         }
 
-        $product = Product::create($validated);
+        $product = \Illuminate\Support\Facades\DB::transaction(function () use ($validated) {
+            $product = Product::create($validated);
+
+            $mainLocation = \App\Models\StockLocation::gudang()->first() ?? \App\Models\StockLocation::first();
+            if ($mainLocation) {
+                \App\Models\ProductStock::create([
+                    'product_id'  => $product->id,
+                    'location_id' => $mainLocation->id,
+                    'stock'       => $validated['stock'],
+                ]);
+
+                // Create 0 stock records for all other active locations
+                foreach (\App\Models\StockLocation::where('id', '!=', $mainLocation->id)->get() as $loc) {
+                    \App\Models\ProductStock::create([
+                        'product_id'  => $product->id,
+                        'location_id' => $loc->id,
+                        'stock'       => 0.00,
+                    ]);
+                }
+
+                if ($validated['stock'] > 0) {
+                    \App\Models\StockAdjustmentLog::create([
+                        'product_id'      => $product->id,
+                        'location_id'     => $mainLocation->id,
+                        'type'            => 'initial',
+                        'quantity_before' => 0,
+                        'quantity_change' => $validated['stock'],
+                        'quantity_after'  => $validated['stock'],
+                        'created_by'      => auth()->id() ?? \App\Models\User::where('role', 'admin')->first()?->id ?? 1,
+                        'notes'           => 'Inisialisasi stok produk baru',
+                        'created_at'      => now(),
+                    ]);
+                }
+            }
+
+            return $product;
+        });
 
         return response()->json([
             'success' => true,
@@ -116,7 +152,50 @@ class ProductController extends Controller
             $validated['image_path'] = $path;
         }
 
-        $product->update($validated);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($product, $validated) {
+            $product->update($validated);
+
+            $mainLocation = \App\Models\StockLocation::gudang()->first() ?? \App\Models\StockLocation::first();
+            if ($mainLocation) {
+                $otherLocationsStock = \App\Models\ProductStock::where('product_id', $product->id)
+                    ->where('location_id', '!=', $mainLocation->id)
+                    ->sum('stock');
+
+                $newMainStock = max(0, $validated['stock'] - $otherLocationsStock);
+
+                $ps = \App\Models\ProductStock::getOrCreate($product->id, $mainLocation->id);
+                $before = $ps->stock;
+                $change = $newMainStock - $before;
+
+                if ($change != 0) {
+                    $ps->stock = $newMainStock;
+                    $ps->save();
+
+                    \App\Models\StockAdjustmentLog::create([
+                        'product_id'      => $product->id,
+                        'location_id'     => $mainLocation->id,
+                        'type'            => 'adjustment',
+                        'quantity_before' => $before,
+                        'quantity_change' => $change,
+                        'quantity_after'  => $newMainStock,
+                        'created_by'      => auth()->id() ?? \App\Models\User::where('role', 'admin')->first()?->id ?? 1,
+                        'notes'           => 'Koreksi total stok dari edit produk',
+                        'created_at'      => now(),
+                    ]);
+                }
+
+                // Ensure other locations have records if they don't exist
+                foreach (\App\Models\StockLocation::where('id', '!=', $mainLocation->id)->get() as $loc) {
+                    \App\Models\ProductStock::firstOrCreate(
+                        ['product_id' => $product->id, 'location_id' => $loc->id],
+                        ['stock' => 0.00]
+                    );
+                }
+
+                // Re-sync global stock to make sure it's fully accurate
+                app(\App\Services\StockService::class)->syncGlobalStock($product);
+            }
+        });
 
         return response()->json([
             'success' => true,

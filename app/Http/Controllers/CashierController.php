@@ -45,6 +45,51 @@ class CashierController extends Controller
     }
 
     /**
+     * Update the specified cashier in storage.
+     */
+    public function update(Request $request, User $user)
+    {
+        if ($user->role !== 'kasir') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya akun kasir yang dapat diubah.'
+            ], 403);
+        }
+
+        $allowedBranches = \App\Models\User::getBranchEnumValues();
+
+        $validated = $request->validate([
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'password' => 'nullable|string|min:8',
+            'branch'   => ['required', 'string', \Illuminate\Validation\Rule::in($allowedBranches)],
+        ]);
+
+        $updateData = [
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'branch' => $validated['branch'],
+        ];
+
+        if (!empty($validated['password'])) {
+            $updateData['password'] = Hash::make($validated['password']);
+        }
+
+        $user->update($updateData);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Akun kasir berhasil diperbarui!',
+            'cashier' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'branch' => $user->branch,
+            ]
+        ]);
+    }
+
+    /**
      * Remove the specified cashier from storage.
      */
     public function destroy(User $user)

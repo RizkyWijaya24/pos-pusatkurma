@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -13,19 +15,27 @@ class DashboardController extends Controller
      */
     public function admin()
     {
-        $products = Product::all();
+        // Hanya select kolom yang dibutuhkan di Admin Dashboard (fix Product::all())
+        $products = Product::select('id', 'sku', 'name', 'category', 'selling_price',
+                                    'price_unit', 'image_path', 'stock')->get();
+
         $cashiers = User::where('role', 'kasir')->get()->map(function ($user) {
             return [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'branch' => $user->branch ?? 'Pusat Cianjur',
+                'id'         => $user->id,
+                'name'       => $user->name,
+                'email'      => $user->email,
+                'branch'     => $user->branch ?? 'Pusat Cianjur',
                 'lastActive' => 'Aktif Sekarang' // default or dynamic placeholder
             ];
         });
 
-        $categories = \App\Models\Category::all()->map(function ($cat) {
-            $cat->products_count = Product::where('category', $cat->name)->count();
+        // Fix N+1: Hitung produk per kategori dalam 1 query GROUP BY
+        $productCountsByCategory = Product::selectRaw('category, COUNT(*) as total')
+            ->groupBy('category')
+            ->pluck('total', 'category');
+
+        $categories = \App\Models\Category::all()->map(function ($cat) use ($productCountsByCategory) {
+            $cat->products_count = $productCountsByCategory->get($cat->name, 0);
             return $cat;
         });
 
@@ -109,7 +119,10 @@ class DashboardController extends Controller
             ];
         });
 
-        $categories = \App\Models\Category::select('id', 'name')->get();
+        // Cache kategori 30 menit — data jarang berubah
+        $categories = Cache::remember('categories_for_kasir', 1800,
+            fn() => \App\Models\Category::select('id', 'name')->get()
+        );
 
         return view('kasir.dashboard', compact('products', 'todayTransactionsMapped', 'todayExpensesMapped', 'categories'));
     }
@@ -119,9 +132,9 @@ class DashboardController extends Controller
      */
     public function owner(Request $request)
     {
-        // 1. Fetch stock alerts
-        $lowStockCount = Product::where('stock', '<=', 10)->count();
+        // 1. Fetch stock alerts — 1 query (ambil sekaligus, count dari collection)
         $lowStockProducts = Product::where('stock', '<=', 10)->get();
+        $lowStockCount    = $lowStockProducts->count();
 
         // 2. Resolve Active Date Ranges
         $dateRanges = $this->resolveDateRanges($request);
@@ -365,17 +378,24 @@ class DashboardController extends Controller
 
         $monthlyTrend = array_values($weeks);
 
-        // 7. Fetch transactions for daily, weekly, and monthly best sellers
+        // 7. Fetch transactions untuk best sellers — gunakan 1 query (monthly), filter di memory
         $bestSellerDay = ($filterType === 'harian') ? $dateObj : $start;
-        $todayTransactionsForBestSeller = $baseQuery()
-            ->whereBetween('created_at', [$bestSellerDay->copy()->startOfDay(), $bestSellerDay->copy()->endOfDay()])
-            ->get();
-        $weeklyTransactionsForBestSeller = $baseQuery()
-            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
-            ->get();
-        $monthlyTransactionsForBestSeller = $baseQuery()
+
+        // Ambil semua transaksi bulan ini dalam 1 query, lalu filter di PHP
+        $allMonthlyForBestSeller = $baseQuery()
             ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->get();
+
+        $todayTransactionsForBestSeller   = $allMonthlyForBestSeller->filter(
+            fn($t) => $t->created_at->between(
+                $bestSellerDay->copy()->startOfDay(),
+                $bestSellerDay->copy()->endOfDay()
+            )
+        );
+        $weeklyTransactionsForBestSeller  = $allMonthlyForBestSeller->filter(
+            fn($t) => $t->created_at->between($startOfWeek, $endOfWeek)
+        );
+        $monthlyTransactionsForBestSeller = $allMonthlyForBestSeller;
 
         $bestSellersToday = $this->getBestSellers($todayTransactionsForBestSeller, 5);
         $bestSellersWeekly = $this->getBestSellers($weeklyTransactionsForBestSeller, 5);

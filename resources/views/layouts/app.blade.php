@@ -1,3 +1,40 @@
+@php
+    $user = auth()->user();
+    $dbNotifications = collect();
+    $unreadCount = 0;
+    $lowStockAlerts = collect();
+    $lowStockCount = 0;
+
+    if ($user) {
+        $dbNotifications = $user->notifications()->take(5)->get();
+        $unreadCount = $user->unreadNotifications()->count();
+
+        // Query dasar low stock (stok di bawah atau sama dengan 10, tapi di atas 0)
+        $lowStockQuery = \App\Models\ProductStock::with(['product', 'location'])
+            ->where('stock', '<=', 10)
+            ->where('stock', '>', 0);
+
+        if ($user->isAdmin() || $user->isOwner()) {
+            $lowStockQuery->whereHas('location', function($q) {
+                $q->active();
+            });
+        } else {
+            $myLocation = \App\Models\StockLocation::findByBranchName($user->branch);
+            if ($myLocation) {
+                $lowStockQuery->where('location_id', $myLocation->id);
+            } else {
+                $lowStockQuery->whereRaw('1 = 0');
+            }
+        }
+
+        // Dapatkan jumlah total item kritis untuk badge
+        $lowStockCount = $lowStockQuery->count();
+        
+        // Ambil maksimal 5 item kritis teratas untuk dirender di dropdown
+        $lowStockAlerts = $lowStockQuery->orderBy('stock', 'asc')->take(5)->get();
+    }
+    $totalAlertCount = $unreadCount + $lowStockCount;
+@endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full bg-slate-50 dark:bg-dp-950" translate="no">
     <head>
@@ -240,13 +277,158 @@
                 <!-- Right Side Profile & Actions -->
                 <div class="flex items-center gap-x-3 lg:gap-x-5">
                     
-                    <!-- Notification bell -->
-                    <button class="relative rounded-full p-2 text-slate-400 dark:text-purple-400 hover:text-slate-500 dark:hover:text-purple-200 hover:bg-slate-50 dark:hover:bg-dp-800 transition duration-150">
-                        <span class="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-dp-900"></span>
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
-                        </svg>
-                    </button>
+                    <!-- Notification dropdown -->
+                    <div class="relative" x-data="{ notifOpen: false }" @click.away="notifOpen = false">
+                        <button type="button" @click="notifOpen = !notifOpen" class="relative rounded-full p-2 text-slate-400 dark:text-purple-400 hover:text-slate-500 dark:hover:text-purple-200 hover:bg-slate-100 dark:hover:bg-dp-800 transition duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">
+                            @if($totalAlertCount > 0)
+                                <span class="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-dp-900 animate-pulse">
+                                    {{ $totalAlertCount }}
+                                </span>
+                            @endif
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                            </svg>
+                        </button>
+
+                        <div 
+                            x-show="notifOpen" 
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 scale-95"
+                            x-transition:enter-end="opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-75"
+                            x-transition:leave-start="opacity-100 scale-100"
+                            x-transition:leave-end="opacity-0 scale-95"
+                            class="absolute right-0 mt-3 origin-top-right rounded-2xl bg-white dark:bg-dp-800 shadow-2xl ring-1 ring-black/5 dark:ring-white/10 z-50 border border-slate-100 dark:border-dp-700 overflow-hidden"
+                            style="display: none; width: 480px; max-width: calc(100vw - 24px);"
+                        >
+                            <!-- Header -->
+                            <div class="px-4 py-3 bg-slate-50 dark:bg-dp-750 border-b border-slate-100 dark:border-dp-700 flex items-center justify-between">
+                                <span class="font-bold text-sm text-slate-800 dark:text-purple-100">Notifikasi & Peringatan</span>
+                                @if($unreadCount > 0)
+                                    <form action="{{ route('notifications.read-all') }}" method="POST">
+                                        @csrf
+                                        <button type="submit" class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline">
+                                            Tandai semua dibaca
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+
+                            <!-- List Container -->
+                            <div class="divide-y divide-slate-100 dark:divide-dp-700" style="max-height: 320px; overflow-y: auto !important; -webkit-overflow-scrolling: touch; position: relative;">
+                                
+                                {{-- SECTION 1: DATABASE NOTIFICATIONS (LOG & REQUEST TRANSFER) --}}
+                                @if($dbNotifications->isNotEmpty())
+                                    <div class="px-4 py-1.5 bg-slate-100/50 dark:bg-dp-750/30 text-[10px] font-bold text-slate-400 dark:text-purple-400 tracking-wider uppercase">
+                                        Log & Transfer Stok
+                                    </div>
+                                    @foreach($dbNotifications as $n)
+                                        <a href="{{ route('notifications.read', $n->id) }}" class="flex gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-dp-700 transition duration-150 {{ !$n->read_at ? 'bg-emerald-50/40 dark:bg-emerald-950/10' : '' }}">
+                                            <!-- Icon wrapper based on status -->
+                                            <div class="flex-shrink-0">
+                                                @php
+                                                    $actType = $n->data['action_type'] ?? '';
+                                                    $iconBg = 'bg-slate-100 dark:bg-dp-600 text-slate-500 dark:text-purple-300';
+                                                    if ($actType === 'created') $iconBg = 'bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400';
+                                                    elseif ($actType === 'approved') $iconBg = 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400';
+                                                    elseif ($actType === 'rejected') $iconBg = 'bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400';
+                                                    elseif ($actType === 'cancelled') $iconBg = 'bg-slate-100 dark:bg-dp-600 text-slate-500 dark:text-purple-300';
+                                                @endphp
+                                                <div class="w-8 h-8 rounded-full flex items-center justify-center {{ $iconBg }}">
+                                                    @if($actType === 'created')
+                                                        <!-- Exclamation Icon -->
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                                                        </svg>
+                                                    @elseif($actType === 'approved')
+                                                        <!-- Check Icon -->
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                                        </svg>
+                                                    @elseif($actType === 'rejected')
+                                                        <!-- X Icon -->
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    @else
+                                                        <!-- Bell Icon -->
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                                                        </svg>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                            <!-- Message and Time -->
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-xs text-slate-600 dark:text-purple-200 leading-normal">
+                                                    {!! $n->data['message'] ?? 'Notifikasi transfer stok.' !!}
+                                                </p>
+                                                <span class="text-[10px] text-slate-400 dark:text-purple-400 mt-1 block">
+                                                    {{ $n->created_at->diffForHumans() }}
+                                                </span>
+                                            </div>
+                                            <!-- Unread dot -->
+                                            @if(!$n->read_at)
+                                                <div class="flex-shrink-0 flex items-center">
+                                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                </div>
+                                            @endif
+                                        </a>
+                                    @endforeach
+                                @endif
+
+                                {{-- SECTION 2: LOW STOCK ALERTS --}}
+                                @if($lowStockAlerts->isNotEmpty())
+                                    <div class="px-4 py-1.5 bg-slate-100/50 dark:bg-dp-750/30 text-[10px] font-bold text-slate-400 dark:text-purple-400 tracking-wider uppercase">
+                                        Peringatan Stok Menipis
+                                    </div>
+                                    @foreach($lowStockAlerts as $ps)
+                                        @php
+                                            $destUrl = auth()->user()->isKasir() 
+                                                ? route('kasir.stock-request') 
+                                                : route('admin.stock-transfers.create', ['product_id' => $ps->product_id]);
+                                        @endphp
+                                        <a href="{{ $destUrl }}" class="flex gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-dp-700 transition duration-150 bg-rose-50/20 dark:bg-rose-950/5">
+                                            <div class="flex-shrink-0">
+                                                <div class="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                                                    <!-- Warning Triangle Icon -->
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-xs text-slate-700 dark:text-purple-200 leading-normal">
+                                                    @if(auth()->user()->isKasir())
+                                                        Stok <strong>{{ $ps->product->name }}</strong> di cabang Anda menipis. Sisa: <strong class="text-rose-600 dark:text-rose-400">{{ floatval($ps->stock) }} {{ $ps->product->price_unit }}</strong>.
+                                                    @else
+                                                        Stok <strong>{{ $ps->product->name }}</strong> di <strong>{{ $ps->location->name }}</strong> menipis. Sisa: <strong class="text-rose-600 dark:text-rose-400">{{ floatval($ps->stock) }} {{ $ps->product->price_unit }}</strong>.
+                                                    @endif
+                                                </p>
+                                                <span class="text-[10px] text-rose-500 dark:text-rose-400 font-semibold mt-1 block">
+                                                    Klik untuk @if(auth()->user()->isKasir()) ajukan transfer stok @else kirim transfer stok @endif
+                                                </span>
+                                            </div>
+                                        </a>
+                                    @endforeach
+                                @endif
+
+                                {{-- EMPTY STATE --}}
+                                @if($dbNotifications->isEmpty() && $lowStockAlerts->isEmpty())
+                                    <div class="px-4 py-8 text-center">
+                                        <div class="w-12 h-12 rounded-full bg-slate-100 dark:bg-dp-700 text-slate-400 dark:text-purple-400 flex items-center justify-center mx-auto mb-3">
+                                            <!-- Check Circle Icon -->
+                                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <p class="text-sm font-semibold text-slate-700 dark:text-purple-200">Semua Aman!</p>
+                                        <p class="text-xs text-slate-400 dark:text-purple-400 mt-0.5">Tidak ada notifikasi atau peringatan stok saat ini.</p>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- DARK MODE TOGGLE BUTTON -->
                     <button 

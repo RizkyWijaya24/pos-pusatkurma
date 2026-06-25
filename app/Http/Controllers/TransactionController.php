@@ -598,58 +598,76 @@ class TransactionController extends Controller
         // Automatically inherit cashier's branch
         $cashierBranch = auth()->user()->branch ?? 'Pusat Cianjur';
 
-        // Hitung total cost
+        // ── Pre-load semua produk dalam 1 query (fix N+1) ───────────────────
+        $itemIds   = collect($request->items)->pluck('id')->filter()->values()->toArray();
+        $itemNames = collect($request->items)->pluck('name')->values()->toArray();
+        $productsById   = \App\Models\Product::whereIn('id', $itemIds)->get()->keyBy('id');
+        $productsByName = \App\Models\Product::whereIn('name', $itemNames)
+            ->when(!empty($itemIds), fn($q) => $q->whereNotIn('id', $itemIds))
+            ->get()->keyBy('name');
+
+        $resolveProduct = function ($item) use ($productsById, $productsByName) {
+            if (!empty($item['id']) && $productsById->has($item['id'])) {
+                return $productsById->get($item['id']);
+            }
+            return $productsByName->get($item['name']);
+        };
+
+        // Hitung total cost menggunakan produk yang sudah di-preload
         $totalCost = 0;
         foreach ($request->items as $item) {
-            $product = isset($item['id'])
-                ? \App\Models\Product::find($item['id'])
-                : \App\Models\Product::where('name', $item['name'])->first();
+            $product = $resolveProduct($item);
             if ($product) {
                 $totalCost += round($product->cost_price * floatval($item['qty']));
             }
         }
 
-        $transaction = Transaction::create([
-            'cashier_id'       => auth()->id(),
-            'transaction_code' => 'TRX-' . Carbon::now()->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6)),
-            'items_summary'    => $itemsSummary,
-            'total_price'      => $request->total_price,
-            'discount'         => $request->input('discount', 0),
-            'total_cost'       => $totalCost,
-            'payment_method'   => $request->payment_method,
-            'branch'           => $cashierBranch,
-        ]);
+        // ── Bungkus dalam DB::transaction agar data selalu konsisten ─────────
+        $transaction = \Illuminate\Support\Facades\DB::transaction(function () use (
+            $request, $itemsSummary, $cashierBranch, $totalCost, $resolveProduct
+        ) {
+            $trx = Transaction::create([
+                'cashier_id'       => auth()->id(),
+                'transaction_code' => 'TRX-' . Carbon::now()->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6)),
+                'items_summary'    => $itemsSummary,
+                'total_price'      => $request->total_price,
+                'discount'         => $request->input('discount', 0),
+                'total_cost'       => $totalCost,
+                'payment_method'   => $request->payment_method,
+                'branch'           => $cashierBranch,
+            ]);
 
-        // Kurangi stok per cabang kasir via StockService
-        $stockService    = app(\App\Services\StockService::class);
-        $branchLocation  = \App\Models\StockLocation::findByBranchName($cashierBranch);
+            // Kurangi stok per cabang kasir via StockService
+            $stockService   = app(\App\Services\StockService::class);
+            $branchLocation = \App\Models\StockLocation::findByBranchName($cashierBranch);
 
-        foreach ($request->items as $item) {
-            $product = isset($item['id'])
-                ? \App\Models\Product::find($item['id'])
-                : \App\Models\Product::where('name', $item['name'])->first();
+            foreach ($request->items as $item) {
+                $product = $resolveProduct($item);
 
-            if ($product) {
-                if ($branchLocation) {
-                    // Gunakan StockService untuk kurangi stok cabang & catat log mutasi
-                    try {
-                        $stockService->deductSaleStock(
-                            $product,
-                            $branchLocation,
-                            floatval($item['qty']),
-                            $transaction->id,
-                            auth()->user()
-                        );
-                    } catch (\Exception $e) {
-                        // Fallback ke global jika error
+                if ($product) {
+                    if ($branchLocation) {
+                        // Gunakan StockService untuk kurangi stok cabang & catat log mutasi
+                        try {
+                            $stockService->deductSaleStock(
+                                $product,
+                                $branchLocation,
+                                floatval($item['qty']),
+                                $trx->id,
+                                auth()->user()
+                            );
+                        } catch (\Exception $e) {
+                            // Fallback ke global jika error
+                            $product->decrement('stock', floatval($item['qty']));
+                        }
+                    } else {
+                        // Fallback: lokasi cabang belum terdaftar di sistem
                         $product->decrement('stock', floatval($item['qty']));
                     }
-                } else {
-                    // Fallback: lokasi cabang belum terdaftar di sistem
-                    $product->decrement('stock', floatval($item['qty']));
                 }
             }
-        }
+
+            return $trx;
+        });
 
         return response()->json([
             'success' => true,
@@ -847,62 +865,79 @@ class TransactionController extends Controller
         $items = [];
         if (!empty($transaction->items_summary)) {
             $parts = explode(', ', $transaction->items_summary);
+
+            // ── Pre-load semua produk yang mungkin dibutuhkan dalam 1 query ──
+            $namesToLookup = [];
+            foreach ($parts as $part) {
+                // Hanya items format lama yang butuh lookup produk (tanpa harga eksplisit)
+                if (!preg_match('/^.*?\s*\(\d+(?:\.\d+)?\s*\w+\s*x\s*\d+(?:\.\d+)?\)$/', $part)) {
+                    if (preg_match('/^(.*?)\s*\(\d+(?:\.\d+)?\s*\w+\)$/', $part, $m)) {
+                        $namesToLookup[] = trim($m[1]);
+                    } else {
+                        $namesToLookup[] = trim($part);
+                    }
+                }
+            }
+            $preloadedProducts = !empty($namesToLookup)
+                ? \App\Models\Product::whereIn('name', $namesToLookup)->get()->keyBy('name')
+                : collect();
+
             foreach ($parts as $part) {
                 // Try to parse format with explicit price: Name (Qty Unit x Price)
                 if (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*(\w+)\s*x\s*(\d+(?:\.\d+)?)\)$/', $part, $matches)) {
-                    $name = trim($matches[1]);
-                    $qty = floatval($matches[2]);
-                    $unit = $matches[3];
+                    $name      = trim($matches[1]);
+                    $qty       = floatval($matches[2]);
+                    $unit      = $matches[3];
                     $unitPrice = floatval($matches[4]);
-                    
+
                     if ($unit === 'gram' && $qty >= 1000) {
-                        $qty = $qty / 1000;
-                        $unit = 'kg';
+                        $qty       = $qty / 1000;
+                        $unit      = 'kg';
                         $unitPrice = $unitPrice * 1000;
                     }
-                    
+
                     $items[] = [
-                        'name' => $name,
-                        'qty' => $qty,
-                        'unit' => $unit,
-                        'unit_price' => $unitPrice,
+                        'name'        => $name,
+                        'qty'         => $qty,
+                        'unit'        => $unit,
+                        'unit_price'  => $unitPrice,
                         'total_price' => round(($unitPrice * $qty) / 500) * 500,
                     ];
                 } elseif (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*(\w+)\)$/', $part, $matches)) {
                     // Fallback for old transactions: Name (Qty Unit)
                     $name = trim($matches[1]);
-                    $qty = floatval($matches[2]);
+                    $qty  = floatval($matches[2]);
                     $unit = $matches[3];
-                    
-                    // Attempt to fetch current product details for unit price estimation
-                    $product = \App\Models\Product::where('name', $name)->first();
+
+                    // Gunakan produk yang sudah di-preload (bukan query per item)
+                    $product   = $preloadedProducts->get($name);
                     $unitPrice = $product ? $product->getPriceForQuantity($qty) : null;
-                    
+
                     if ($unit === 'gram' && $qty >= 1000) {
-                        $qty = $qty / 1000;
+                        $qty  = $qty / 1000;
                         $unit = 'kg';
                         if ($unitPrice !== null) {
                             $unitPrice = $unitPrice * 1000;
                         }
                     }
-                    
+
                     $items[] = [
-                        'name' => $name,
-                        'qty' => $qty,
-                        'unit' => $unit,
-                        'unit_price' => $unitPrice,
+                        'name'        => $name,
+                        'qty'         => $qty,
+                        'unit'        => $unit,
+                        'unit_price'  => $unitPrice,
                         'total_price' => $unitPrice ? round(($unitPrice * $qty) / 500) * 500 : null,
                     ];
                 } else {
-                    $name = trim($part);
-                    $product = \App\Models\Product::where('name', $name)->first();
+                    $name      = trim($part);
+                    $product   = $preloadedProducts->get($name);
                     $unitPrice = $product ? $product->getPriceForQuantity(1) : null;
-                    
+
                     $items[] = [
-                        'name' => $name,
-                        'qty' => 1,
-                        'unit' => 'pcs',
-                        'unit_price' => $unitPrice,
+                        'name'        => $name,
+                        'qty'         => 1,
+                        'unit'        => 'pcs',
+                        'unit_price'  => $unitPrice,
                         'total_price' => $unitPrice ? round($unitPrice / 500) * 500 : null,
                     ];
                 }

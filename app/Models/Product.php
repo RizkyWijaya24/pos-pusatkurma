@@ -52,6 +52,24 @@ class Product extends Model
         return $this->hasMany(StockAdjustmentLog::class);
     }
 
+    /** Hubungan konversi dari produk bulk ini ke eceran/repack */
+    public function conversions()
+    {
+        return $this->hasMany(ProductConversion::class, 'source_product_id');
+    }
+
+    /** Hubungan konversi di mana produk ini merupakan target eceran/repack */
+    public function targetConversions()
+    {
+        return $this->hasMany(ProductConversion::class, 'target_product_id');
+    }
+
+    /** Log repack di mana produk ini menjadi bahan baku */
+    public function repackLogs()
+    {
+        return $this->hasMany(RepackLog::class, 'source_product_id');
+    }
+
     // ═══════════════════════════════════════════════════════
     // STOCK HELPERS
     // ═══════════════════════════════════════════════════════

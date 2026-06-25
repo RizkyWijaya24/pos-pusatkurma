@@ -239,6 +239,8 @@
         activeTab: 'inventory',
         showProductModal: false,
         showCashierModal: false,
+        isEditingCashier: false,
+        editingCashierId: null,
         showCategoryModal: false,
         isEditing: false,
         isEditingCategory: false,
@@ -742,6 +744,65 @@
                 },
                 'warning',
                 'Ya, Daftarkan'
+            );
+        },
+
+        editCashier(c) {
+            this.isEditingCashier = true;
+            this.editingCashierId = c.id;
+            this.newCashier = { name: c.name, email: c.email, password: '', branch: c.branch };
+            this.showCashierModal = true;
+        },
+
+        updateCashier() {
+            if (!this.newCashier.name || !this.newCashier.email || !this.newCashier.branch) {
+                this.showToast('Nama, email, dan cabang wajib diisi!', 'warning');
+                return;
+            }
+
+            this.showConfirm(
+                'Simpan Perubahan Kasir?',
+                'Apakah Anda yakin ingin memperbarui data akun kasir ini?',
+                () => {
+                    const csrfToken = document.querySelector('meta[name=csrf-token]').getAttribute('content');
+
+                    fetch(`/admin/cashiers/${this.editingCashierId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(this.newCashier)
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(err => { throw err; });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            const index = this.cashiers.findIndex(c => c.id === this.editingCashierId);
+                            if (index !== -1) {
+                                const lastActive = this.cashiers[index].lastActive;
+                                this.cashiers[index] = data.cashier;
+                                this.cashiers[index].lastActive = lastActive;
+                            }
+                            this.newCashier = { name: '', email: '', password: '', branch: 'Pusat Cianjur' };
+                            this.showCashierModal = false;
+                            this.isEditingCashier = false;
+                            this.editingCashierId = null;
+                            this.showToast(data.message, 'success');
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        this.showToast(err.message || 'Gagal memperbarui kasir.', 'error');
+                    });
+                },
+                'warning',
+                'Ya, Simpan'
             );
         },
 
@@ -1308,7 +1369,7 @@
                     <p class="text-sm text-slate-400 dark:text-purple-400 font-medium mt-1">Kelola kredensial akun kasir yang bertugas melayani transaksi</p>
                 </div> -->
                 <button type="button" 
-                        @click="showCashierModal = true"
+                        @click="isEditingCashier = false; newCashier = { name: '', email: '', password: '', branch: 'Pusat Cianjur' }; showCashierModal = true"
                         class="px-5 py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-sm transition duration-150 flex items-center gap-2 shadow-md shadow-emerald-700/10 whitespace-nowrap">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z" />
@@ -1354,6 +1415,14 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
                                                 </svg>
                                                 <span>Masuk</span>
+                                            </button>
+                                            <button type="button" 
+                                                    @click="editCashier(c)"
+                                                    class="p-2 text-slate-500 hover:text-emerald-700 hover:bg-slate-50 rounded-xl transition duration-150"
+                                                    title="Edit Kasir">
+                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 21.75a.75.75 0 0 1-.364.212l-3.5 1a.75.75 0 0 1-.914-.915l1-3.5a.75.75 0 0 1 .212-.364L16.863 4.487Zm0 0L19.5 7.125" />
+                                                </svg>
                                             </button>
                                             <button type="button" 
                                                     @click="deleteCashier(c.id)"
@@ -1906,7 +1975,7 @@
              style="display: none;">
             
             <div class="modal-card bg-white rounded-3xl p-6 w-full max-w-md border border-slate-100 shadow-2xl flex flex-col gap-4" @click.away="showCashierModal = false">
-                <h3 class="font-extrabold text-slate-800 text-lg">Daftarkan Akun Kasir Baru</h3>
+                <h3 class="font-extrabold text-slate-800 text-lg" x-text="isEditingCashier ? 'Edit Akun Kasir' : 'Daftarkan Akun Kasir Baru'"></h3>
                 <div class="flex flex-col gap-3 text-sm font-semibold text-slate-700">
                     <div>
                         <label class="block mb-1">Nama Lengkap</label>
@@ -1918,7 +1987,7 @@
                     </div>
                     <div>
                         <label class="block mb-1">Kata Sandi (Password)</label>
-                        <input type="password" x-model="newCashier.password" placeholder="Kata sandi minimal 8 karakter..." class="w-full border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500">
+                        <input type="password" x-model="newCashier.password" :placeholder="isEditingCashier ? 'Kosongkan jika tidak ingin mengubah password...' : 'Kata sandi minimal 8 karakter...'" class="w-full border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500">
                     </div>
                     <div>
                         <label class="block mb-1">Penugasan Cabang</label>
@@ -1931,7 +2000,7 @@
                 </div>
                 <div class="grid grid-cols-2 gap-3 mt-2">
                     <button type="button" @click="showCashierModal = false" class="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold">Batal</button>
-                    <button type="button" @click="addCashier()" class="py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold">Simpan</button>
+                    <button type="button" @click="isEditingCashier ? updateCashier() : addCashier()" class="py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold">Simpan</button>
                 </div>
             </div>
         </div>

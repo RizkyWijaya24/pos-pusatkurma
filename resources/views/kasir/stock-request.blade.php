@@ -157,25 +157,25 @@
 
         {{-- Kolom Kanan (25%): Ringkasan Request & Riwayat (Sticky) --}}
         <div class="space-y-6">
-            <div class="sticky top-20 space-y-6">
+            <div class="sticky top-4 space-y-4">
                 
                 {{-- Card Ringkasan --}}
-                <div class="bg-white dark:bg-dp-900 border border-slate-200 dark:border-dp-700/60 rounded-2xl p-5 shadow-md">
-                    <h2 class="text-slate-900 dark:text-white font-bold text-base mb-4 flex items-center gap-2">
+                <div class="bg-white dark:bg-dp-900 border border-slate-200 dark:border-dp-700/60 rounded-2xl p-4 shadow-md">
+                    <h2 class="text-slate-900 dark:text-white font-bold text-base mb-3 flex items-center gap-2">
                         <span class="text-emerald-500">📬</span> Ringkasan Permintaan
                     </h2>
                     
                     {{-- Selected items container --}}
-                    <div id="summaryItemsList" class="space-y-2 max-h-60 overflow-y-auto pr-1 scrollbar-thin">
+                    <div id="summaryItemsList" class="space-y-2 max-h-52 overflow-y-auto pr-1 scrollbar-thin">
                         {{-- Dihasilkan JS --}}
                     </div>
-                    <div id="emptySummaryText" class="text-center text-slate-500 py-6 border border-dashed border-slate-200 dark:border-dp-700 rounded-xl bg-slate-50/50 dark:bg-dp-950/20">
+                    <div id="emptySummaryText" class="text-center text-slate-500 py-5 border border-dashed border-slate-200 dark:border-dp-700 rounded-xl bg-slate-50/50 dark:bg-dp-950/20">
                         <p class="text-xs font-medium">Belum ada barang yang di-request.</p>
                         <p class="text-[10px] text-slate-400 mt-1">Masukkan jumlah pada tabel produk.</p>
                     </div>
 
                     {{-- Form Notes & Keterangan --}}
-                    <div class="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                    <div class="mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800 space-y-2.5">
                         <div class="flex justify-between text-xs text-slate-500 dark:text-slate-400">
                             <span>Total Item:</span>
                             <span id="summaryTotalItems" class="font-bold text-slate-900 dark:text-white">0 produk</span>
@@ -186,15 +186,25 @@
                         </div>
                         
                         <div>
-                            <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-450 mb-1.5">Catatan / Keterangan Tambahan</label>
+                            <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-450 mb-1">Catatan / Keterangan Tambahan</label>
                             <textarea id="requestNotes" rows="2" placeholder="Contoh: Butuh mendesak, stok kurma madu sisa sedikit..."
                                 class="w-full bg-slate-50 dark:bg-dp-850 border border-slate-300 dark:border-dp-700 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-teal-500 focus:outline-none resize-none shadow-inner"></textarea>
                         </div>
 
-                        <button onclick="submitRequest()" id="submitRequestBtn" disabled
-                            class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:hover:bg-emerald-600 disabled:scale-100 text-white py-3 rounded-xl font-bold transition-all hover:scale-[1.02] shadow-sm flex items-center justify-center gap-2 focus:outline-none cursor-pointer disabled:cursor-not-allowed">
-                            <span>📬</span> Kirim Permintaan ke Admin
-                        </button>
+                        <div class="flex gap-2 pt-1.5">
+                            <button onclick="submitRequest()" id="submitRequestBtn" disabled
+                                class="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:hover:bg-emerald-600 disabled:scale-100 text-white py-2.5 rounded-xl font-bold transition-all hover:scale-[1.02] shadow-sm flex items-center justify-center gap-1.5 focus:outline-none cursor-pointer disabled:cursor-not-allowed text-xs">
+                                <span>📬</span> Kirim Admin
+                            </button>
+
+                            <button onclick="sendWaReport()" id="waReportBtn" disabled style="background-color: #25D366;"
+                                class="flex-1 text-white py-2.5 rounded-xl font-bold transition-all hover:scale-[1.02] hover:opacity-90 disabled:opacity-30 disabled:hover:scale-100 shadow-sm flex items-center justify-center gap-1.5 focus:outline-none cursor-pointer disabled:cursor-not-allowed text-xs">
+                                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.504-5.714-1.465L0 24zm6.59-4.846c1.6.95 3.197 1.451 4.793 1.453 5.485.002 9.948-4.41 9.95-9.825.001-2.624-1.013-5.09-2.861-6.942-1.848-1.853-4.309-2.873-6.932-2.874-5.49 0-9.953 4.411-9.956 9.827-.001 1.714.471 3.391 1.364 4.882l-.999 3.65 3.743-.971zm11.367-6.425c-.279-.14-1.651-.814-1.906-.907-.255-.094-.441-.14-.627.14-.186.28-.718.907-.88 1.092-.162.186-.325.21-.604.07-.279-.14-1.18-.435-2.247-1.387-.83-.74-1.39-1.653-1.553-1.932-.162-.28-.017-.43.122-.569.124-.125.279-.325.418-.488.14-.162.186-.28.279-.465.093-.186.046-.349-.023-.488-.069-.14-.627-1.511-.86-2.07-.227-.546-.477-.473-.651-.482-.167-.008-.36-.01-.553-.01-.193 0-.507.073-.772.36-.265.287-1.011.987-1.011 2.406s1.025 2.793 1.168 2.98c.143.19 2.017 3.08 4.886 4.318.682.295 1.214.471 1.629.603.686.218 1.31.187 1.803.114.549-.08 1.651-.676 1.883-1.328.232-.653.232-1.213.162-1.328-.069-.115-.255-.187-.534-.327z"/>
+                                </svg>
+                                Laporan WA
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -382,6 +392,7 @@ function renderSummary() {
     const container = document.getElementById('summaryItemsList');
     const emptyText = document.getElementById('emptySummaryText');
     const submitBtn = document.getElementById('submitRequestBtn');
+    const waReportBtn = document.getElementById('waReportBtn');
     
     const items = Object.values(requestItems);
     const ids = Object.keys(requestItems);
@@ -390,6 +401,7 @@ function renderSummary() {
         container.innerHTML = '';
         emptyText.classList.remove('hidden');
         submitBtn.disabled = true;
+        if (waReportBtn) waReportBtn.disabled = true;
         
         document.getElementById('summaryTotalItems').textContent = '0 produk';
         document.getElementById('summaryTotalQty').textContent = '0';
@@ -398,6 +410,7 @@ function renderSummary() {
 
     emptyText.classList.add('hidden');
     submitBtn.disabled = false;
+    if (waReportBtn) waReportBtn.disabled = false;
 
     let totalQty = 0;
     
@@ -606,6 +619,46 @@ function confirmCancel() {
             btn.textContent = 'Ya, Batalkan';
         }
     });
+}
+
+function sendWaReport() {
+    const items = Object.values(requestItems).filter(i => i.quantity > 0);
+    if (items.length === 0) {
+        showToast('Kuantitas request belum diisi!', 'warning');
+        return;
+    }
+
+    const branchName = @json($myLocation?->name ?? $kasir->branch);
+    const today = new Date();
+    const dateStr = String(today.getDate()).padStart(2, '0') + '-' + 
+                    String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                    today.getFullYear();
+
+    let msg = `*LAPORAN REQUEST STOK*\n`;
+    msg += `*Cabang:* ${branchName}\n`;
+    msg += `*Tanggal:* ${dateStr}\n\n`;
+    msg += `*Daftar Barang:*\n`;
+    items.forEach((item, idx) => {
+        const qtyStr = Number(item.quantity).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        msg += `${idx + 1}. *${item.name}* - ${qtyStr} ${item.unit}\n`;
+    });
+
+    const notes = document.getElementById('requestNotes').value.trim();
+    msg += `\n*Catatan:* ${notes ? notes : '-'}\n\n`;
+    msg += `_Laporan ini dibuat otomatis melalui sistem POS Pusat Kurma._`;
+
+    const waNumber = @json(config('app.whatsapp_report_number', ''));
+    let url = '';
+    if (waNumber) {
+        let number = waNumber.replace(/[^0-9]/g, '');
+        if (number.startsWith('0')) {
+            number = '62' + number.slice(1);
+        }
+        url = `https://api.whatsapp.com/send?phone=${number}&text=${encodeURIComponent(msg)}`;
+    } else {
+        url = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+    }
+    window.open(url, '_blank');
 }
 </script>
 @endsection

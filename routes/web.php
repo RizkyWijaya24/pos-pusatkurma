@@ -29,6 +29,10 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    // Notification routes
+    Route::get('/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'read'])->name('notifications.read');
+    Route::post('/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'readAll'])->name('notifications.read-all');
+
     // Kasir routes (Accessible by kasir and admin)
     Route::middleware('role:kasir,admin')->prefix('kasir')->name('kasir.')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'kasir'])->name('dashboard');
@@ -71,6 +75,7 @@ Route::middleware('auth')->group(function () {
 
         // Cashier CRUD
         Route::post('/cashiers', [\App\Http\Controllers\CashierController::class, 'store'])->name('cashiers.store');
+        Route::put('/cashiers/{user}', [\App\Http\Controllers\CashierController::class, 'update'])->name('cashiers.update');
         Route::delete('/cashiers/{user}', [\App\Http\Controllers\CashierController::class, 'destroy'])->name('cashiers.destroy');
         Route::post('/impersonate/{user}', [\App\Http\Controllers\CashierController::class, 'impersonate'])->name('impersonate');
 
@@ -92,6 +97,11 @@ Route::middleware('auth')->group(function () {
         // AJAX: Stok per lokasi & koreksi stok manual
         Route::get('/stock-by-location', [\App\Http\Controllers\StockTransferController::class, 'getStockByLocation'])->name('stock-by-location');
         Route::post('/stock-adjust', [\App\Http\Controllers\StockTransferController::class, 'adjustStock'])->name('stock-adjust');
+
+        // Repack / Pecah Stok Routes
+        Route::get('/products/{product}/conversions', [\App\Http\Controllers\RepackController::class, 'getConversions'])->name('products.conversions');
+        Route::resource('repack', \App\Http\Controllers\RepackController::class)->only(['index', 'create', 'store']);
+        Route::resource('conversions', \App\Http\Controllers\ProductConversionController::class)->only(['index', 'store', 'destroy']);
     });
 
     // Owner routes (Accessible by owner and admin)

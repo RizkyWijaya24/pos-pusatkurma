@@ -123,6 +123,11 @@ class StockTransferController extends Controller
         try {
             $this->stockService->approveTransfer($stockTransfer, auth()->user());
 
+            // Kirim notifikasi ke kasir pembuat request
+            if ($stockTransfer->requester) {
+                $stockTransfer->requester->notify(new \App\Notifications\StockTransferNotification($stockTransfer, 'approved', auth()->user()));
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => "Transfer {$stockTransfer->transfer_code} berhasil disetujui! Stok telah dipindahkan.",
@@ -141,7 +146,9 @@ class StockTransferController extends Controller
     public function reject(Request $request, StockTransfer $stockTransfer)
     {
         $request->validate([
-            'rejection_reason' => 'nullable|string|max:500',
+            'rejection_reason' => 'required|string|max:500',
+        ], [
+            'rejection_reason.required' => 'Alasan penolakan wajib diisi.',
         ]);
 
         try {
@@ -150,6 +157,11 @@ class StockTransferController extends Controller
                 auth()->user(),
                 $request->input('rejection_reason', '')
             );
+
+            // Kirim notifikasi ke kasir pembuat request
+            if ($stockTransfer->requester) {
+                $stockTransfer->requester->notify(new \App\Notifications\StockTransferNotification($stockTransfer, 'rejected', auth()->user()));
+            }
 
             return response()->json([
                 'success' => true,
@@ -178,6 +190,14 @@ class StockTransferController extends Controller
 
         try {
             $this->stockService->cancelTransfer($stockTransfer);
+
+            // Jika dibatalkan oleh kasir, kirim notifikasi ke Admin & Owner
+            if (auth()->user()->isKasir()) {
+                $adminOwners = \App\Models\User::whereIn('role', ['admin', 'owner'])->get();
+                foreach ($adminOwners as $recipient) {
+                    $recipient->notify(new \App\Notifications\StockTransferNotification($stockTransfer, 'cancelled', auth()->user()));
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -287,6 +307,12 @@ class StockTransferController extends Controller
 
         try {
             $transfer = $this->stockService->createTransfer($data, $kasir);
+
+            // Kirim notifikasi ke Admin & Owner
+            $adminOwners = \App\Models\User::whereIn('role', ['admin', 'owner'])->get();
+            foreach ($adminOwners as $recipient) {
+                $recipient->notify(new \App\Notifications\StockTransferNotification($transfer, 'created', $kasir));
+            }
 
             return response()->json([
                 'success'   => true,

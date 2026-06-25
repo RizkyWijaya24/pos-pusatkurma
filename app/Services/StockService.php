@@ -395,4 +395,161 @@ class StockService
         }
         return $matrix;
     }
+
+    /**
+     * Memproses repack / pecah stok dari produk bulk ke produk eceran/kemasan kecil.
+     *
+     * @param int    $locationId
+     * @param int    $sourceProductId
+     * @param float  $sourceQty
+     * @param array  $targets
+     * @param int    $userId
+     * @param string $notes
+     * @return \App\Models\RepackLog
+     * @throws \Exception
+     */
+    public function repackProduct(
+        int $locationId,
+        int $sourceProductId,
+        float $sourceQty,
+        array $targets,
+        int $userId,
+        string $notes = ''
+    ): \App\Models\RepackLog {
+        return DB::transaction(function () use ($locationId, $sourceProductId, $sourceQty, $targets, $userId, $notes) {
+            $sourceProduct = Product::findOrFail($sourceProductId);
+
+            // 1. Validasi stok sumber & potong stok di lokasi terpilih
+            $sourcePs = ProductStock::getOrCreate($sourceProductId, $locationId);
+            if ($sourcePs->stock < $sourceQty) {
+                throw new \Exception(
+                    "Stok {$sourceProduct->name} tidak mencukupi untuk di-repack. " .
+                    "Tersedia: {$sourcePs->stock}, diminta: {$sourceQty}"
+                );
+            }
+
+            $beforeSource = $sourcePs->stock;
+            $sourcePs->decrementStock($sourceQty);
+
+            // Log mutasi stok produk asal
+            StockAdjustmentLog::create([
+                'product_id'      => $sourceProductId,
+                'location_id'     => $locationId,
+                'type'            => 'adjustment',
+                'quantity_before' => $beforeSource,
+                'quantity_change' => -$sourceQty,
+                'quantity_after'  => $sourcePs->stock,
+                'created_by'      => $userId,
+                'notes'           => "Pecah stok / repack (Bahan Baku) - Kode RPK",
+                'created_at'      => now(),
+            ]);
+
+            $this->syncGlobalStock($sourceProduct);
+
+            // 2. Buat header log repack
+            $repackLog = \App\Models\RepackLog::create([
+                'repack_code'       => \App\Models\RepackLog::generateCode(),
+                'location_id'       => $locationId,
+                'source_product_id' => $sourceProductId,
+                'source_quantity'   => $sourceQty,
+                'created_by'        => $userId,
+                'notes'             => $notes ?: 'Pecah stok / kemas ulang',
+                'created_at'        => now(),
+            ]);
+
+            // 3. Kalkulasi total HPP (Harga Modal) bahan baku
+            $totalSourceCost = $sourceProduct->cost_price * $sourceQty;
+
+            // Hitung total ekivalen yield dalam unit source
+            $totalSourceEquivalents = 0.0;
+            $targetDataList = [];
+
+            foreach ($targets as $target) {
+                $targetProductId = $target['target_product_id'];
+                $targetQty = floatval($target['target_quantity']);
+                $packagingCost = intval($target['additional_packaging_cost'] ?? 0);
+
+                if ($targetQty <= 0) {
+                    continue;
+                }
+
+                // Cari conversion_rate dari database
+                $conversion = \App\Models\ProductConversion::where('source_product_id', $sourceProductId)
+                    ->where('target_product_id', $targetProductId)
+                    ->first();
+                $rate = $conversion ? floatval($conversion->conversion_rate) : 1.0;
+                if ($rate <= 0) {
+                    $rate = 1.0;
+                }
+
+                $sourceEquivalent = $targetQty / $rate;
+                $totalSourceEquivalents += $sourceEquivalent;
+
+                $targetDataList[] = [
+                    'product_id'         => $targetProductId,
+                    'quantity'           => $targetQty,
+                    'rate'               => $rate,
+                    'source_equivalent'  => $sourceEquivalent,
+                    'packaging_cost'     => $packagingCost,
+                ];
+            }
+
+            // Jika tidak ada target valid, batalkan
+            if (empty($targetDataList)) {
+                throw new \Exception("Daftar produk hasil repack tidak valid.");
+            }
+
+            // Hindari division by zero jika yield = 0
+            $totalSourceEquivalentsForCost = $totalSourceEquivalents > 0 ? $totalSourceEquivalents : 1.0;
+
+            // 4. Tambah stok untuk setiap produk target & update cost_price
+            foreach ($targetDataList as $item) {
+                $targetProduct = Product::findOrFail($item['product_id']);
+                $targetQty     = $item['quantity'];
+
+                // Tambah stok di lokasi
+                $targetPs = ProductStock::getOrCreate($item['product_id'], $locationId);
+                $beforeTarget = $targetPs->stock;
+                $targetPs->incrementStock($targetQty);
+
+                // Hitung HPP per unit
+                // Rumus: (bagian total source cost yang diserap / kuantitas target) + biaya kemasan per unit
+                // Bagian total source cost diserap = (ekivalen unit / total ekivalen) * totalSourceCost
+                $allocatedSourceCost = ($item['source_equivalent'] / $totalSourceEquivalentsForCost) * $totalSourceCost;
+                $unitSourceCost = $targetQty > 0 ? ($allocatedSourceCost / $targetQty) : 0;
+                $calculatedCostPrice = round($unitSourceCost + $item['packaging_cost']);
+
+                // Log repack item
+                \App\Models\RepackLogItem::create([
+                    'repack_log_id'             => $repackLog->id,
+                    'target_product_id'         => $item['product_id'],
+                    'target_quantity'           => $targetQty,
+                    'additional_packaging_cost' => $item['packaging_cost'],
+                    'calculated_cost_price'      => $calculatedCostPrice,
+                ]);
+
+                // Log mutasi stok produk target
+                StockAdjustmentLog::create([
+                    'product_id'      => $item['product_id'],
+                    'location_id'     => $locationId,
+                    'type'            => 'adjustment',
+                    'quantity_before' => $beforeTarget,
+                    'quantity_change' => $targetQty,
+                    'quantity_after'  => $targetPs->stock,
+                    'created_by'      => $userId,
+                    'notes'           => "Hasil repack - Kode {$repackLog->repack_code}",
+                    'created_at'      => now(),
+                ]);
+
+                $this->syncGlobalStock($targetProduct);
+
+                // Update cost price produk hasil repack di database
+                $targetProduct->update([
+                    'cost_price' => $calculatedCostPrice
+                ]);
+            }
+
+            return $repackLog;
+        });
+    }
 }
