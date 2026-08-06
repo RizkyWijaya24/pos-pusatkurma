@@ -21,3 +21,13 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+/scratch
+*.env
+*.pdf
+analyze_dom.php
+dashboard_*.html
+inspect_*.php
+render_dashboards.php
+search_views.php
+test_*.php
+test_generation_check.pdf

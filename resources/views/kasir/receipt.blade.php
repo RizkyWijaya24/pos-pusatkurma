@@ -200,6 +200,13 @@
     <!-- Printable Receipt Structure -->
     <div class="receipt-container">
         <div class="text-center">
+            @php
+                $logoPath = public_path('images/logo.png');
+                $logoBase64 = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : null;
+            @endphp
+            @if($logoBase64)
+                <img src="data:image/png;base64,{{ $logoBase64 }}" style="height: 40px; width: auto; display: block; margin: 0 auto 4px auto;" alt="Logo">
+            @endif
             <div class="brand-title">Pusat Kurma Al karim</div>
             <div class="brand-subtitle">{{ $transaction->branch ?? 'Cabang Cianjur' }}</div>
         </div>

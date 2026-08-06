@@ -20,7 +20,7 @@ class ExpenseController extends Controller
 
         $expense = Expense::create([
             'cashier_id' => auth()->id(),
-            'branch' => auth()->user()->branch ?? 'Pusat Cianjur',
+            'branch' => auth()->user()->branch ?? 'Cabang Rumah',
             'category' => $request->category,
             'amount' => $request->amount,
             'description' => $request->description,

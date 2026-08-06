@@ -13,6 +13,7 @@ class StockTransferItem extends Model
         'transfer_id',
         'product_id',
         'quantity',
+        'approved_quantity',
         'unit',
         'notes',
     ];
@@ -20,7 +21,8 @@ class StockTransferItem extends Model
     protected function casts(): array
     {
         return [
-            'quantity' => 'float',
+            'quantity'          => 'float',
+            'approved_quantity' => 'float',
         ];
     }
 

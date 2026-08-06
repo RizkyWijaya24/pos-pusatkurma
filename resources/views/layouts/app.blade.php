@@ -45,6 +45,11 @@
 
         <title>@hasSection('title') @yield('title') | @endif {{ config('app.name', 'Pusat Kurma Cianjur') }}</title>
 
+        <!-- Favicon -->
+        <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
+        <link rel="shortcut icon" href="{{ asset('favicon.png') }}">
+        <link rel="apple-touch-icon" href="{{ asset('favicon.png') }}">
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -179,9 +184,13 @@
 
                     <!-- Brand / Title -->
                     <div class="flex items-center gap-3 py-4 border-b border-emerald-800/50">
-                        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-400 to-teal-300 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                            <span class="text-xl font-bold text-emerald-900">PK</span>
-                        </div>
+                        @if(file_exists(public_path('images/logo.png')))
+                            <img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" class="w-10 h-10 rounded-xl object-cover shadow-lg shadow-emerald-500/20" alt="Logo">
+                        @else
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-400 to-teal-300 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                                <span class="text-xl font-bold text-emerald-900">PK</span>
+                            </div>
+                        @endif
                         <div>
                             <h1 class="text-lg font-bold bg-gradient-to-r from-white to-emerald-200 bg-clip-text text-transparent">Pusat Kurma</h1>
                             <p class="text-xs text-emerald-300 tracking-wide font-medium">Cianjur</p>
@@ -217,9 +226,13 @@
                 
                 <!-- Brand / Logo -->
                 <div class="flex items-center gap-3 py-4 border-b border-emerald-900/50">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-400 to-teal-300 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                        <span class="text-xl font-bold text-emerald-900">PK</span>
-                    </div>
+                    @if(file_exists(public_path('images/logo.png')))
+                        <img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" class="w-10 h-10 rounded-xl object-cover shadow-lg shadow-emerald-500/20" alt="Logo">
+                    @else
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-400 to-teal-300 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                            <span class="text-xl font-bold text-emerald-900">PK</span>
+                        </div>
+                    @endif
                     <div>
                         <h1 class="text-lg font-bold bg-gradient-to-r from-white to-emerald-200 bg-clip-text text-transparent">Pusat Kurma</h1>
                         <p class="text-xs text-emerald-300 tracking-wide font-medium">Cianjur</p>
@@ -278,13 +291,61 @@
                 <div class="flex items-center gap-x-3 lg:gap-x-5">
                     
                     <!-- Notification dropdown -->
-                    <div class="relative" x-data="{ notifOpen: false }" @click.away="notifOpen = false">
+                    <div class="relative" x-data="{ 
+                        notifOpen: false, 
+                        totalCount: {{ $totalAlertCount }},
+                        unreadCount: {{ $unreadCount }},
+                        lowStockCount: {{ $lowStockCount }},
+                        
+                        init() {
+                            // Poll every 10 seconds for new notifications
+                            setInterval(() => {
+                                this.fetchUnreadCount();
+                            }, 10000);
+                        },
+
+                        async fetchUnreadCount() {
+                            try {
+                                const res = await fetch('{{ route("notifications.unread-count") }}', {
+                                    headers: {
+                                        'Accept': 'application/json',
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
+                                });
+                                if (!res.ok) return;
+                                const data = await res.json();
+                                
+                                // Play audio beep and show toast if unreadCount has increased
+                                if (data.unread_count > this.unreadCount) {
+                                    if (typeof window.showToast === 'function') {
+                                        window.showToast('Ada pesanan atau notifikasi baru masuk!', 'info');
+                                    }
+                                    
+                                    // Audio synthesized chirp
+                                    try {
+                                        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                                        const osc = audioCtx.createOscillator();
+                                        const gain = audioCtx.createGain();
+                                        osc.connect(gain);
+                                        gain.connect(audioCtx.destination);
+                                        osc.type = 'sine';
+                                        osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 note
+                                        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                                        osc.start();
+                                        osc.stop(audioCtx.currentTime + 0.15);
+                                    } catch (err) {}
+                                }
+                                
+                                this.totalCount = data.total;
+                                this.unreadCount = data.unread_count;
+                                this.lowStockCount = data.low_stock_count;
+                            } catch (e) {
+                                console.error('Gagal memuat notifikasi:', e);
+                            }
+                        }
+                    }" @click.away="notifOpen = false">
                         <button type="button" @click="notifOpen = !notifOpen" class="relative rounded-full p-2 text-slate-400 dark:text-purple-400 hover:text-slate-500 dark:hover:text-purple-200 hover:bg-slate-100 dark:hover:bg-dp-800 transition duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">
-                            @if($totalAlertCount > 0)
-                                <span class="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-dp-900 animate-pulse">
-                                    {{ $totalAlertCount }}
-                                </span>
-                            @endif
+                            <span x-show="unreadCount > 0" class="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-dp-900 animate-pulse" x-text="unreadCount"></span>
                             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
                             </svg>
@@ -298,20 +359,18 @@
                             x-transition:leave="transition ease-in duration-75"
                             x-transition:leave-start="opacity-100 scale-100"
                             x-transition:leave-end="opacity-0 scale-95"
-                            class="absolute right-0 mt-3 origin-top-right rounded-2xl bg-white dark:bg-dp-800 shadow-2xl ring-1 ring-black/5 dark:ring-white/10 z-50 border border-slate-100 dark:border-dp-700 overflow-hidden"
-                            style="display: none; width: 480px; max-width: calc(100vw - 24px);"
+                            class="absolute right-0 mt-3 origin-top-right rounded-2xl bg-white dark:bg-dp-800 shadow-2xl ring-1 ring-black/5 dark:ring-white/10 z-50 border border-slate-100 dark:border-dp-700 overflow-hidden w-[calc(100vw-32px)] sm:w-[480px]"
+                            style="display: none;"
                         >
                             <!-- Header -->
                             <div class="px-4 py-3 bg-slate-50 dark:bg-dp-750 border-b border-slate-100 dark:border-dp-700 flex items-center justify-between">
                                 <span class="font-bold text-sm text-slate-800 dark:text-purple-100">Notifikasi & Peringatan</span>
-                                @if($unreadCount > 0)
-                                    <form action="{{ route('notifications.read-all') }}" method="POST">
-                                        @csrf
-                                        <button type="submit" class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline">
-                                            Tandai semua dibaca
-                                        </button>
-                                    </form>
-                                @endif
+                                <form action="{{ route('notifications.read-all') }}" method="POST" x-show="unreadCount > 0" style="display: none;">
+                                    @csrf
+                                    <button type="submit" class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline">
+                                        Tandai semua dibaca
+                                    </button>
+                                </form>
                             </div>
 
                             <!-- List Container -->

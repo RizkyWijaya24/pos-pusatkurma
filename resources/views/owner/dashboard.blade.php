@@ -111,7 +111,180 @@
     <script type="application/json" id="weekly-trend-data">@json($weeklyTrend)</script>
     <script type="application/json" id="monthly-trend-data">@json($monthlyTrend)</script>
 
-    <!-- Alpine.js Owner State (Optional for interactivity) -->
+    <!-- Script containing complex functions to avoid HTML attribute parsing issues -->
+    <script>
+        function renderOwnerMarkdown(md) {
+            if (!md) return '';
+            let html = md;
+            
+            // Basic HTML escape to prevent raw rendering issues
+            html = html
+                .replace(/&/g, '&amp;')
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+
+            // Convert Headings
+            html = html.replace(/^### (.*?)$/gm, '<h5 class="text-sm font-black text-slate-800 dark:text-violet-200 mt-4 mb-2">$1</h5>');
+            html = html.replace(/^## (.*?)$/gm, '<h4 class="text-base font-black text-slate-800 dark:text-violet-100 mt-5 mb-2.5 border-b border-violet-100/30 pb-1">$1</h4>');
+            html = html.replace(/^# (.*?)$/gm, '<h3 class="text-lg font-black text-slate-800 dark:text-violet-50 mt-6 mb-3 border-b border-violet-200/50 pb-1.5">$1</h3>');
+            
+            // Convert Bold
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-slate-800 dark:text-slate-200">$1</strong>');
+            
+            // Convert Bullet points
+            html = html.replace(/^\-\s+(.*?)$/gm, '<li class="ml-4 list-disc pl-1 text-slate-600 dark:text-slate-300 text-xs font-semibold my-1.5">$1</li>');
+            
+            // Convert Paragraphs / Line Breaks
+            html = html.split('\n\n').map(function(p) {
+                const trimmed = p.trim();
+                if (trimmed.startsWith('<li') || trimmed.startsWith('<h')) {
+                    return p;
+                }
+                return '<p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-semibold mb-2.5">' + p + '</p>';
+            }).join('');
+
+            html = html.replace(/\n/g, '<br>');
+
+            return html;
+        }
+
+        function fetchOwnerAiAnalysis(component, refresh) {
+            component.showAiModal = true;
+            const skill = component.activeSkill || 'general';
+
+            if (!component.skillCache) {
+                component.skillCache = {};
+            }
+
+            // Return cached analysis if available and not forcing refresh
+            if (!refresh && component.skillCache[skill]) {
+                component.aiAnalysis   = component.skillCache[skill].analysis;
+                component.chatMessages = component.skillCache[skill].chatMessages || [];
+                component.aiError      = '';
+                return;
+            }
+
+            if (refresh) {
+                component.chatMessages = [];
+                component.chatInput    = '';
+                delete component.skillCache[skill];
+            }
+
+            component.aiLoading  = true;
+            component.aiError    = '';
+            component.aiAnalysis = '';
+
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('skill', skill);
+            if (refresh) {
+                urlParams.set('refresh', 'true');
+            }
+
+            fetch('{{ route("owner.performance.analysis") }}?' + urlParams.toString())
+                .then(function(response) {
+                    if (!response.ok) {
+                        return response.json().then(function(err) { throw new Error(err.message || 'Error HTTP ' + response.status); });
+                    }
+                    return response.json();
+                })
+                .then(function(data) {
+                    if (data.success) {
+                        component.aiAnalysis = data.analysis;
+                        component.skillCache[skill] = {
+                            analysis: data.analysis,
+                            chatMessages: component.chatMessages ? [...component.chatMessages] : []
+                        };
+                    } else {
+                        throw new Error(data.message || 'Gagal mengambil analisis.');
+                    }
+                })
+                .catch(function(err) {
+                    component.aiError = err.message || 'Terjadi kesalahan saat menghubungi server.';
+                })
+                .finally(function() {
+                    component.aiLoading = false;
+                });
+        }
+
+        function fetchOwnerChatReply(component) {
+            const message = component.chatInput.trim();
+            if (!message || component.chatLoading || component.aiLoading) return;
+
+            // Add user bubble
+            component.chatMessages.push({ role: 'user', text: message });
+            component.chatInput   = '';
+            component.chatLoading = true;
+            component.chatError   = '';
+
+            const skill = component.activeSkill || 'general';
+            if (component.skillCache && component.skillCache[skill]) {
+                component.skillCache[skill].chatMessages = [...component.chatMessages];
+            }
+
+            // Scroll chat area to bottom after adding user bubble
+            component.$nextTick(function() {
+                const chatArea = document.getElementById('ai-chat-area');
+                if (chatArea) chatArea.scrollTop = chatArea.scrollHeight;
+            });
+
+            // Build history from chatMessages (exclude the new message just added)
+            const history = component.chatMessages.slice(0, -1).map(function(m) {
+                return { role: m.role, text: m.text };
+            });
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+
+            fetch('{{ route("owner.performance.chat") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken ? csrfToken.getAttribute('content') : '',
+                },
+                body: JSON.stringify({
+                    initial_analysis: component.aiAnalysis,
+                    history: history,
+                    message: message,
+                }),
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    return response.json().then(function(err) { throw new Error(err.message || 'Error HTTP ' + response.status); });
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                if (data.success) {
+                    component.chatMessages.push({ role: 'model', text: data.reply });
+                    if (component.skillCache && component.skillCache[skill]) {
+                        component.skillCache[skill].chatMessages = [...component.chatMessages];
+                    }
+                } else {
+                    throw new Error(data.message || 'Gagal mendapatkan balasan.');
+                }
+            })
+            .catch(function(err) {
+                component.chatError = err.message || 'Gagal menghubungi server.';
+                // Remove the user bubble that was just added on error so UX is clean
+                component.chatMessages.pop();
+                if (component.skillCache && component.skillCache[skill]) {
+                    component.skillCache[skill].chatMessages = [...component.chatMessages];
+                }
+            })
+            .finally(function() {
+                component.chatLoading = false;
+                // Auto-scroll to bottom after reply arrives
+                component.$nextTick(function() {
+                    const chatArea = document.getElementById('ai-chat-area');
+                    if (chatArea) chatArea.scrollTop = chatArea.scrollHeight;
+                });
+            });
+        }
+    </script>
+
+    <!-- Alpine.js Owner State -->
     <div x-data="{
         revenue: {{ (int) $activeRevenue }},
         transactions: {{ (int) $activeTransactionsCount }},
@@ -120,6 +293,43 @@
         timeframe: 'Mingguan',
         showTable: localStorage.getItem('owner_active_card') !== null,
         activeCard: localStorage.getItem('owner_active_card'),
+        showAiModal: false,
+        aiLoading: false,
+        aiAnalysis: '',
+        aiError: '',
+        chatMessages: [],
+        chatInput: '',
+        chatLoading: false,
+        chatError: '',
+        activeSkill: 'general',
+        skillCache: {},
+        switchSkill(skill) {
+            if (this.activeSkill === skill) return;
+            if (this.skillCache[this.activeSkill]) {
+                this.skillCache[this.activeSkill].chatMessages = [...this.chatMessages];
+            }
+            this.activeSkill = skill;
+            this.chatInput   = '';
+            this.chatError   = '';
+            this.fetchAiAnalysis(false);
+        },
+        fetchAiAnalysis(refresh = false) {
+            fetchOwnerAiAnalysis(this, refresh);
+        },
+        fetchChatReply() {
+            fetchOwnerChatReply(this);
+        },
+        clearChat() {
+            this.chatMessages = [];
+            this.chatInput    = '';
+            this.chatError    = '';
+            if (this.skillCache[this.activeSkill]) {
+                this.skillCache[this.activeSkill].chatMessages = [];
+            }
+        },
+        renderMarkdown(md) {
+            return renderOwnerMarkdown(md);
+        },
         formatRupiah(num) {
             const val = parseFloat(num);
             return 'Rp ' + (isNaN(val) ? '0' : val.toLocaleString('id-ID'));
@@ -310,17 +520,24 @@
             </div>
         </div>
 
-        <!-- Hint Banner to encourage clicking cards -->
-        <div class="bg-gradient-to-r from-emerald-800 to-teal-900 text-white px-6 py-3.5 rounded-2xl shadow-sm flex items-center justify-between gap-4">
+        <!-- Hint Banner with AI Consultation Option -->
+        <div class="bg-gradient-to-r from-emerald-800 via-teal-900 to-emerald-950 text-white px-6 py-4 rounded-3xl shadow-lg border border-emerald-700/25 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
             <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                    <span class="animate-bounce text-emerald-300 font-extrabold text-sm">👇</span>
+                <div class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/10 shadow-inner">
+                    <span class="animate-pulse text-emerald-300 font-extrabold text-sm">🧠</span>
                 </div>
                 <div>
-                    <h4 class="text-xs font-black tracking-wider uppercase text-emerald-300">Tips Analisis Performa</h4>
-                    <p class="text-xs text-emerald-50 font-medium">Klik salah satu kartu metrik utama di bawah ini untuk menampilkan detail laporan dan menganalisis rincian kolom secara interaktif!</p>
+                    <h4 class="text-xs font-black tracking-wider uppercase text-emerald-300">Konsultan Bisnis AI ✨</h4>
+                    <p class="text-xs text-emerald-100 font-semibold leading-snug">Klik tombol analisis untuk mendapatkan laporan taktis, strategi produk, dan analisis performa dari Gemini AI.</p>
                 </div>
             </div>
+            <button @click="fetchAiAnalysis(false)" type="button" class="w-full md:w-auto px-5 py-2.5 bg-gradient-to-r from-violet-600 via-indigo-600 to-violet-700 hover:from-violet-500 hover:to-indigo-500 text-white font-black text-xs rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 flex items-center justify-center gap-2 shrink-0 border border-violet-400/20 active:scale-95 cursor-pointer">
+                <svg class="w-3.5 h-3.5 animate-spin" x-show="aiLoading" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" style="display: none;">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" fill="none"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>✨ Analisis Performa AI</span>
+            </button>
         </div>
 
         <!-- 1. TOP ROW: Summary Metrics Cards -->
@@ -544,6 +761,13 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                     </svg>
                     <span>Ekspor Excel Terlaris ({{ $filterType === 'harian' ? 'Harian' : ($filterType === 'mingguan' ? 'Mingguan' : 'Bulanan') }})</span>
+                </a>
+                <a href="{{ route('owner.dashboard.export-best-sellers', ['filter_type' => $filterType, 'date' => $selectedDate, 'week' => $selectedWeek, 'month' => $selectedMonth, 'branch' => $selectedBranch, 'format' => 'pdf']) }}" 
+                   class="px-4 py-2.5 bg-rose-50 border border-rose-200 text-rose-800 hover:bg-rose-800 hover:text-white text-xs font-bold rounded-xl shadow-sm transition duration-150 flex items-center gap-2">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                    </svg>
+                    <span>Ekspor PDF Terlaris ({{ $filterType === 'harian' ? 'Harian' : ($filterType === 'mingguan' ? 'Mingguan' : 'Bulanan') }})</span>
                 </a>
             </div>
         </div>
@@ -798,6 +1022,15 @@
                         <span>Ekspor Excel</span>
                     </a>
 
+                    <!-- Button Ekspor PDF (Visible on all filters) -->
+                    <a href="{{ route('owner.dashboard.export', ['filter_type' => $filterType, 'date' => $selectedDate, 'week' => $selectedWeek, 'month' => $selectedMonth, 'branch' => $selectedBranch, 'format' => 'pdf']) }}" 
+                       class="px-4 py-2.5 bg-rose-50 border border-rose-200 text-rose-800 hover:bg-rose-800 hover:text-white text-xs font-bold rounded-xl shadow-sm transition duration-150 flex items-center gap-2">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        </svg>
+                        <span>Ekspor PDF</span>
+                    </a>
+
                     @if($filterType === 'harian')
                         <a href="{{ route('owner.transactions.index') }}" class="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow transition duration-150 flex items-center gap-1.5">
                             <span>Lihat Semua Riwayat</span>
@@ -921,5 +1154,274 @@
                 </table>
             </div>
         </div>
+
+        <!-- Modal Analisis Performa AI (Premium Glassmorphism Style) -->
+        <div x-show="showAiModal" 
+             class="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto sm:p-6 pt-10 md:pt-16 pb-10" 
+             style="display: none;"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95">
+            
+            <!-- Backdrop -->
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" 
+                 @click="showAiModal = false"></div>
+
+            <!-- Modal Content Card -->
+            <div class="relative w-full max-w-3xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xl flex flex-col max-h-[80vh] overflow-hidden transform transition-all">
+                
+                <!-- Header -->
+                <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
+                    <div class="flex items-center gap-2.5">
+                        <span class="text-xl">🧠</span>
+                        <div>
+                            <h3 class="text-sm font-black text-slate-800 dark:text-violet-100 leading-tight">Analisis Kinerja Bisnis AI</h3>
+                            <p class="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mt-0.5">Powered by Google Gemini</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-2">
+                        <!-- Clear Chat Button (only visible when there are messages) -->
+                        <button x-show="chatMessages.length > 0"
+                                @click="clearChat()" 
+                                :disabled="chatLoading"
+                                title="Hapus riwayat chat"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 disabled:opacity-50 text-rose-500 dark:text-rose-400 rounded-xl text-xs font-bold transition cursor-pointer border border-rose-100 dark:border-rose-800/50">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                            </svg>
+                            <span>Hapus Chat</span>
+                        </button>
+
+                        <!-- Regenerate Button -->
+                        <button @click="fetchAiAnalysis(true)" 
+                                :disabled="aiLoading || chatLoading"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-50 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold transition cursor-pointer">
+                            <svg class="w-3.5 h-3.5" :class="aiLoading ? 'animate-spin' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                            </svg>
+                            <span>Regenerasi</span>
+                        </button>
+
+                        <!-- Unduh PDF Button -->
+                        <a x-show="aiAnalysis && !aiLoading"
+                           :href="`{{ route('owner.performance.analysis.export-pdf') }}?skill=${activeSkill}&branch=${new URLSearchParams(window.location.search).get('branch') || ''}&filter_type=${new URLSearchParams(window.location.search).get('filter_type') || 'harian'}&date=${new URLSearchParams(window.location.search).get('date') || ''}&week=${new URLSearchParams(window.location.search).get('week') || ''}&month=${new URLSearchParams(window.location.search).get('month') || ''}`"
+                           target="_blank"
+                           class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                            </svg>
+                            <span>Unduh PDF</span>
+                        </a>
+                        
+                        <!-- Close Button -->
+                        <button @click="showAiModal = false" 
+                                class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-slate-600 transition cursor-pointer">
+                            <span class="text-lg font-bold leading-none">&times;</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Skill Selector Tabs -->
+                <div class="px-5 py-2.5 bg-slate-100/80 dark:bg-slate-800/80 border-b border-slate-200/60 dark:border-slate-800 flex items-center gap-1.5 overflow-x-auto shrink-0 no-scrollbar">
+                    <button @click="switchSkill('general')"
+                            :class="activeSkill === 'general' ? 'bg-violet-600 text-white shadow-sm font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 font-semibold'"
+                            class="px-3 py-1.5 rounded-xl text-[11px] whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer border border-slate-200/50 dark:border-slate-700/50">
+                        <span>📊</span> Analisis Umum
+                    </button>
+                    <button @click="switchSkill('forecast')"
+                            :class="activeSkill === 'forecast' ? 'bg-violet-600 text-white shadow-sm font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 font-semibold'"
+                            class="px-3 py-1.5 rounded-xl text-[11px] whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer border border-slate-200/50 dark:border-slate-700/50">
+                        <span>🔮</span> Forecast Penjualan
+                    </button>
+                    <button @click="switchSkill('branch_comparison')"
+                            :class="activeSkill === 'branch_comparison' ? 'bg-violet-600 text-white shadow-sm font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 font-semibold'"
+                            class="px-3 py-1.5 rounded-xl text-[11px] whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer border border-slate-200/50 dark:border-slate-700/50">
+                        <span>🏪</span> Perbandingan Cabang
+                    </button>
+                    <button @click="switchSkill('restock')"
+                            :class="activeSkill === 'restock' ? 'bg-violet-600 text-white shadow-sm font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 font-semibold'"
+                            class="px-3 py-1.5 rounded-xl text-[11px] whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer border border-slate-200/50 dark:border-slate-700/50">
+                        <span>📦</span> Saran Restok
+                    </button>
+                    <button @click="switchSkill('slow_moving')"
+                            :class="activeSkill === 'slow_moving' ? 'bg-violet-600 text-white shadow-sm font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 font-semibold'"
+                            class="px-3 py-1.5 rounded-xl text-[11px] whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer border border-slate-200/50 dark:border-slate-700/50">
+                        <span>🎯</span> Slow-Moving
+                    </button>
+                    <button @click="switchSkill('expense_analysis')"
+                            :class="activeSkill === 'expense_analysis' ? 'bg-violet-600 text-white shadow-sm font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 font-semibold'"
+                            class="px-3 py-1.5 rounded-xl text-[11px] whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer border border-slate-200/50 dark:border-slate-700/50">
+                        <span>💸</span> Efisiensi Pengeluaran
+                    </button>
+                    <button @click="switchSkill('peak_hours')"
+                            :class="activeSkill === 'peak_hours' ? 'bg-violet-600 text-white shadow-sm font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 font-semibold'"
+                            class="px-3 py-1.5 rounded-xl text-[11px] whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer border border-slate-200/50 dark:border-slate-700/50">
+                        <span>🕒</span> Pola Waktu
+                    </button>
+                    <button @click="switchSkill('product_bundling')"
+                            :class="activeSkill === 'product_bundling' ? 'bg-violet-600 text-white shadow-sm font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 font-semibold'"
+                            class="px-3 py-1.5 rounded-xl text-[11px] whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer border border-slate-200/50 dark:border-slate-700/50">
+                        <span>🛒</span> Rekomendasi Bundling
+                    </button>
+                </div>
+
+                <!-- Body (Scrollable content) -->
+                <div class="p-6 overflow-y-auto min-h-[300px] flex-1">
+                    
+                    <!-- Loading State (initial analysis) -->
+                    <div x-show="aiLoading" class="flex flex-col items-center justify-center py-12 gap-4">
+                        <div class="relative w-16 h-16">
+                            <!-- Inner pulse -->
+                            <div class="absolute inset-0 rounded-full bg-violet-500/20 animate-ping"></div>
+                            <!-- Core spinning gradient ring -->
+                            <div class="w-16 h-16 rounded-full border-4 border-slate-100 border-t-violet-600 animate-spin"></div>
+                        </div>
+                        <div class="text-center px-4">
+                            <p class="text-xs font-extrabold text-slate-700 dark:text-slate-300">Menghubungi Konsultan AI...</p>
+                            <p class="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-1 max-w-sm mx-auto">Menganalisis omset, pengeluaran, profitabilitas, serta tingkat persediaan cabang...</p>
+                        </div>
+                    </div>
+
+                    <!-- Error State (initial analysis) -->
+                    <div x-show="!aiLoading && aiError" class="p-5 rounded-2xl bg-rose-50 border border-rose-200/50 text-rose-800 text-xs font-semibold flex flex-col gap-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-base">⚠️</span>
+                            <span class="font-extrabold text-sm text-rose-800">Gagal Memuat Analisis AI</span>
+                        </div>
+                        <p class="text-rose-600 font-semibold" x-text="aiError"></p>
+                        <button @click="fetchAiAnalysis(true)" class="mt-2 self-start px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold shadow transition cursor-pointer">
+                            Coba Lagi
+                        </button>
+                    </div>
+
+                    <!-- Content State (Initial Report) -->
+                    <div x-show="!aiLoading && !aiError && aiAnalysis" 
+                         class="prose prose-slate dark:prose-invert max-w-none prose-sm"
+                         x-html="renderMarkdown(aiAnalysis)">
+                    </div>
+
+                    <!-- ── Chat Messages Area ────────────────────────────────── -->
+                    <div x-show="!aiLoading && !aiError && aiAnalysis && chatMessages.length > 0"
+                         id="ai-chat-area"
+                         class="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-3">
+                        
+                        <!-- Section Label -->
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Sesi Tanya Jawab</span>
+                            <div class="flex-1 h-px bg-slate-100 dark:bg-slate-800"></div>
+                        </div>
+
+                        <!-- Chat Bubbles -->
+                        <template x-for="(msg, index) in chatMessages" :key="index">
+                            <div :class="msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'">
+                                
+                                <!-- AI bubble (left) -->
+                                <template x-if="msg.role === 'model'">
+                                    <div class="flex items-start gap-2.5 max-w-[88%]">
+                                        <div class="w-7 h-7 shrink-0 rounded-full bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center text-sm mt-0.5">🧠</div>
+                                        <div class="rounded-2xl rounded-tl-none bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 px-4 py-3 text-xs text-slate-700 dark:text-slate-300 font-semibold leading-relaxed shadow-sm prose prose-slate dark:prose-invert prose-xs max-w-none"
+                                             x-html="renderMarkdown(msg.text)">
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- User bubble (right) -->
+                                <template x-if="msg.role === 'user'">
+                                    <div class="flex items-end gap-2.5 max-w-[80%]">
+                                        <div class="rounded-2xl rounded-br-none bg-emerald-500 dark:bg-emerald-600 px-4 py-3 text-xs text-white font-semibold leading-relaxed shadow-sm" x-text="msg.text"></div>
+                                        <div class="w-7 h-7 shrink-0 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-sm mb-0.5">👤</div>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                        <!-- Chat reply loading indicator -->
+                        <div x-show="chatLoading" class="flex justify-start">
+                            <div class="flex items-start gap-2.5 max-w-[88%]">
+                                <div class="w-7 h-7 shrink-0 rounded-full bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center text-sm mt-0.5">🧠</div>
+                                <div class="rounded-2xl rounded-tl-none bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 px-4 py-3 shadow-sm">
+                                    <div class="flex items-center gap-1.5">
+                                        <div class="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style="animation-delay: 0ms"></div>
+                                        <div class="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style="animation-delay: 150ms"></div>
+                                        <div class="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style="animation-delay: 300ms"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chat error -->
+                        <div x-show="chatError" class="flex justify-center">
+                            <div class="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-50 dark:bg-rose-900/20 border border-rose-200/60 dark:border-rose-800/40 rounded-xl text-[10px] font-bold text-rose-600 dark:text-rose-400">
+                                <span>⚠️</span>
+                                <span x-text="chatError"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div x-show="!aiLoading && !aiError && !aiAnalysis" class="text-center py-12 text-slate-400 font-semibold text-xs">
+                        Belum ada analisis yang dimuat.
+                    </div>
+                </div>
+
+                <!-- ── Chat Input Footer ──────────────────────────────────────── -->
+                <div x-show="!aiLoading && !aiError && aiAnalysis"
+                     class="px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
+                    
+                    <!-- Hint text -->
+                    <p class="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-2 px-1">
+                        💬 Tanyakan lebih lanjut tentang laporan ini
+                    </p>
+
+                    <div class="flex items-end gap-2">
+                        <!-- Text input -->
+                        <div class="flex-1 relative">
+                            <textarea
+                                id="ai-chat-input"
+                                x-model="chatInput"
+                                @keydown.enter.prevent="if (!$event.shiftKey) fetchChatReply()"
+                                :disabled="chatLoading || aiLoading"
+                                placeholder="Contoh: Kenapa profit bisa turun? Apa yang harus dilakukan bulan depan?..."
+                                rows="1"
+                                class="w-full resize-none rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-xs text-slate-700 dark:text-slate-200 font-semibold placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-400 dark:focus:border-emerald-600 disabled:opacity-50 transition leading-relaxed"
+                                style="max-height: 100px; overflow-y: auto;"
+                                @input="$el.style.height = 'auto'; $el.style.height = Math.min($el.scrollHeight, 100) + 'px'"
+                            ></textarea>
+                        </div>
+                        
+                        <!-- Send button -->
+                        <button
+                            @click="fetchChatReply()"
+                            :disabled="chatLoading || aiLoading || !chatInput.trim()"
+                            class="shrink-0 w-10 h-10 rounded-2xl bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-200 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white disabled:text-slate-400 dark:disabled:text-slate-500 flex items-center justify-center transition shadow-sm shadow-emerald-500/30 cursor-pointer">
+                            <svg x-show="!chatLoading" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                            </svg>
+                            <svg x-show="chatLoading" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Keyboard hint -->
+                    <p class="text-[9px] text-slate-300 dark:text-slate-600 font-semibold mt-1.5 px-1">
+                        Enter untuk kirim &nbsp;·&nbsp; Shift+Enter untuk baris baru &nbsp;·&nbsp; Maks. 10 pesan terakhir dikingat
+                    </p>
+                </div>
+
+                <!-- Static footer (shown when analysis not loaded yet) -->
+                <div x-show="aiLoading || aiError || !aiAnalysis"
+                     class="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500 font-bold shrink-0">
+                    <span>💡 Tips: Filter tanggal atau cabang di dashboard untuk menganalisis data spesifik.</span>
+                    <span class="text-slate-500">Pusat Kurma Premium AI</span>
+                </div>
+            </div>
+        </div>
+
     </div>
 </x-app-layout>

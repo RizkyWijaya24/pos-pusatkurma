@@ -32,12 +32,12 @@ class StockRepackTest extends TestCase
         // 1. Buat User Admin
         $this->admin = User::factory()->create([
             'role' => 'admin',
-            'branch' => 'Pusat Cianjur'
+            'branch' => 'Cabang Rumah'
         ]);
 
         // 2. Buat Lokasi
         $this->location = StockLocation::create([
-            'name' => 'Pusat Cianjur',
+            'name' => 'Cabang Rumah',
             'type' => 'gudang',
             'is_active' => true,
         ]);

@@ -25,12 +25,12 @@ class ProductControllerStockTest extends TestCase
         // Create Admin User
         $this->admin = User::factory()->create([
             'role' => 'admin',
-            'branch' => 'Pusat Cianjur'
+            'branch' => 'Cabang Rumah'
         ]);
 
         // Create main warehouse location
         $this->mainLocation = StockLocation::create([
-            'name' => 'Pusat Cianjur',
+            'name' => 'Cabang Rumah',
             'type' => 'gudang',
             'is_active' => true,
         ]);

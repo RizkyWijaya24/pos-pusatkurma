@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Product;
+use App\Models\Order;
+use App\Models\Transaction;
 use App\Models\ProductStock;
 use App\Models\StockAdjustmentLog;
 use App\Models\StockLocation;
@@ -230,6 +232,122 @@ class StockService
         $transfer->update(['status' => 'cancelled']);
     }
 
+    /**
+     * Approve transfer dengan penyesuaian jumlah oleh admin.
+     * Admin bisa mengubah jumlah tiap item (misal: kasir minta 5, gudang hanya ada 4).
+     *
+     * @param StockTransfer $transfer
+     * @param User          $approvedBy
+     * @param array         $approvedQuantities  [ transfer_item_id => float approved_qty ]
+     * @throws \Exception
+     */
+    public function approveTransferWithAdjustment(StockTransfer $transfer, User $approvedBy, array $approvedQuantities): void
+    {
+        if (!in_array($transfer->status, ['requested', 'pending'])) {
+            throw new \Exception('Transfer tidak bisa di-approve. Status saat ini: ' . $transfer->status);
+        }
+
+        DB::transaction(function () use ($transfer, $approvedBy, $approvedQuantities) {
+            // Muat relasi
+            $transfer->load('items.product', 'fromLocation', 'toLocation');
+
+            // Validasi dan update approved_quantity tiap item
+            foreach ($transfer->items as $item) {
+                $approvedQty = isset($approvedQuantities[$item->id])
+                    ? (float) $approvedQuantities[$item->id]
+                    : $item->quantity; // default = jumlah asli jika tidak diubah
+
+                // Validasi tidak boleh negatif
+                if ($approvedQty < 0) {
+                    throw new \Exception("Jumlah yang disetujui tidak boleh negatif untuk produk {$item->product->name}.");
+                }
+
+                // Validasi stok gudang cukup untuk jumlah yang disetujui
+                if ($transfer->from_location_id && $approvedQty > 0) {
+                    $ps = ProductStock::getOrCreate($item->product_id, $transfer->from_location_id);
+                    if ($ps->stock < $approvedQty) {
+                        throw new \Exception(
+                            "Stok {$item->product->name} tidak mencukupi di gudang. " .
+                            "Tersedia: {$ps->stock}, Jumlah disetujui: {$approvedQty}"
+                        );
+                    }
+                }
+
+                // Simpan jumlah yang disetujui ke kolom approved_quantity
+                $item->update(['approved_quantity' => $approvedQty]);
+            }
+
+            // Refresh items setelah update
+            $transfer->load('items.product');
+
+            // Proses transfer stok untuk setiap item
+            foreach ($transfer->items as $item) {
+                $product     = $item->product;
+                $qty         = $item->approved_quantity ?? $item->quantity;
+
+                // Skip item yang disetujui 0 (admin tidak mengirimkan produk ini)
+                if ($qty <= 0) {
+                    continue;
+                }
+
+                // 1. Kurangi stok di lokasi ASAL (jika ada)
+                if ($transfer->from_location_id) {
+                    $fromPs = ProductStock::getOrCreate($product->id, $transfer->from_location_id);
+                    $beforeFrom = $fromPs->stock;
+                    $fromPs->decrementStock($qty);
+
+                    StockAdjustmentLog::create([
+                        'product_id'      => $product->id,
+                        'location_id'     => $transfer->from_location_id,
+                        'type'            => 'transfer_out',
+                        'quantity_before' => $beforeFrom,
+                        'quantity_change' => -$qty,
+                        'quantity_after'  => $fromPs->stock,
+                        'reference_type'  => StockTransfer::class,
+                        'reference_id'    => $transfer->id,
+                        'created_by'      => $approvedBy->id,
+                        'notes'           => "Transfer ke {$transfer->toLocation->name}" .
+                                            ($item->quantity != $qty ? " (disesuaikan dari {$item->quantity} → {$qty})" : ""),
+                        'created_at'      => now(),
+                    ]);
+                }
+
+                // 2. Tambah stok di lokasi TUJUAN
+                $toPs = ProductStock::getOrCreate($product->id, $transfer->to_location_id);
+                $beforeTo = $toPs->stock;
+                $toPs->incrementStock($qty);
+
+                StockAdjustmentLog::create([
+                    'product_id'      => $product->id,
+                    'location_id'     => $transfer->to_location_id,
+                    'type'            => 'transfer_in',
+                    'quantity_before' => $beforeTo,
+                    'quantity_change' => $qty,
+                    'quantity_after'  => $toPs->stock,
+                    'reference_type'  => StockTransfer::class,
+                    'reference_id'    => $transfer->id,
+                    'created_by'      => $approvedBy->id,
+                    'notes'           => $transfer->from_location_id
+                        ? "Transfer dari {$transfer->fromLocation->name}" .
+                          ($item->quantity != $qty ? " (disesuaikan dari {$item->quantity} → {$qty})" : "")
+                        : "Pengadaan baru / stok masuk",
+                    'created_at'      => now(),
+                ]);
+
+                // 3. Sync stok global produk
+                $this->syncGlobalStock($product);
+            }
+
+            // Update status transfer menjadi approved
+            $transfer->update([
+                'status'      => 'approved',
+                'approved_by' => $approvedBy->id,
+                'approved_at' => now(),
+            ]);
+        });
+    }
+
+
     // ═══════════════════════════════════════════════════════
     // PENJUALAN (DEDUCT STOCK)
     // ═══════════════════════════════════════════════════════
@@ -250,8 +368,26 @@ class StockService
         StockLocation $location,
         float $qty,
         int $transactionId,
-        User $soldBy
+        User $soldBy,
+        ?string $customNote = null
     ): bool {
+        if ($product->is_bundle) {
+            $product->loadMissing('bundleItems.product');
+            foreach ($product->bundleItems as $item) {
+                $requiredQty = $item->quantity * $qty;
+                $this->deductSaleStock(
+                    $item->product,
+                    $location,
+                    $requiredQty,
+                    $transactionId,
+                    $soldBy,
+                    $customNote ?? "Penjualan Paket Bundling: {$product->name} (x{$qty}) di {$location->name}"
+                );
+            }
+            $this->syncGlobalStock($product);
+            return true;
+        }
+
         $ps = ProductStock::getOrCreate($product->id, $location->id);
 
         // Jika stok tidak cukup di lokasi ini, masih bisa jual tapi catat selisih
@@ -271,13 +407,122 @@ class StockService
             'reference_type'  => \App\Models\Transaction::class,
             'reference_id'    => $transactionId,
             'created_by'      => $soldBy->id,
-            'notes'           => "Penjualan di {$location->name}",
+            'notes'           => $customNote ?? "Penjualan di {$location->name}",
             'created_at'      => now(),
         ]);
 
         $this->syncGlobalStock($product);
 
         return true;
+    }
+
+    /**
+     * Kurangi stok saat pesanan online berhasil dibayar (LUNAS).
+     *
+     * @param Order $order
+     */
+    public function deductOrderStock(Order $order): void
+    {
+        DB::transaction(function () use ($order) {
+            // Cari "Cabang Rumah" sebagai lokasi pemotongan stok utama untuk pesanan online
+            $onlineLocation = StockLocation::where('name', 'Cabang Rumah')
+                ->where('is_active', true)
+                ->first();
+
+            if (!$onlineLocation) {
+                // Fallback ke lokasi gudang atau lokasi aktif pertama
+                $onlineLocation = StockLocation::gudang()->first() 
+                    ?? StockLocation::active()->first() 
+                    ?? StockLocation::first();
+            }
+
+            if ($onlineLocation) {
+                $order->loadMissing('orderItems.product');
+                foreach ($order->orderItems as $item) {
+                    $this->deductSingleProductOrderStock(
+                        $item->product,
+                        $onlineLocation,
+                        (float)$item->qty,
+                        $order
+                    );
+                }
+
+                // Catat transaksi penjualan online ke tabel transactions untuk riwayat penjualan
+                $trxCode = 'TRX-ONL-' . $order->order_code;
+                if (!Transaction::where('transaction_code', $trxCode)->exists()) {
+                    $itemsSummary = $order->orderItems->map(function ($item) {
+                        return $item->product->name . ' (' . $item->qty . ' ' . $item->product->price_unit . ' x ' . (int)$item->price . ')';
+                    })->join(', ');
+
+                    $totalCost = $order->orderItems->sum(function ($item) {
+                        return round(($item->product->cost_price ?? 0) * (float)$item->qty);
+                    });
+
+                    Transaction::create([
+                        'cashier_id'       => auth()->id() ?? User::where('role', 'admin')->first()?->id ?? User::first()?->id,
+                        'transaction_code' => $trxCode,
+                        'items_summary'    => $itemsSummary,
+                        'total_price'      => (int) $order->subtotal_amount,
+                        'discount'         => 0,
+                        'total_cost'       => (int) $totalCost,
+                        'payment_method'   => 'DOKU', // default untuk pembayaran online
+                        'branch'           => 'Cabang Rumah',
+                    ]);
+                }
+            }
+        });
+    }
+
+    /**
+     * Helper untuk memotong stok satu produk (atau komponen bundlenya) untuk pesanan online.
+     */
+    private function deductSingleProductOrderStock(
+        Product $product,
+        StockLocation $location,
+        float $qty,
+        Order $order,
+        ?string $customNote = null
+    ): void {
+        if ($product->is_bundle) {
+            $product->loadMissing('bundleItems.product');
+            foreach ($product->bundleItems as $item) {
+                $requiredQty = $item->quantity * $qty;
+                $this->deductSingleProductOrderStock(
+                    $item->product,
+                    $location,
+                    $requiredQty,
+                    $order,
+                    $customNote ?? "Penjualan Online Paket Bundling: {$product->name} (x{$qty}) - {$order->order_code}"
+                );
+            }
+            $this->syncGlobalStock($product);
+            return;
+        }
+
+        $productStock = ProductStock::getOrCreate($product->id, $location->id);
+        $qtyBefore = (float) $productStock->stock;
+
+        // Kurangi stok (memastikan tidak negatif)
+        $qtyAfter = max(0.00, $qtyBefore - $qty);
+        $productStock->update(['stock' => $qtyAfter]);
+
+        // Catat log mutasi stok POS untuk audit history
+        StockAdjustmentLog::create([
+            'product_id'      => $product->id,
+            'location_id'     => $location->id,
+            'type'            => 'sale',
+            'quantity_before' => $qtyBefore,
+            'quantity_change' => -$qty,
+            'quantity_after'  => $qtyAfter,
+            'reference_type'  => Order::class,
+            'reference_id'    => $order->id,
+            'created_by'      => auth()->id() ?? User::where('role', 'admin')->first()?->id ?? User::first()?->id,
+            'notes'           => $customNote ?? 'Penjualan Online: ' . $order->order_code,
+            'created_at'      => now(),
+        ]);
+
+        // Sinkronisasi stok global produk
+        $this->syncGlobalStock($product);
     }
 
     // ═══════════════════════════════════════════════════════
@@ -336,6 +581,30 @@ class StockService
      */
     public function syncGlobalStock(Product $product): void
     {
+        if ($product->is_bundle) {
+            $totalVirtualStock = 0.0;
+            $locations = StockLocation::where('is_active', true)->get();
+            foreach ($locations as $loc) {
+                $totalVirtualStock += $product->getStockAtLocation($loc->id);
+            }
+            $product->update(['stock' => $totalVirtualStock]);
+            return;
+        }
+
+        // Jalankan migrasi stock dari kolom legacy ke tabel product_stocks
+        // jika data product_stocks untuk produk ini masih benar-benar kosong.
+        $hasAnyStockRecord = ProductStock::where('product_id', $product->id)->exists();
+        if (!$hasAnyStockRecord) {
+            $mainLocation = StockLocation::gudang()->first() ?? StockLocation::first();
+            if ($mainLocation) {
+                ProductStock::create([
+                    'product_id'  => $product->id,
+                    'location_id' => $mainLocation->id,
+                    'stock'       => (float) $product->getRawOriginal('stock'),
+                ]);
+            }
+        }
+
         $totalStock = ProductStock::where('product_id', $product->id)->sum('stock');
         $product->update(['stock' => $totalStock]);
     }

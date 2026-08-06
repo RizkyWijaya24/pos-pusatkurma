@@ -29,6 +29,22 @@ class ProductController extends Controller
             }
         }
 
+        if (is_string($request->bundle_items)) {
+            $bundleItems = json_decode($request->bundle_items, true);
+            if (is_array($bundleItems)) {
+                $request->merge(['bundle_items' => $bundleItems]);
+            } else {
+                $request->merge(['bundle_items' => null]);
+            }
+        }
+
+        $isBundle = filter_var($request->is_bundle, FILTER_VALIDATE_BOOLEAN);
+        $isActive = $request->has('is_active') ? filter_var($request->is_active, FILTER_VALIDATE_BOOLEAN) : true;
+        $request->merge([
+            'is_bundle' => $isBundle,
+            'is_active' => $isActive,
+        ]);
+
         if (empty($request->sku)) {
             $request->merge(['sku' => 'PK-' . strtoupper(substr(uniqid(), -6))]);
         }
@@ -40,13 +56,23 @@ class ProductController extends Controller
             'cost_price' => 'required|integer|min:0',
             'selling_price' => 'required|integer|min:0',
             'price_unit' => 'required|string|in:gram,kg,pcs,pack,dus',
-            'stock' => 'required|numeric|min:0',
+            'stock' => $isBundle ? 'nullable|numeric' : 'required|numeric|min:0',
+            'weight_grams' => 'nullable|integer|min:1',
             'image' => 'nullable|image', // No max size limit, auto-compress is handled below
             'price_tiers' => 'nullable|array',
             'price_tiers.*.min_qty' => 'required|numeric|min:0',
             'price_tiers.*.max_qty' => 'nullable|numeric|min:0',
             'price_tiers.*.price' => 'required|integer|min:0',
+            'is_bundle' => 'boolean',
+            'is_active' => 'boolean',
+            'bundle_items' => $isBundle ? 'required|array|min:1' : 'nullable|array',
+            'bundle_items.*.product_id' => 'required_with:bundle_items|exists:products,id',
+            'bundle_items.*.quantity' => 'required_with:bundle_items|numeric|min:0.01',
         ]);
+        // Default weight to 500g if not provided
+        if (empty($validated['weight_grams'])) {
+            $validated['weight_grams'] = 500;
+        }
 
 
         if ($request->hasFile('image')) {
@@ -54,19 +80,25 @@ class ProductController extends Controller
             $validated['image_path'] = $path;
         }
 
-        $product = \Illuminate\Support\Facades\DB::transaction(function () use ($validated) {
+        $product = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $isBundle) {
+            if ($isBundle) {
+                $validated['stock'] = 0.00;
+            }
+
             $product = Product::create($validated);
 
-            $mainLocation = \App\Models\StockLocation::gudang()->first() ?? \App\Models\StockLocation::first();
-            if ($mainLocation) {
-                \App\Models\ProductStock::create([
-                    'product_id'  => $product->id,
-                    'location_id' => $mainLocation->id,
-                    'stock'       => $validated['stock'],
-                ]);
+            if ($isBundle) {
+                if (!empty($validated['bundle_items'])) {
+                    foreach ($validated['bundle_items'] as $item) {
+                        $product->bundleItems()->create([
+                            'product_id' => $item['product_id'],
+                            'quantity'   => $item['quantity'],
+                        ]);
+                    }
+                }
 
-                // Create 0 stock records for all other active locations
-                foreach (\App\Models\StockLocation::where('id', '!=', $mainLocation->id)->get() as $loc) {
+                // Create 0 stock records for all active locations
+                foreach (\App\Models\StockLocation::get() as $loc) {
                     \App\Models\ProductStock::create([
                         'product_id'  => $product->id,
                         'location_id' => $loc->id,
@@ -74,18 +106,38 @@ class ProductController extends Controller
                     ]);
                 }
 
-                if ($validated['stock'] > 0) {
-                    \App\Models\StockAdjustmentLog::create([
-                        'product_id'      => $product->id,
-                        'location_id'     => $mainLocation->id,
-                        'type'            => 'initial',
-                        'quantity_before' => 0,
-                        'quantity_change' => $validated['stock'],
-                        'quantity_after'  => $validated['stock'],
-                        'created_by'      => auth()->id() ?? \App\Models\User::where('role', 'admin')->first()?->id ?? 1,
-                        'notes'           => 'Inisialisasi stok produk baru',
-                        'created_at'      => now(),
+                app(\App\Services\StockService::class)->syncGlobalStock($product);
+            } else {
+                $mainLocation = \App\Models\StockLocation::gudang()->first() ?? \App\Models\StockLocation::first();
+                if ($mainLocation) {
+                    \App\Models\ProductStock::create([
+                        'product_id'  => $product->id,
+                        'location_id' => $mainLocation->id,
+                        'stock'       => $validated['stock'],
                     ]);
+
+                    // Create 0 stock records for all other active locations
+                    foreach (\App\Models\StockLocation::where('id', '!=', $mainLocation->id)->get() as $loc) {
+                        \App\Models\ProductStock::create([
+                            'product_id'  => $product->id,
+                            'location_id' => $loc->id,
+                            'stock'       => 0.00,
+                        ]);
+                    }
+
+                    if ($validated['stock'] > 0) {
+                        \App\Models\StockAdjustmentLog::create([
+                            'product_id'      => $product->id,
+                            'location_id'     => $mainLocation->id,
+                            'type'            => 'initial',
+                            'quantity_before' => 0,
+                            'quantity_change' => $validated['stock'],
+                            'quantity_after'  => $validated['stock'],
+                            'created_by'      => auth()->id() ?? \App\Models\User::where('role', 'admin')->first()?->id ?? 1,
+                            'notes'           => 'Inisialisasi stok produk baru',
+                            'created_at'      => now(),
+                        ]);
+                    }
                 }
             }
 
@@ -119,6 +171,21 @@ class ProductController extends Controller
             }
         }
 
+        if (is_string($request->bundle_items)) {
+            $bundleItems = json_decode($request->bundle_items, true);
+            if (is_array($bundleItems)) {
+                $request->merge(['bundle_items' => $bundleItems]);
+            } else {
+                $request->merge(['bundle_items' => null]);
+            }
+        }
+        $isBundle = filter_var($request->is_bundle, FILTER_VALIDATE_BOOLEAN);
+        $isActive = $request->has('is_active') ? filter_var($request->is_active, FILTER_VALIDATE_BOOLEAN) : $product->is_active;
+        $request->merge([
+            'is_bundle' => $isBundle,
+            'is_active' => $isActive,
+        ]);
+
         if (empty($request->sku)) {
             $request->merge(['sku' => $product->sku ?: 'PK-' . strtoupper(substr(uniqid(), -6))]);
         }
@@ -130,13 +197,24 @@ class ProductController extends Controller
             'cost_price' => 'required|integer|min:0',
             'selling_price' => 'required|integer|min:0',
             'price_unit' => 'required|string|in:gram,kg,pcs,pack,dus',
-            'stock' => 'required|numeric|min:0',
+            'stock' => $isBundle ? 'nullable|numeric' : 'required|numeric|min:0',
+            'weight_grams' => 'nullable|integer|min:1',
             'image' => 'nullable|image', // No max size limit, auto-compress is handled below
             'price_tiers' => 'nullable|array',
             'price_tiers.*.min_qty' => 'required|numeric|min:0',
             'price_tiers.*.max_qty' => 'nullable|numeric|min:0',
             'price_tiers.*.price' => 'required|integer|min:0',
+            'is_bundle' => 'boolean',
+            'is_active' => 'boolean',
+            'bundle_items' => $isBundle ? 'required|array|min:1' : 'nullable|array',
+            'bundle_items.*.product_id' => 'required_with:bundle_items|exists:products,id',
+            'bundle_items.*.quantity' => 'required_with:bundle_items|numeric|min:0.01',
         ]);
+
+        // Default weight to 500g if not provided
+        if (empty($validated['weight_grams'])) {
+            $validated['weight_grams'] = 500;
+        }
 
 
         if ($request->hasFile('image')) {
@@ -152,48 +230,76 @@ class ProductController extends Controller
             $validated['image_path'] = $path;
         }
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($product, $validated) {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($product, $validated, $isBundle) {
+            if ($isBundle) {
+                $validated['stock'] = 0.00;
+            }
+
             $product->update($validated);
 
-            $mainLocation = \App\Models\StockLocation::gudang()->first() ?? \App\Models\StockLocation::first();
-            if ($mainLocation) {
-                $otherLocationsStock = \App\Models\ProductStock::where('product_id', $product->id)
-                    ->where('location_id', '!=', $mainLocation->id)
-                    ->sum('stock');
-
-                $newMainStock = max(0, $validated['stock'] - $otherLocationsStock);
-
-                $ps = \App\Models\ProductStock::getOrCreate($product->id, $mainLocation->id);
-                $before = $ps->stock;
-                $change = $newMainStock - $before;
-
-                if ($change != 0) {
-                    $ps->stock = $newMainStock;
-                    $ps->save();
-
-                    \App\Models\StockAdjustmentLog::create([
-                        'product_id'      => $product->id,
-                        'location_id'     => $mainLocation->id,
-                        'type'            => 'adjustment',
-                        'quantity_before' => $before,
-                        'quantity_change' => $change,
-                        'quantity_after'  => $newMainStock,
-                        'created_by'      => auth()->id() ?? \App\Models\User::where('role', 'admin')->first()?->id ?? 1,
-                        'notes'           => 'Koreksi total stok dari edit produk',
-                        'created_at'      => now(),
-                    ]);
+            if ($isBundle) {
+                // Delete existing bundle items and recreate
+                $product->bundleItems()->delete();
+                if (!empty($validated['bundle_items'])) {
+                    foreach ($validated['bundle_items'] as $item) {
+                        $product->bundleItems()->create([
+                            'product_id' => $item['product_id'],
+                            'quantity'   => $item['quantity'],
+                        ]);
+                    }
                 }
 
-                // Ensure other locations have records if they don't exist
-                foreach (\App\Models\StockLocation::where('id', '!=', $mainLocation->id)->get() as $loc) {
-                    \App\Models\ProductStock::firstOrCreate(
-                        ['product_id' => $product->id, 'location_id' => $loc->id],
-                        ['stock' => 0.00]
-                    );
+                // Ensure all locations have 0 physical stock for this bundle
+                foreach (\App\Models\ProductStock::where('product_id', $product->id)->get() as $ps) {
+                    $ps->update(['stock' => 0.00]);
                 }
 
-                // Re-sync global stock to make sure it's fully accurate
+                // Re-sync global stock
                 app(\App\Services\StockService::class)->syncGlobalStock($product);
+            } else {
+                // Clear bundle items if it was a bundle before
+                $product->bundleItems()->delete();
+
+                $mainLocation = \App\Models\StockLocation::gudang()->first() ?? \App\Models\StockLocation::first();
+                if ($mainLocation) {
+                    $otherLocationsStock = \App\Models\ProductStock::where('product_id', $product->id)
+                        ->where('location_id', '!=', $mainLocation->id)
+                        ->sum('stock');
+
+                    $newMainStock = max(0, $validated['stock'] - $otherLocationsStock);
+
+                    $ps = \App\Models\ProductStock::getOrCreate($product->id, $mainLocation->id);
+                    $before = $ps->stock;
+                    $change = $newMainStock - $before;
+
+                    if ($change != 0) {
+                        $ps->stock = $newMainStock;
+                        $ps->save();
+
+                        \App\Models\StockAdjustmentLog::create([
+                            'product_id'      => $product->id,
+                            'location_id'     => $mainLocation->id,
+                            'type'            => 'adjustment',
+                            'quantity_before' => $before,
+                            'quantity_change' => $change,
+                            'quantity_after'  => $newMainStock,
+                            'created_by'      => auth()->id() ?? \App\Models\User::where('role', 'admin')->first()?->id ?? 1,
+                            'notes'           => 'Koreksi total stok dari edit produk',
+                            'created_at'      => now(),
+                        ]);
+                    }
+
+                    // Ensure other locations have records if they don't exist
+                    foreach (\App\Models\StockLocation::where('id', '!=', $mainLocation->id)->get() as $loc) {
+                        \App\Models\ProductStock::firstOrCreate(
+                            ['product_id' => $product->id, 'location_id' => $loc->id],
+                            ['stock' => 0.00]
+                        );
+                    }
+
+                    // Re-sync global stock to make sure it's fully accurate
+                    app(\App\Services\StockService::class)->syncGlobalStock($product);
+                }
             }
         });
 
@@ -222,6 +328,25 @@ class ProductController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Produk berhasil dihapus!'
+        ]);
+    }
+
+    /**
+     * Toggle status aktif/nonaktif produk secara instan via AJAX.
+     */
+    public function toggleActive(Request $request, Product $product)
+    {
+        $newStatus = $request->has('is_active') 
+            ? filter_var($request->is_active, FILTER_VALIDATE_BOOLEAN) 
+            : !$product->is_active;
+
+        $product->update(['is_active' => $newStatus]);
+
+        return response()->json([
+            'success'   => true,
+            'message'   => 'Status produk "' . $product->name . '" berhasil diubah menjadi ' . ($newStatus ? 'Aktif' : 'Nonaktif') . '.',
+            'is_active' => (bool) $product->is_active,
+            'product'   => $product,
         ]);
     }
 

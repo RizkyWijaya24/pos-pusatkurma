@@ -24,7 +24,7 @@ class ProductConversionControllerTest extends TestCase
         // Admin
         $this->admin = User::factory()->create([
             'role' => 'admin',
-            'branch' => 'Pusat Cianjur'
+            'branch' => 'Cabang Rumah'
         ]);
 
         // Cashier

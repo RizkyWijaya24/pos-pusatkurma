@@ -12,7 +12,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 DB::transaction(function () {
-    $mainLocation = StockLocation::where('name', 'Pusat Cianjur')->first()
+    $mainLocation = StockLocation::where('name', 'Cabang Rumah')->first()
         ?? StockLocation::where('type', 'gudang')->first()
         ?? StockLocation::first();
 

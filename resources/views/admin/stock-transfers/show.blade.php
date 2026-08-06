@@ -108,7 +108,10 @@
                             <tr class="border-b border-slate-100 dark:border-dp-700">
                                 <th class="px-5 py-3">No</th>
                                 <th class="px-4 py-3">Produk</th>
-                                <th class="px-5 py-3 text-right">Jumlah</th>
+                                <th class="px-5 py-3 text-right">Diminta</th>
+                                @if($stockTransfer->status === 'approved')
+                                <th class="px-5 py-3 text-right">Dikirim</th>
+                                @endif
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-dp-700 font-semibold text-slate-800 dark:text-purple-100">
@@ -125,6 +128,22 @@
                                     </span>
                                     <span class="text-slate-400 dark:text-purple-400 text-xs ml-1 font-bold uppercase">{{ $item->unit }}</span>
                                 </td>
+                                @if($stockTransfer->status === 'approved')
+                                <td class="px-5 py-3 text-right">
+                                    @if($item->approved_quantity !== null && $item->approved_quantity != $item->quantity)
+                                        <span class="text-amber-600 dark:text-amber-400 font-extrabold text-sm">
+                                            {{ number_format($item->approved_quantity, 2, ',', '.') }}
+                                        </span>
+                                        <span class="text-slate-400 dark:text-purple-400 text-xs ml-1 font-bold uppercase">{{ $item->unit }}</span>
+                                        <span class="ml-1 text-[10px] text-amber-500 font-bold">✏️ disesuaikan</span>
+                                    @else
+                                        <span class="text-emerald-700 dark:text-emerald-400 font-extrabold text-sm">
+                                            {{ number_format($item->approved_quantity ?? $item->quantity, 2, ',', '.') }}
+                                        </span>
+                                        <span class="text-slate-400 dark:text-purple-400 text-xs ml-1 font-bold uppercase">{{ $item->unit }}</span>
+                                    @endif
+                                </td>
+                                @endif
                             </tr>
                             @endforeach
                         </tbody>
@@ -183,33 +202,77 @@
     </div>
 </div>
 
-{{-- Approve Modal --}}
+{{-- Approve Modal (Penyesuaian Jumlah) --}}
 <div id="approveModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all duration-300 scale-95 opacity-0 active-modal-approve">
-        <div class="p-6 text-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-emerald-100 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-3xl mb-4 animate-bounce">
-                ✅
+    <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all duration-300 scale-95 opacity-0 active-modal-approve">
+        {{-- Modal Header --}}
+        <div class="px-6 py-5 border-b border-slate-100 dark:border-dp-700 flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-black text-slate-800 dark:text-purple-100">✅ Approve Transfer Stok</h3>
+                <p class="text-slate-500 dark:text-purple-400 text-xs mt-0.5">Periksa & sesuaikan jumlah sebelum approve</p>
             </div>
-            <h3 class="text-xl font-black text-slate-800 dark:text-purple-100 mb-2">Konfirmasi Approve</h3>
-            <p class="text-slate-500 dark:text-purple-300 text-xs font-semibold leading-relaxed px-2">
-                Apakah Anda yakin ingin menyetujui transfer stok ini? <br>Stok produk akan segera dipindahkan antar lokasi secara otomatis.
-            </p>
-            <div class="flex gap-3 mt-6">
-                <button onclick="closeApproveModal()" 
-                        class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-dp-700 dark:text-purple-200 hover:dark:bg-dp-600 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors">
-                    Batal
-                </button>
-                <button id="confirmApproveBtn" onclick="confirmApprove()" 
-                        class="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors shadow-md shadow-emerald-700/10">
-                    Setujui
-                </button>
+            <button onclick="closeApproveModal()" class="text-slate-400 hover:text-slate-600 dark:text-purple-400 dark:hover:text-white text-xl transition-colors">✕</button>
+        </div>
+
+        {{-- Info Jumlah --}}
+        <div class="px-6 pt-4">
+            <div class="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-2xl p-3 flex gap-2 items-start">
+                <span class="text-amber-500 text-lg mt-0.5">⚠️</span>
+                <p class="text-amber-700 dark:text-amber-300 text-xs font-semibold leading-relaxed">
+                    Jika stok di gudang <strong>tidak mencukupi</strong> jumlah yang diminta, ubah jumlah pada kolom
+                    <strong>"Disetujui"</strong> menjadi stok yang tersedia. Isi <strong>0</strong> untuk tidak mengirimkan produk tersebut.
+                </p>
             </div>
+        </div>
+
+        {{-- Tabel Item --}}
+        <div class="px-6 py-4 overflow-x-auto max-h-96 overflow-y-auto">
+            <table class="min-w-full text-sm" id="approveItemsTable">
+                <thead>
+                    <tr class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-purple-400 border-b border-slate-100 dark:border-dp-700">
+                        <th class="text-left pb-3 pr-4">Produk</th>
+                        <th class="text-right pb-3 px-3">Stok Gudang</th>
+                        <th class="text-right pb-3 px-3">Diminta</th>
+                        <th class="text-right pb-3 pl-3">Disetujui ✏️</th>
+                    </tr>
+                </thead>
+                <tbody id="approveItemsBody" class="divide-y divide-slate-100 dark:divide-dp-700">
+                    {{-- Diisi via JS --}}
+                </tbody>
+            </table>
+        </div>
+
+        {{-- Modal Footer --}}
+        <div class="px-6 py-5 border-t border-slate-100 dark:border-dp-700 flex gap-3">
+            <button onclick="closeApproveModal()"
+                    class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-dp-700 dark:text-purple-200 hover:dark:bg-dp-600 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors">
+                Batal
+            </button>
+            <button id="confirmApproveBtn" onclick="confirmApproveAdjusted()"
+                    class="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors shadow-md shadow-emerald-700/10">
+                ✓ Approve Sesuai Jumlah Ini
+            </button>
         </div>
     </div>
 </div>
 
 <script>
 const rolePrefix = "{{ Auth::user()->role }}";
+const transferId = {{ $stockTransfer->id }};
+
+// Data items dari server (PHP → JS)
+const transferItems = {!! json_encode($stockTransfer->items->map(fn($item) => [
+    'id'         => $item->id,
+    'product_id' => $item->product_id,
+    'name'       => $item->product->name,
+    'sku'        => $item->product->sku,
+    'quantity'   => $item->quantity,
+    'unit'       => $item->unit,
+])) !!};
+
+
+// Stok gudang per produk: { product_id: stock }
+const warehouseStocks = {};
 
 function showToast(msg, type = 'success') {
     if (window.showToast) {
@@ -246,49 +309,151 @@ function closeModal(modalId, cardClass) {
     }, 150);
 }
 
-// Approve handlers
-function approveTransfer() {
+// ════════════════════════════════════════
+// APPROVE MODAL — dengan penyesuaian jumlah
+// ════════════════════════════════════════
+
+async function approveTransfer() {
+    // Ambil stok gudang dari server dulu
+    try {
+        const response = await fetch(`/${rolePrefix}/stock-by-location?location_id={{ $stockTransfer->fromLocation?->id ?? 0 }}`);
+        const stocks = await response.json();
+        // Susun ke object { product_id: stock }
+        stocks.forEach(s => { warehouseStocks[s.product_id] = s.stock; });
+    } catch(e) {
+        console.warn('Tidak bisa ambil stok gudang:', e);
+    }
+
+    // Bangun tabel item di modal
+    const tbody = document.getElementById('approveItemsBody');
+    tbody.innerHTML = '';
+
+    transferItems.forEach(item => {
+        // Lookup stok gudang berdasarkan product_id (bukan item.id)
+        const warehouseQty = warehouseStocks[item.product_id] ?? null;
+        const suggested    = warehouseQty !== null ? Math.min(item.quantity, warehouseQty) : item.quantity;
+        const isShort      = warehouseQty !== null && warehouseQty < item.quantity;
+
+        const warehouseDisplay = warehouseQty !== null
+            ? `<span class="font-bold ${isShort ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'}">${formatNum(warehouseQty)}</span>`
+            : `<span class="text-slate-400">—</span>`;
+
+        const warningBadge = isShort
+            ? `<div class="text-rose-500 text-[10px] font-bold mt-0.5">⚠️ Stok tidak cukup</div>`
+            : '';
+
+        tbody.insertAdjacentHTML('beforeend', `
+            <tr class="">
+                <td class="py-3 pr-4">
+                    <p class="font-bold text-slate-800 dark:text-purple-100 text-sm">${item.name}</p>
+                    <p class="text-slate-400 font-mono text-[10px] mt-0.5">${item.sku}</p>
+                </td>
+                <td class="py-3 px-3 text-right">
+                    ${warehouseDisplay}
+                    <div class="text-slate-400 text-[10px] uppercase font-bold">${item.unit}</div>
+                    ${warningBadge}
+                </td>
+                <td class="py-3 px-3 text-right">
+                    <span class="font-extrabold text-slate-700 dark:text-purple-200">${formatNum(item.quantity)}</span>
+                    <div class="text-slate-400 text-[10px] uppercase font-bold">${item.unit}</div>
+                </td>
+                <td class="py-3 pl-3">
+                    <input
+                        type="number"
+                        id="approved_qty_${item.id}"
+                        data-item-id="${item.id}"
+                        data-warehouse-qty="${warehouseQty ?? 9999999}"
+                        data-requested-qty="${item.quantity}"
+                        value="${suggested}"
+                        min="0"
+                        step="0.01"
+                        class="w-24 text-right bg-white dark:bg-dp-900 border border-slate-200 dark:border-dp-600 text-slate-800 dark:text-purple-100 rounded-xl px-3 py-2 text-sm font-bold focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none transition-colors approve-qty-input"
+                        oninput="validateQtyInput(this)"
+                    />
+                    <div class="text-slate-400 text-[10px] uppercase font-bold mt-1 text-center w-24">${item.unit}</div>
+                </td>
+            </tr>
+        `);
+    });
+
     showModal('approveModal', 'active-modal-approve');
+}
+
+function validateQtyInput(input) {
+    const warehouseQty = parseFloat(input.dataset.warehouseQty);
+    const val = parseFloat(input.value);
+    if (val > warehouseQty) {
+        input.classList.add('border-rose-500', 'bg-rose-50', 'dark:bg-rose-950/20');
+        input.classList.remove('border-slate-200', 'border-emerald-500');
+    } else if (val >= 0) {
+        input.classList.remove('border-rose-500', 'bg-rose-50', 'dark:bg-rose-950/20');
+        input.classList.add('border-emerald-500');
+    }
 }
 
 function closeApproveModal() {
     closeModal('approveModal', 'active-modal-approve');
 }
 
-function confirmApprove() {
-    const btn = document.getElementById('confirmApproveBtn');
-    if (btn) {
-        btn.disabled = true;
-        btn.textContent = '⏳ MEMPROSES...';
-    }
+function formatNum(n) {
+    if (n === null || n === undefined) return '—';
+    return parseFloat(n).toLocaleString('id-ID', { maximumFractionDigits: 2 });
+}
 
-    fetch(`/${rolePrefix}/stock-transfers/{{ $stockTransfer->id }}/approve`, {
+function confirmApproveAdjusted() {
+    // Validasi semua input
+    const inputs = document.querySelectorAll('.approve-qty-input');
+    let hasError = false;
+    let items = [];
+
+    inputs.forEach(input => {
+        const val = parseFloat(input.value);
+        const warehouseQty = parseFloat(input.dataset.warehouseQty);
+        if (isNaN(val) || val < 0) {
+            showToast(`Jumlah tidak valid untuk item #${input.dataset.itemId}`, 'error');
+            hasError = true;
+            return;
+        }
+        if (val > warehouseQty && warehouseQty < 9999999) {
+            showToast(`Jumlah melebihi stok gudang yang tersedia!`, 'error');
+            hasError = true;
+            return;
+        }
+        items.push({ item_id: parseInt(input.dataset.itemId), approved_qty: val });
+    });
+
+    if (hasError) return;
+
+    const btn = document.getElementById('confirmApproveBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ MEMPROSES...'; }
+
+    fetch(`/${rolePrefix}/stock-transfers/${transferId}/approve-adjusted`, {
         method: 'POST',
-        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' }
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({ items })
     })
     .then(r => r.json())
     .then(data => {
         closeApproveModal();
         if (data.success) {
             showToast(data.message, 'success');
-            setTimeout(() => location.reload(), 1500);
+            setTimeout(() => location.reload(), 1800);
         } else {
             showToast(data.message, 'error');
-            if (btn) {
-                btn.disabled = false;
-                btn.textContent = 'SETUJUI';
-            }
+            if (btn) { btn.disabled = false; btn.textContent = '✓ Approve Sesuai Jumlah Ini'; }
         }
     })
-    .catch(err => {
+    .catch(() => {
         closeApproveModal();
         showToast('Terjadi kesalahan koneksi!', 'error');
-        if (btn) {
-            btn.disabled = false;
-            btn.textContent = 'SETUJUI';
-        }
+        if (btn) { btn.disabled = false; btn.textContent = '✓ Approve Sesuai Jumlah Ini'; }
     });
 }
+
 
 // Reject handlers
 function showRejectModal() {

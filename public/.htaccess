@@ -5,6 +5,12 @@
 
     RewriteEngine On
 
+    # ── Force HTTPS (aktif di produksi, diabaikan di local karena tidak ada SSL) ──
+    RewriteCond %{HTTPS} off
+    RewriteCond %{HTTP_HOST} !^localhost [NC]
+    RewriteCond %{HTTP_HOST} !^127\.0\.0\.1 [NC]
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
@@ -22,4 +28,26 @@
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
+</IfModule>
+
+# ── Security Headers ─────────────────────────────────────────────────────────
+<IfModule mod_headers.c>
+    # Cegah halaman dimuat di dalam iframe (anti-clickjacking)
+    Header always set X-Frame-Options "SAMEORIGIN"
+
+    # Cegah browser menebak tipe konten (anti-MIME sniffing)
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Aktifkan filter XSS bawaan browser (legacy browsers)
+    Header always set X-XSS-Protection "1; mode=block"
+
+    # Batasi informasi referrer yang dikirim ke situs lain
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Batasi fitur browser yang bisa diakses halaman
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+
+    # Hapus header yang membocorkan info server
+    Header always unset X-Powered-By
+    Header always unset Server
 </IfModule>

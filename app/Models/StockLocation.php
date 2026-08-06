@@ -71,8 +71,11 @@ class StockLocation extends Model
     /**
      * Temukan atau buat lokasi berdasarkan nama cabang (dari field user.branch).
      */
-    public static function findByBranchName(string $branchName): ?self
+    public static function findByBranchName(?string $branchName): ?self
     {
+        if (empty($branchName)) {
+            return null;
+        }
         return self::where('name', $branchName)->first();
     }
 

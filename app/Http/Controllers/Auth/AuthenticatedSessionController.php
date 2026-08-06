@@ -29,6 +29,12 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $user = Auth::user();
+
+        // Bersihkan url.intended jika mengarah ke notifikasi agar tidak salah redirect setelah login
+        if (session()->has('url.intended') && str_contains(session()->get('url.intended'), 'notifications')) {
+            session()->forget('url.intended');
+        }
+
         if ($user->isAdmin()) {
             return redirect()->intended(route('admin.dashboard', absolute: false));
         } elseif ($user->isKasir()) {

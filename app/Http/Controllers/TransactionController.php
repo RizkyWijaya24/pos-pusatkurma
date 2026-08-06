@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\InstallmentPayment;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -126,6 +127,7 @@ class TransactionController extends Controller
         $now       = Carbon::now();
         $printDate = $now->translatedFormat('d F Y - H:i');
         $printedBy = $cashier->name . ' (Kasir)';
+        $isPdf     = $request->query('format') === 'pdf';
 
         if ($type === 'weekly') {
             $startOfWeek = $now->copy()->startOfWeek();
@@ -156,9 +158,21 @@ class TransactionController extends Controller
             $titlePeriod = $startOfWeek->translatedFormat('d M Y') . ' s/d ' . $endOfWeek->translatedFormat('d M Y');
 
             $isKasir = auth()->user()->isKasir();
-            return response()->streamDownload(function () use ($days, $titlePeriod, $printDate, $printedBy, $cashier, $isKasir) {
-                $this->streamKasirWeekly($days, $titlePeriod, $printDate, $printedBy, $cashier->name, $isKasir);
-            }, $filename, [
+            $renderTemplate = function () use ($days, $titlePeriod, $printDate, $printedBy, $cashier, $isKasir, $isPdf) {
+                $this->streamKasirWeekly($days, $titlePeriod, $printDate, $printedBy, $cashier->name, $isKasir, $isPdf);
+            };
+
+            if ($isPdf) {
+                ob_start();
+                $renderTemplate();
+                $html = ob_get_clean();
+
+                $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
+                $pdf->setPaper('a4', 'portrait');
+                return $pdf->download(str_replace('.xls', '.pdf', $filename));
+            }
+
+            return response()->streamDownload($renderTemplate, $filename, [
                 'Content-Type'  => 'application/vnd.ms-excel; charset=UTF-8',
                 'Cache-Control' => 'no-cache, no-store, must-revalidate',
                 'Pragma'        => 'no-cache',
@@ -198,9 +212,21 @@ class TransactionController extends Controller
             $titlePeriod = $startOfMonth->translatedFormat('F Y');
 
             $isKasir = auth()->user()->isKasir();
-            return response()->streamDownload(function () use ($weeks, $titlePeriod, $printDate, $printedBy, $cashier, $isKasir) {
-                $this->streamKasirMonthly($weeks, $titlePeriod, $printDate, $printedBy, $cashier->name, $isKasir);
-            }, $filename, [
+            $renderTemplate = function () use ($weeks, $titlePeriod, $printDate, $printedBy, $cashier, $isKasir, $isPdf) {
+                $this->streamKasirMonthly($weeks, $titlePeriod, $printDate, $printedBy, $cashier->name, $isKasir, $isPdf);
+            };
+
+            if ($isPdf) {
+                ob_start();
+                $renderTemplate();
+                $html = ob_get_clean();
+
+                $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
+                $pdf->setPaper('a4', 'portrait');
+                return $pdf->download(str_replace('.xls', '.pdf', $filename));
+            }
+
+            return response()->streamDownload($renderTemplate, $filename, [
                 'Content-Type'  => 'application/vnd.ms-excel; charset=UTF-8',
                 'Cache-Control' => 'no-cache, no-store, must-revalidate',
                 'Pragma'        => 'no-cache',
@@ -212,15 +238,43 @@ class TransactionController extends Controller
     /**
      * Stream weekly kasir summary as Excel HTML.
      */
-    private function streamKasirWeekly(array $days, string $period, string $printDate, string $printedBy, string $cashierName, bool $isKasir = false): void
+    private function streamKasirWeekly(array $days, string $period, string $printDate, string $printedBy, string $cashierName, bool $isKasir = false, bool $isPdf = false): void
     {
-        $styles = $this->kasirExcelStyles();
+        $styles = $this->kasirExcelStyles($isPdf);
         $colspan = $isKasir ? 5 : 6;
+
+        $totalOmset  = 0;
+        $totalProfit = 0;
+        $totalCount  = 0;
+        foreach ($days as $day) {
+            $totalOmset  += $day['omset'];
+            $totalProfit += $day['profit'];
+            $totalCount  += $day['count'];
+        }
+
         echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
         echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><style>' . $styles . '</style></head><body>';
-        echo '<table style="margin-bottom:16px;"><tr><td colspan="' . $colspan . '" class="title" style="height:45px;">LAPORAN PENJUALAN MINGGUAN KASIR</td></tr>';
-        echo '<tr><td colspan="' . $colspan . '" class="subtitle" style="height:28px;">PUSAT KURMA PREMIUM</td></tr>';
-        echo '<tr><td colspan="' . $colspan . '" class="spacer"></td></tr>';
+        
+        if ($isPdf) {
+            echo $this->pdfHeader('LAPORAN PENJUALAN MINGGUAN KASIR');
+            
+            $cards = [
+                ['label' => 'Total Omset', 'value' => $this->rupiah($totalOmset), 'color' => '#059669'],
+            ];
+            if (!$isKasir) {
+                $cards[] = ['label' => 'Profit Bersih', 'value' => $this->rupiah($totalProfit), 'color' => '#2563eb'];
+            }
+            $cards[] = ['label' => 'Total Transaksi', 'value' => $totalCount . ' Trx', 'color' => '#d97706'];
+            
+            echo $this->pdfCards($cards);
+        }
+
+        echo '<table style="margin-bottom:16px; width:100%;">';
+        if (!$isPdf) {
+            echo '<tr><td colspan="' . $colspan . '" class="title" style="height:45px;">LAPORAN PENJUALAN MINGGUAN KASIR</td></tr>';
+            echo '<tr><td colspan="' . $colspan . '" class="subtitle" style="height:28px;">PUSAT KURMA PREMIUM</td></tr>';
+            echo '<tr><td colspan="' . $colspan . '" class="spacer"></td></tr>';
+        }
         echo '<tr><td class="meta-label">Kasir</td><td colspan="' . ($colspan - 1) . '" class="meta-value">' . htmlspecialchars($cashierName) . '</td></tr>';
         echo '<tr><td class="meta-label">Periode</td><td colspan="' . ($colspan - 1) . '" class="meta-value">' . htmlspecialchars($period) . '</td></tr>';
         echo '<tr><td class="meta-label">Tanggal Cetak</td><td colspan="' . ($colspan - 1) . '" class="meta-value">' . htmlspecialchars($printDate) . '</td></tr>';
@@ -238,15 +292,9 @@ class TransactionController extends Controller
         echo '<th style="width:130px;">Jml Transaksi</th>';
         echo '</tr></thead><tbody>';
 
-        $totalOmset  = 0;
-        $totalProfit = 0;
-        $totalCount  = 0;
         $idx = 1;
         foreach ($days as $dateStr => $day) {
             $rowClass     = $idx % 2 === 0 ? ' class="stripe"' : '';
-            $totalOmset  += $day['omset'];
-            $totalProfit += $day['profit'];
-            $totalCount  += $day['count'];
             echo '<tr' . $rowClass . '>';
             echo '<td class="center">' . $idx++ . '</td>';
             echo '<td class="center">' . htmlspecialchars($day['sub_label']) . '</td>';
@@ -265,21 +313,56 @@ class TransactionController extends Controller
             echo '<td class="currency" style="font-size:11pt;">' . $this->rupiah($totalProfit) . '</td>';
         }
         echo '<td class="center bold">' . $totalCount . ' Trx</td></tr>';
-        echo '</tbody></table></body></html>';
+        echo '</tbody></table>';
+
+        if ($isPdf) {
+            echo $this->pdfSignature($printedBy);
+            echo $this->pdfFooter();
+        }
+
+        echo '</body></html>';
     }
 
     /**
      * Stream monthly kasir summary as Excel HTML.
      */
-    private function streamKasirMonthly(array $weeks, string $period, string $printDate, string $printedBy, string $cashierName, bool $isKasir = false): void
+    private function streamKasirMonthly(array $weeks, string $period, string $printDate, string $printedBy, string $cashierName, bool $isKasir = false, bool $isPdf = false): void
     {
-        $styles = $this->kasirExcelStyles();
+        $styles = $this->kasirExcelStyles($isPdf);
         $colspan = $isKasir ? 5 : 6;
+
+        $totalOmset  = 0;
+        $totalProfit = 0;
+        $totalCount  = 0;
+        foreach ($weeks as $w) {
+            $totalOmset  += $w['omset'];
+            $totalProfit += $w['profit'];
+            $totalCount  += $w['count'];
+        }
+
         echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
         echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><style>' . $styles . '</style></head><body>';
-        echo '<table style="margin-bottom:16px;"><tr><td colspan="' . $colspan . '" class="title" style="height:45px;">LAPORAN PENJUALAN BULANAN KASIR</td></tr>';
-        echo '<tr><td colspan="' . $colspan . '" class="subtitle" style="height:28px;">PUSAT KURMA PREMIUM</td></tr>';
-        echo '<tr><td colspan="' . $colspan . '" class="spacer"></td></tr>';
+        
+        if ($isPdf) {
+            echo $this->pdfHeader('LAPORAN PENJUALAN BULANAN KASIR');
+            
+            $cards = [
+                ['label' => 'Total Omset', 'value' => $this->rupiah($totalOmset), 'color' => '#059669'],
+            ];
+            if (!$isKasir) {
+                $cards[] = ['label' => 'Profit Bersih', 'value' => $this->rupiah($totalProfit), 'color' => '#2563eb'];
+            }
+            $cards[] = ['label' => 'Total Transaksi', 'value' => $totalCount . ' Trx', 'color' => '#d97706'];
+            
+            echo $this->pdfCards($cards);
+        }
+
+        echo '<table style="margin-bottom:16px; width:100%;">';
+        if (!$isPdf) {
+            echo '<tr><td colspan="' . $colspan . '" class="title" style="height:45px;">LAPORAN PENJUALAN BULANAN KASIR</td></tr>';
+            echo '<tr><td colspan="' . $colspan . '" class="subtitle" style="height:28px;">PUSAT KURMA PREMIUM</td></tr>';
+            echo '<tr><td colspan="' . $colspan . '" class="spacer"></td></tr>';
+        }
         echo '<tr><td class="meta-label">Kasir</td><td colspan="' . ($colspan - 1) . '" class="meta-value">' . htmlspecialchars($cashierName) . '</td></tr>';
         echo '<tr><td class="meta-label">Periode</td><td colspan="' . ($colspan - 1) . '" class="meta-value">' . htmlspecialchars($period) . '</td></tr>';
         echo '<tr><td class="meta-label">Tanggal Cetak</td><td colspan="' . ($colspan - 1) . '" class="meta-value">' . htmlspecialchars($printDate) . '</td></tr>';
@@ -297,15 +380,9 @@ class TransactionController extends Controller
         echo '<th style="width:130px;">Jml Transaksi</th>';
         echo '</tr></thead><tbody>';
 
-        $totalOmset  = 0;
-        $totalProfit = 0;
-        $totalCount  = 0;
         $idx = 1;
         foreach ($weeks as $wNum => $w) {
             $rowClass     = $idx % 2 === 0 ? ' class="stripe"' : '';
-            $totalOmset  += $w['omset'];
-            $totalProfit += $w['profit'];
-            $totalCount  += $w['count'];
             echo '<tr' . $rowClass . '>';
             echo '<td class="center">' . $idx++ . '</td>';
             echo '<td class="center">' . htmlspecialchars($w['label']) . '</td>';
@@ -324,15 +401,24 @@ class TransactionController extends Controller
             echo '<td class="currency" style="font-size:11pt;">' . $this->rupiah($totalProfit) . '</td>';
         }
         echo '<td class="center bold">' . $totalCount . ' Trx</td></tr>';
-        echo '</tbody></table></body></html>';
+        echo '</tbody></table>';
+
+        if ($isPdf) {
+            echo $this->pdfSignature($printedBy);
+            echo $this->pdfFooter();
+        }
+
+        echo '</body></html>';
     }
 
     /**
      * Excel styles for kasir export.
      */
-    private function kasirExcelStyles(): string
+    private function kasirExcelStyles(bool $isPdf = false): string
     {
+        $extraStyles = $isPdf ? '@page { margin: 1.2cm 1.0cm; } table { width: 100%; margin: 0 auto; } th { width: auto !important; font-size: 8.5pt !important; padding: 6px 4px !important; } td { font-size: 8pt !important; padding: 5px 4px !important; } ' : '';
         return implode('', [
+            $extraStyles,
             'body{font-family:"Segoe UI",Arial,sans-serif;}',
             'table{border-collapse:collapse;}',
             'th{background-color:#059669;color:#fff;font-weight:bold;border:1px solid #047857;padding:10px 14px;font-size:11pt;white-space:nowrap;}',
@@ -359,8 +445,21 @@ class TransactionController extends Controller
 
         // Optional date filter - default to today
         $date = $request->has('date') ? $request->input('date') : Carbon::today()->toDateString();
+        $filterType = $request->input('filter_type', 'harian');
+
         if (!empty($date)) {
-            $query->whereDate('created_at', $date);
+            $carbonDate = Carbon::parse($date);
+            if ($filterType === 'mingguan') {
+                $start = $carbonDate->copy()->startOfWeek();
+                $end = $carbonDate->copy()->endOfWeek();
+                $query->whereBetween('created_at', [$start, $end]);
+            } elseif ($filterType === 'bulanan') {
+                $start = $carbonDate->copy()->startOfMonth();
+                $end = $carbonDate->copy()->endOfMonth();
+                $query->whereBetween('created_at', [$start, $end]);
+            } else {
+                $query->whereDate('created_at', $date);
+            }
         }
 
         // Optional branch filter
@@ -373,7 +472,18 @@ class TransactionController extends Controller
         // Fetch paginated expenses with filters
         $expenseQuery = \App\Models\Expense::with('cashier')->latest();
         if (!empty($date)) {
-            $expenseQuery->whereDate('created_at', $date);
+            $carbonDate = Carbon::parse($date);
+            if ($filterType === 'mingguan') {
+                $start = $carbonDate->copy()->startOfWeek();
+                $end = $carbonDate->copy()->endOfWeek();
+                $expenseQuery->whereBetween('created_at', [$start, $end]);
+            } elseif ($filterType === 'bulanan') {
+                $start = $carbonDate->copy()->startOfMonth();
+                $end = $carbonDate->copy()->endOfMonth();
+                $expenseQuery->whereBetween('created_at', [$start, $end]);
+            } else {
+                $expenseQuery->whereDate('created_at', $date);
+            }
         }
         if ($request->filled('branch')) {
             $expenseQuery->where('branch', $request->branch);
@@ -405,14 +515,22 @@ class TransactionController extends Controller
             ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->first();
 
-        $todayStats = $statsQuery()
+        $todayStatsQuery = $statsQuery()
             ->selectRaw('SUM(total_price) as omset, 
                          SUM(total_price - total_cost) as profit,
                          COALESCE(SUM(CASE WHEN payment_method = \'Cash\' THEN total_price ELSE 0 END),0) as cash_total,
                          COALESCE(SUM(CASE WHEN payment_method = \'QRIS\' THEN total_price ELSE 0 END),0) as qris_total,
-                         COALESCE(SUM(CASE WHEN payment_method = \'Debit\' THEN total_price ELSE 0 END),0) as debit_total')
-            ->whereDate('created_at', $today)
-            ->first();
+                         COALESCE(SUM(CASE WHEN payment_method = \'Debit\' THEN total_price ELSE 0 END),0) as debit_total');
+        
+        $carbonDate = Carbon::parse($date);
+        if ($filterType === 'mingguan') {
+            $todayStatsQuery->whereBetween('created_at', [$carbonDate->copy()->startOfWeek(), $carbonDate->copy()->endOfWeek()]);
+        } elseif ($filterType === 'bulanan') {
+            $todayStatsQuery->whereBetween('created_at', [$carbonDate->copy()->startOfMonth(), $carbonDate->copy()->endOfMonth()]);
+        } else {
+            $todayStatsQuery->whereDate('created_at', $today);
+        }
+        $todayStats = $todayStatsQuery->first();
 
         $weeklyOmset   = $weeklyStats->omset ?? 0;
         $weeklyProfit  = $weeklyStats->profit ?? 0;
@@ -470,8 +588,21 @@ class TransactionController extends Controller
 
         // Optional date filter - default to today
         $date = $request->has('date') ? $request->input('date') : Carbon::today()->toDateString();
+        $filterType = $request->input('filter_type', 'harian');
+
         if (!empty($date)) {
-            $query->whereDate('created_at', $date);
+            $carbonDate = Carbon::parse($date);
+            if ($filterType === 'mingguan') {
+                $start = $carbonDate->copy()->startOfWeek();
+                $end = $carbonDate->copy()->endOfWeek();
+                $query->whereBetween('created_at', [$start, $end]);
+            } elseif ($filterType === 'bulanan') {
+                $start = $carbonDate->copy()->startOfMonth();
+                $end = $carbonDate->copy()->endOfMonth();
+                $query->whereBetween('created_at', [$start, $end]);
+            } else {
+                $query->whereDate('created_at', $date);
+            }
         }
 
         // Optional branch filter
@@ -484,7 +615,18 @@ class TransactionController extends Controller
         // Fetch paginated expenses with filters
         $expenseQuery = \App\Models\Expense::with('cashier')->latest();
         if (!empty($date)) {
-            $expenseQuery->whereDate('created_at', $date);
+            $carbonDate = Carbon::parse($date);
+            if ($filterType === 'mingguan') {
+                $start = $carbonDate->copy()->startOfWeek();
+                $end = $carbonDate->copy()->endOfWeek();
+                $expenseQuery->whereBetween('created_at', [$start, $end]);
+            } elseif ($filterType === 'bulanan') {
+                $start = $carbonDate->copy()->startOfMonth();
+                $end = $carbonDate->copy()->endOfMonth();
+                $expenseQuery->whereBetween('created_at', [$start, $end]);
+            } else {
+                $expenseQuery->whereDate('created_at', $date);
+            }
         }
         if ($request->filled('branch')) {
             $expenseQuery->where('branch', $request->branch);
@@ -516,14 +658,22 @@ class TransactionController extends Controller
             ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->first();
 
-        $todayStats = $statsQuery()
+        $todayStatsQuery = $statsQuery()
             ->selectRaw('SUM(total_price) as omset, 
                          SUM(total_price - total_cost) as profit,
                          COALESCE(SUM(CASE WHEN payment_method = \'Cash\' THEN total_price ELSE 0 END),0) as cash_total,
                          COALESCE(SUM(CASE WHEN payment_method = \'QRIS\' THEN total_price ELSE 0 END),0) as qris_total,
-                         COALESCE(SUM(CASE WHEN payment_method = \'Debit\' THEN total_price ELSE 0 END),0) as debit_total')
-            ->whereDate('created_at', $today)
-            ->first();
+                         COALESCE(SUM(CASE WHEN payment_method = \'Debit\' THEN total_price ELSE 0 END),0) as debit_total');
+        
+        $carbonDate = Carbon::parse($date);
+        if ($filterType === 'mingguan') {
+            $todayStatsQuery->whereBetween('created_at', [$carbonDate->copy()->startOfWeek(), $carbonDate->copy()->endOfWeek()]);
+        } elseif ($filterType === 'bulanan') {
+            $todayStatsQuery->whereBetween('created_at', [$carbonDate->copy()->startOfMonth(), $carbonDate->copy()->endOfMonth()]);
+        } else {
+            $todayStatsQuery->whereDate('created_at', $today);
+        }
+        $todayStats = $todayStatsQuery->first();
 
         $weeklyOmset   = $weeklyStats->omset ?? 0;
         $weeklyProfit  = $weeklyStats->profit ?? 0;
@@ -596,7 +746,7 @@ class TransactionController extends Controller
         })->join(', ');
 
         // Automatically inherit cashier's branch
-        $cashierBranch = auth()->user()->branch ?? 'Pusat Cianjur';
+        $cashierBranch = auth()->user()->branch ?? 'Cabang Rumah';
 
         // ── Pre-load semua produk dalam 1 query (fix N+1) ───────────────────
         $itemIds   = collect($request->items)->pluck('id')->filter()->values()->toArray();
@@ -612,6 +762,49 @@ class TransactionController extends Controller
             }
             return $productsByName->get($item['name']);
         };
+
+        // Validate stock for each item (aggregated by product to avoid multi-item bypass)
+        $aggregatedItems = [];
+        foreach ($request->items as $item) {
+            $product = $resolveProduct($item);
+            if (!$product) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Produk "' . $item['name'] . '" tidak ditemukan di database.'
+                ], 422);
+            }
+            if (isset($product->is_active) && !$product->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Produk "' . $product->name . '" sedang nonaktif dan tidak dapat ditransaksikan.'
+                ], 422);
+            }
+            $pId = $product->id;
+            if (!isset($aggregatedItems[$pId])) {
+                $aggregatedItems[$pId] = [
+                    'product' => $product,
+                    'qty' => 0.0,
+                ];
+            }
+            $aggregatedItems[$pId]['qty'] += floatval($item['qty']);
+        }
+
+        $branchLocation = \App\Models\StockLocation::findByBranchName($cashierBranch);
+        foreach ($aggregatedItems as $agg) {
+            $product = $agg['product'];
+            $qtyRequested = $agg['qty'];
+            
+            $availableStock = $branchLocation 
+                ? $product->getStockAtLocation($branchLocation->id) 
+                : $product->stock;
+
+            if ($availableStock < $qtyRequested) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Stok produk "' . $product->name . '" tidak mencukupi! Tersedia: ' . $availableStock . ' ' . $product->price_unit . ', diminta: ' . $qtyRequested . ' ' . $product->price_unit
+                ], 422);
+            }
+        }
 
         // Hitung total cost menggunakan produk yang sudah di-preload
         $totalCost = 0;
@@ -680,6 +873,14 @@ class TransactionController extends Controller
                 'payment_method'   => $transaction->payment_method,
                 'total_price'      => $transaction->total_price,
                 'discount'         => $transaction->discount,
+                // items_sold: dipakai Alpine.js untuk update stok produk real-time tanpa refresh
+                'items_sold'       => collect($request->items)
+                    ->filter(fn($item) => !empty($item['id']))
+                    ->map(fn($item) => [
+                        'id'  => (int) $item['id'],
+                        'qty' => (float) $item['qty'],
+                    ])
+                    ->values(),
             ]
         ]);
     }
@@ -692,7 +893,8 @@ class TransactionController extends Controller
         $validated = $request->validate([
             'items_summary'  => 'required|string|max:1000',
             'total_price'    => 'required|integer|min:0',
-            'payment_method' => 'required|string|in:Cash,QRIS,Debit',
+            'payment_method' => 'required|string',
+            'payment_status' => 'nullable|string|in:paid,unpaid',
         ]);
 
         $transaction->update($validated);
@@ -732,8 +934,16 @@ class TransactionController extends Controller
         $query = Transaction::with('cashier')->latest();
 
         $date = $request->has('date') ? $request->input('date') : Carbon::today()->toDateString();
+        $filterType = $request->input('filter_type', 'harian');
         if (!empty($date)) {
-            $query->whereDate('created_at', $date);
+            $carbonDate = Carbon::parse($date);
+            if ($filterType === 'mingguan') {
+                $query->whereBetween('created_at', [$carbonDate->copy()->startOfWeek(), $carbonDate->copy()->endOfWeek()]);
+            } elseif ($filterType === 'bulanan') {
+                $query->whereBetween('created_at', [$carbonDate->copy()->startOfMonth(), $carbonDate->copy()->endOfMonth()]);
+            } else {
+                $query->whereDate('created_at', $date);
+            }
         }
 
         if ($request->filled('branch')) {
@@ -742,21 +952,45 @@ class TransactionController extends Controller
 
         $transactions = $query->get();
         $now = Carbon::now();
+        $isPdf = $request->query('format') === 'pdf';
 
         $branchSuffix = $request->filled('branch') ? '_' . str_replace(' ', '_', $request->branch) : '';
         $filename = 'Riwayat_Transaksi' . $branchSuffix . '_' . (!empty($date) ? $date : $now->format('Y-m-d')) . '.xls';
 
-        return response()->streamDownload(function () use ($transactions, $request, $now) {
+        // Pre-calculate stats
+        $totalTransactions = count($transactions);
+        $totalOmset = 0;
+        $totalProfit = 0;
+        foreach ($transactions as $trx) {
+            $totalOmset += (int)$trx->total_price;
+            $totalProfit += (int)($trx->total_price - $trx->total_cost);
+        }
+        $avgOmset = $totalTransactions > 0 ? (int)round($totalOmset / $totalTransactions) : 0;
+
+        $renderTemplate = function () use ($transactions, $request, $now, $isPdf, $totalTransactions, $totalOmset, $totalProfit, $avgOmset) {
             $printDate    = $now->translatedFormat('d F Y - H:i');
             $printedBy    = auth()->user()->name . ' (' . ucfirst(auth()->user()->role) . ')';
-            $filterDate   = $request->filled('date') ? Carbon::parse($request->date)->translatedFormat('d F Y') : 'Semua Tanggal';
+            $filterDate   = 'Hari Ini';
+            if ($request->filled('date')) {
+                $carbonDate = Carbon::parse($request->date);
+                if ($request->input('filter_type') === 'mingguan') {
+                    $filterDate = 'Mingguan (' . $carbonDate->copy()->startOfWeek()->translatedFormat('d M') . ' - ' . $carbonDate->copy()->endOfWeek()->translatedFormat('d M Y') . ')';
+                } elseif ($request->input('filter_type') === 'bulanan') {
+                    $filterDate = 'Bulanan (' . $carbonDate->translatedFormat('F Y') . ')';
+                } else {
+                    $filterDate = $carbonDate->translatedFormat('d F Y');
+                }
+            }
             $filterBranch = $request->filled('branch') ? $request->branch : 'Semua Cabang';
 
             echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
             echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
             echo '<style>';
-            echo 'body{font-family:"Segoe UI",Arial,sans-serif;}';
-            echo 'table{border-collapse:collapse;}';
+            if ($isPdf) {
+                echo '@page { margin: 1.0cm 1.2cm; } table { width: 100%; margin: 0 auto; } th { width: auto !important; } ';
+            }
+            echo 'body{font-family:"Segoe UI",Arial,sans-serif;color:#1e293b;}';
+            echo 'table{border-collapse:collapse;width:100%;}';
             echo 'th{background-color:#059669;color:#ffffff;font-weight:bold;border:1px solid #047857;padding:10px 12px;font-size:11pt;white-space:nowrap;}';
             echo 'td{border:1px solid #d1fae5;padding:8px 10px;font-size:10pt;vertical-align:middle;}';
             echo '.title{font-size:16pt;font-weight:bold;color:#064e3b;text-align:center;border:none !important;}';
@@ -774,11 +1008,25 @@ class TransactionController extends Controller
             echo '.spacer{border:none !important;}';
             echo '</style></head><body>';
 
+            if ($isPdf) {
+                echo $this->pdfHeader('LAPORAN RIWAYAT TRANSAKSI PENJUALAN');
+                
+                $cards = [
+                    ['label' => 'Total Omset', 'value' => $this->rupiah($totalOmset), 'color' => '#059669'],
+                    ['label' => 'Profit Bersih', 'value' => $this->rupiah($totalProfit), 'color' => '#2563eb'],
+                    ['label' => 'Total Transaksi', 'value' => $totalTransactions . ' Trx', 'color' => '#d97706'],
+                    ['label' => 'Rata-rata / Trx', 'value' => $this->rupiah($avgOmset), 'color' => '#475569']
+                ];
+                echo $this->pdfCards($cards);
+            }
+
             // ---- Metadata Table ----
-            echo '<table style="margin-bottom:16px;">';
-            echo '<tr><td colspan="9" class="title" style="height:45px;">LAPORAN RIWAYAT TRANSAKSI PENJUALAN</td></tr>';
-            echo '<tr><td colspan="9" class="subtitle" style="height:28px;">PUSAT KURMA PREMIUM</td></tr>';
-            echo '<tr><td colspan="9" class="spacer" style="height:12px;"></td></tr>';
+            echo '<table style="margin-bottom:16px; width:100%;">';
+            if (!$isPdf) {
+                echo '<tr><td colspan="9" class="title" style="height:45px;">LAPORAN RIWAYAT TRANSAKSI PENJUALAN</td></tr>';
+                echo '<tr><td colspan="9" class="subtitle" style="height:28px;">PUSAT KURMA PREMIUM</td></tr>';
+                echo '<tr><td colspan="9" class="spacer" style="height:12px;"></td></tr>';
+            }
             echo '<tr><td class="meta-label">Filter Tanggal</td><td colspan="8" class="meta-value">' . htmlspecialchars($filterDate) . '</td></tr>';
             echo '<tr><td class="meta-label">Filter Cabang</td><td colspan="8" class="meta-value">' . htmlspecialchars($filterBranch) . '</td></tr>';
             echo '<tr><td class="meta-label">Tanggal Cetak</td><td colspan="8" class="meta-value">' . htmlspecialchars($printDate) . '</td></tr>';
@@ -800,15 +1048,15 @@ class TransactionController extends Controller
             echo '<th style="width:200px;">Profit Bersih</th>';
             echo '</tr></thead><tbody>';
 
-            $totalOmset  = 0;
-            $totalProfit = 0;
+            $totalOmsetCalculated  = 0;
+            $totalProfitCalculated = 0;
             $idx = 1;
 
             foreach ($transactions as $trx) {
                 $omset  = (int)$trx->total_price;
                 $profit = (int)($trx->total_price - $trx->total_cost);
-                $totalOmset  += $omset;
-                $totalProfit += $profit;
+                $totalOmsetCalculated  += $omset;
+                $totalProfitCalculated += $profit;
                 $rowBg = $idx % 2 === 0 ? ' style="background-color:#f9fafb;"' : '';
 
                 echo '<tr' . $rowBg . '>';
@@ -816,7 +1064,7 @@ class TransactionController extends Controller
                 echo '<td class="center">' . htmlspecialchars($trx->created_at->translatedFormat('d M Y - H:i')) . '</td>';
                 echo '<td class="center bold text">' . htmlspecialchars($trx->transaction_code) . '</td>';
                 echo '<td>' . htmlspecialchars($trx->cashier->name ?? 'N/A') . '</td>';
-                echo '<td class="center">' . htmlspecialchars($trx->branch ?? 'Pusat Cianjur') . '</td>';
+                echo '<td class="center">' . htmlspecialchars($trx->branch ?? 'Cabang Rumah') . '</td>';
                 echo '<td class="text">' . htmlspecialchars($trx->items_summary) . '</td>';
                 echo '<td class="center">' . htmlspecialchars($trx->payment_method) . '</td>';
                 echo '<td class="currency">' . $this->rupiah($omset) . '</td>';
@@ -825,25 +1073,44 @@ class TransactionController extends Controller
             }
 
             $count     = count($transactions);
-            $avgOmset  = $count > 0 ? (int)round($totalOmset / $count) : 0;
-            $avgProfit = $count > 0 ? (int)round($totalProfit / $count) : 0;
+            $avgOmsetCalculated  = $count > 0 ? (int)round($totalOmsetCalculated / $count) : 0;
+            $avgProfitCalculated = $count > 0 ? (int)round($totalProfitCalculated / $count) : 0;
 
             echo '<tr><td colspan="9" class="spacer" style="height:8px;"></td></tr>';
 
             echo '<tr class="total-row">';
             echo '<td colspan="7" class="center bold" style="font-size:11pt;">GRAND TOTAL (' . $count . ' Transaksi)</td>';
-            echo '<td class="currency" style="font-size:11pt;">' . $this->rupiah($totalOmset) . '</td>';
-            echo '<td class="currency" style="font-size:11pt;">' . $this->rupiah($totalProfit) . '</td>';
+            echo '<td class="currency" style="font-size:11pt;">' . $this->rupiah($totalOmsetCalculated) . '</td>';
+            echo '<td class="currency" style="font-size:11pt;">' . $this->rupiah($totalProfitCalculated) . '</td>';
             echo '</tr>';
 
             echo '<tr class="avg-row">';
             echo '<td colspan="7" class="center bold">RATA-RATA PER TRANSAKSI</td>';
-            echo '<td class="currency">' . $this->rupiah($avgOmset) . '</td>';
-            echo '<td class="currency">' . $this->rupiah($avgProfit) . '</td>';
+            echo '<td class="currency">' . $this->rupiah($avgOmsetCalculated) . '</td>';
+            echo '<td class="currency">' . $this->rupiah($avgProfitCalculated) . '</td>';
             echo '</tr>';
 
-            echo '</tbody></table></body></html>';
-        }, $filename, [
+            echo '</tbody></table>';
+
+            if ($isPdf) {
+                echo $this->pdfSignature($printedBy);
+                echo $this->pdfFooter();
+            }
+
+            echo '</body></html>';
+        };
+
+        if ($isPdf) {
+            ob_start();
+            $renderTemplate();
+            $html = ob_get_clean();
+
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
+            $pdf->setPaper('a4', 'landscape');
+            return $pdf->download(str_replace('.xls', '.pdf', $filename));
+        }
+
+        return response()->streamDownload($renderTemplate, $filename, [
             'Content-Type'  => 'application/vnd.ms-excel; charset=UTF-8',
             'Cache-Control' => 'no-cache, no-store, must-revalidate',
             'Pragma'        => 'no-cache',
@@ -858,7 +1125,7 @@ class TransactionController extends Controller
     {
         // Security check: Only cashier who made the transaction or admin can print
         if (!auth()->user()->isAdmin() && $transaction->cashier_id !== auth()->id()) {
-            abort(403, 'Anda tidak memiliki akses untuk mencetak struk ini.');
+            abort(403, 'Anda tidak memiliki akses untuk mencetak nota ini.');
         }
 
         // Parse items from items_summary
@@ -958,6 +1225,7 @@ class TransactionController extends Controller
             'payment_method' => 'required|string',
             'discount' => 'nullable|integer|min:0',
             'shipping_cost' => 'nullable|integer|min:0',
+            'payment_received' => 'nullable|integer|min:0',
             'items' => 'required|array|min:1',
             'items.*.name' => 'required|string',
             'items.*.qty' => 'required|numeric|min:0',
@@ -965,6 +1233,43 @@ class TransactionController extends Controller
             'items.*.selling_price' => 'required|integer|min:0',
             'items.*.cost_price' => 'nullable|integer|min:0',
         ]);
+
+        // Validate stock for each item (aggregated by product name to avoid multi-item bypass)
+        $aggregatedItems = [];
+        foreach ($request->items as $item) {
+            $product = \App\Models\Product::where('name', $item['name'])->first();
+            if (!$product) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Produk "' . $item['name'] . '" tidak ditemukan di database.'
+                ], 422);
+            }
+            $pName = $product->name;
+            if (!isset($aggregatedItems[$pName])) {
+                $aggregatedItems[$pName] = [
+                    'product' => $product,
+                    'qty' => 0.0,
+                ];
+            }
+            $aggregatedItems[$pName]['qty'] += floatval($item['qty']);
+        }
+
+        $branchLocation = \App\Models\StockLocation::findByBranchName('Cabang Rumah');
+        foreach ($aggregatedItems as $agg) {
+            $product = $agg['product'];
+            $qtyRequested = $agg['qty'];
+            
+            $availableStock = $branchLocation 
+                ? $product->getStockAtLocation($branchLocation->id) 
+                : $product->stock;
+
+            if ($availableStock < $qtyRequested) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Stok produk "' . $product->name . '" tidak mencukupi! Tersedia: ' . $availableStock . ' ' . $product->price_unit . ', diminta: ' . $qtyRequested . ' ' . $product->price_unit
+                ], 422);
+            }
+        }
 
         $totalPrice = 0;
         $totalCost = 0;
@@ -992,6 +1297,15 @@ class TransactionController extends Controller
             }
         }
 
+        $received = $request->payment_method === 'Piutang / Tempo' 
+            ? intval($request->input('payment_received', 0)) 
+            : $grandTotal;
+
+        $paymentStatus = $request->payment_method === 'Piutang / Tempo' ? 'unpaid' : 'paid';
+        if ($request->payment_method === 'Piutang / Tempo' && $received >= $grandTotal) {
+            $paymentStatus = 'paid';
+        }
+
         $transaction = Transaction::create([
             'cashier_id'       => auth()->id(),
             'transaction_code' => 'PRT-' . Carbon::now()->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6)),
@@ -1004,8 +1318,17 @@ class TransactionController extends Controller
             'shipping_cost'    => $shippingCost,
             'total_cost'       => $totalCost,
             'payment_method'   => $request->payment_method,
-            'branch'           => 'Pusat Cianjur', // Defaults to Pusat
+            'branch'           => 'Cabang Rumah', // Defaults to Pusat
+            'payment_status'   => $paymentStatus,
         ]);
+
+        if ($received > 0) {
+            $transaction->installments()->create([
+                'amount' => $received,
+                'payment_method' => $request->payment_method === 'Piutang / Tempo' ? 'Tunai' : $request->payment_method,
+                'note' => $request->payment_method === 'Piutang / Tempo' ? 'Uang Muka / DP' : 'Pembayaran Lunas Awal'
+            ]);
+        }
 
         return response()->json([
             'success' => true,
@@ -1070,6 +1393,237 @@ class TransactionController extends Controller
         // Calculate actual subtotal before discount/shipping if items have prices
         $subtotal = collect($items)->sum('total_price');
 
-        return view('admin.wholesale_receipt', compact('transaction', 'items', 'subtotal'));
+        // Calculate installment totals
+        $totalPaid = $transaction->installments()->sum('amount');
+        $remaining = max(0, $transaction->total_price - $totalPaid);
+
+        if (request()->query('format') === 'pdf') {
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.wholesale_receipt_pdf', compact('transaction', 'items', 'subtotal', 'totalPaid', 'remaining'));
+            $pdf->setPaper([0, 0, 226.77, 750], 'portrait');
+            return $pdf->stream('Nota_Partai_' . $transaction->transaction_code . '.pdf');
+        }
+
+        return view('admin.wholesale_receipt', compact('transaction', 'items', 'subtotal', 'totalPaid', 'remaining'));
+    }
+
+    /**
+     * Private helper methods for formal PDF layout.
+     */
+    private function pdfHeader(string $title): string
+    {
+        $logoPath = public_path('images/logo.png');
+        $logoHtml = '';
+        if (file_exists($logoPath)) {
+            try {
+                $logoData = base64_encode(file_get_contents($logoPath));
+                $logoHtml = '<img src="data:image/png;base64,' . $logoData . '" style="height: 50px; max-width: 100px; display: block;">';
+            } catch (\Exception $e) {
+                $logoHtml = '<div style="width:50px;height:50px;background-color:#059669;border-radius:8px;text-align:center;line-height:50px;font-size:16pt;font-weight:bold;color:#ffffff;">PK</div>';
+            }
+        } else {
+            $logoHtml = '<div style="width:50px;height:50px;background-color:#059669;border-radius:8px;text-align:center;line-height:50px;font-size:16pt;font-weight:bold;color:#ffffff;">PK</div>';
+        }
+
+        return '
+        <table style="width: 100%; border: none !important; margin-bottom: 8px; background: transparent;">
+            <tr style="border: none !important; background: transparent;">
+                <td style="width: 60px; border: none !important; text-align: left; vertical-align: middle; background: transparent; padding: 0;">
+                    ' . $logoHtml . '
+                </td>
+                <td style="border: none !important; text-align: left; vertical-align: middle; background: transparent; padding-left: 10px;">
+                    <div style="font-size: 14pt; font-weight: bold; color: #064e3b; letter-spacing: 0.5px; line-height: 1.2;">PUSAT KURMA PREMIUM</div>
+                    <div style="font-size: 8.5pt; color: #4b5563; margin-top: 1px;">Jl. Raya Cianjur - Bandung No. 12, Cianjur, Jawa Barat</div>
+                    <div style="font-size: 7.5pt; color: #6b7280; margin-top: 1px;">Telp: 0812-3456-7890 | Email: info@pusatkurma.com</div>
+                </td>
+                <td style="border: none !important; text-align: right; vertical-align: middle; background: transparent; padding: 0;">
+                    <div style="font-size: 10pt; font-weight: 800; color: #059669; text-transform: uppercase; letter-spacing: 0.5px; max-width: 250px; line-height: 1.2;">' . htmlspecialchars($title) . '</div>
+                    <div style="font-size: 7.5pt; color: #6b7280; margin-top: 1px;">Laporan Keuangan Resmi</div>
+                </td>
+            </tr>
+        </table>
+        <div style="border-top: 2px solid #059669; border-bottom: 1px solid #059669; height: 2px; margin-bottom: 12px; margin-top: 3px;"></div>
+        ';
+    }
+
+    private function pdfFooter(): string
+    {
+        return '
+        <script type="text/php">
+            if ( isset($pdf) ) {
+                $font = $fontMetrics->get_font("Arial, Helvetica, sans-serif", "normal");
+                $size = 8;
+                $pageText = "Halaman {PAGE_NUM} dari {PAGE_COUNT}";
+                $y = $pdf->get_height() - 25;
+                $x = ($pdf->get_width() - $fontMetrics->get_text_width($pageText, $font, $size)) / 2;
+                $pdf->text($x, $y, $pageText, $font, $size, array(107/255, 114/255, 128/255));
+            }
+        </script>
+        ';
+    }
+
+    private function pdfSignature(string $printedBy): string
+    {
+        return '
+        <table style="width: 100%; margin-top: 20px; border: none !important; background: transparent; page-break-inside: avoid;">
+            <tr style="border: none !important; background: transparent;">
+                <td style="width: 50%; text-align: center; border: none !important; background: transparent; padding: 0;">
+                    <p style="font-size: 8.5pt; margin-bottom: 30px; color: #374151;">Dibuat Oleh,</p>
+                    <p style="font-size: 8.5pt; font-weight: bold; text-decoration: underline; color: #111827; margin: 0;">' . htmlspecialchars($printedBy) . '</p>
+                    <p style="font-size: 7.5pt; color: #6b7280; margin: 0;">Staff Operasional</p>
+                </td>
+                <td style="width: 50%; text-align: center; border: none !important; background: transparent; padding: 0;">
+                    <p style="font-size: 8.5pt; margin-bottom: 30px; color: #374151;">Disetujui Oleh,</p>
+                    <p style="font-size: 8.5pt; font-weight: bold; text-decoration: underline; color: #111827; margin: 0;">....................................</p>
+                    <p style="font-size: 7.5pt; color: #6b7280; margin: 0;">Manager / Owner</p>
+                </td>
+            </tr>
+        </table>
+        ';
+    }
+
+    private function pdfCards(array $cards): string
+    {
+        $html = '<table style="width: 100%; margin-bottom: 12px; border-collapse: separate; border-spacing: 12px 0; border: none !important; background: transparent; margin-left: -12px; margin-right: -12px;">';
+        $html .= '<tr style="border: none !important; background: transparent;">';
+        
+        $width = round(100 / count($cards)) . '%';
+        foreach ($cards as $card) {
+            $html .= '<td style="width: ' . $width . '; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #f8fafc; text-align: center;">';
+            $html .= '<div style="font-size: 7.5pt; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">' . htmlspecialchars($card['label']) . '</div>';
+            $html .= '<div style="font-size: 11pt; color: ' . ($card['color'] ?? '#0f172a') . '; font-weight: 800;">' . htmlspecialchars($card['value']) . '</div>';
+            $html .= '</td>';
+        }
+        
+        $html .= '</tr>';
+        $html .= '</table>';
+        return $html;
+    }
+
+    /**
+     * Mark a transaction as paid (Admin only).
+     */
+    public function markAsPaid(Transaction $transaction)
+    {
+        // Security check
+        if (!auth()->user()->isAdmin() && !auth()->user()->isOwner()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk melakukan tindakan ini.'
+            ], 403);
+        }
+
+        $transaction->update(['payment_status' => 'paid']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Nota partai berhasil ditandai LUNAS!'
+        ]);
+    }
+
+    /**
+     * Get all active wholesale receivables grouped by customer name (Admin/Owner only).
+     */
+    public function getReceivables()
+    {
+        if (!auth()->user()->isAdmin() && !auth()->user()->isOwner()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk melakukan tindakan ini.'
+            ], 403);
+        }
+
+        $transactions = Transaction::where('transaction_type', 'wholesale')
+            ->where('payment_method', 'Piutang / Tempo')
+            ->where('payment_status', 'unpaid')
+            ->with('installments')
+            ->get();
+
+        // Group by customer_name (case-insensitive and trimmed)
+        $grouped = $transactions->groupBy(function ($item) {
+            return strtolower(trim($item->customer_name));
+        })->map(function ($group) {
+            $first = $group->first();
+            $totalOriginal = $group->sum('total_price');
+            $totalPaid = $group->reduce(function ($carry, $trx) {
+                return $carry + $trx->installments->sum('amount');
+            }, 0);
+
+            return [
+                'customer_name' => $first->customer_name,
+                'customer_phone' => $first->customer_phone,
+                'total_original' => $totalOriginal,
+                'total_paid' => $totalPaid,
+                'total_outstanding' => $totalOriginal - $totalPaid,
+                'transactions' => $group->map(function ($trx) {
+                    $paid = $trx->installments->sum('amount');
+                    return [
+                        'id' => $trx->id,
+                        'transaction_code' => $trx->transaction_code,
+                        'date' => $trx->created_at->format('d/m/Y H:i'),
+                        'total_price' => $trx->total_price,
+                        'paid_amount' => $paid,
+                        'outstanding_amount' => $trx->total_price - $paid,
+                        'installments' => $trx->installments->map(function ($inst) {
+                            return [
+                                'id' => $inst->id,
+                                'amount' => $inst->amount,
+                                'payment_method' => $inst->payment_method,
+                                'note' => $inst->note,
+                                'date' => $inst->created_at->format('d/m/Y H:i')
+                            ];
+                        })->values()
+                    ];
+                })->values()
+            ];
+        })->values();
+
+        return response()->json($grouped);
+    }
+
+    /**
+     * Store a new installment payment (Admin/Owner only).
+     */
+    public function storeInstallment(Request $request, Transaction $transaction)
+    {
+        if (!auth()->user()->isAdmin() && !auth()->user()->isOwner()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk melakukan tindakan ini.'
+            ], 403);
+        }
+
+        $request->validate([
+            'amount' => 'required|integer|min:1',
+            'payment_method' => 'required|string',
+            'note' => 'nullable|string|max:255',
+        ]);
+
+        $paidSoFar = $transaction->installments()->sum('amount');
+        $remaining = $transaction->total_price - $paidSoFar;
+
+        if ($request->amount > $remaining) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Jumlah pembayaran melebihi sisa tagihan! Sisa tagihan saat ini: Rp ' . number_format($remaining, 0, ',', '.')
+            ], 422);
+        }
+
+        // Record installment
+        $transaction->installments()->create([
+            'amount' => $request->amount,
+            'payment_method' => $request->payment_method,
+            'note' => $request->note
+        ]);
+
+        // Check if fully paid
+        $totalPaid = $transaction->installments()->sum('amount');
+        if ($totalPaid >= $transaction->total_price) {
+            $transaction->update(['payment_status' => 'paid']);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pembayaran cicilan berhasil disimpan!'
+        ]);
     }
 }

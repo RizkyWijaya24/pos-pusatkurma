@@ -90,6 +90,6 @@ class User extends Authenticatable
         } catch (\Throwable $e) {
             // Fallback if schema query fails
         }
-        return ['Pusat Cianjur', 'Cabang Cianjur', 'Cabang Ciranjang', 'Cabang Rumah', 'Cabang Online'];
+        return ['Cabang Rumah', 'Cabang Cianjur', 'Cabang Ciranjang'];
     }
 }

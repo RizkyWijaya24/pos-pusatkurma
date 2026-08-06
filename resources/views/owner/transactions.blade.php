@@ -30,23 +30,40 @@
                         @endforeach
                     </select>
 
+                    <!-- Dropdown Filter Periode -->
+                    <select name="filter_type" 
+                            class="text-sm border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner px-3.5 py-2.5 bg-slate-50 text-slate-700 font-medium">
+                        <option value="harian" {{ request('filter_type') === 'harian' ? 'selected' : '' }}>📅 Harian</option>
+                        <option value="mingguan" {{ request('filter_type') === 'mingguan' ? 'selected' : '' }}>📅 Mingguan</option>
+                        <option value="bulanan" {{ request('filter_type') === 'bulanan' ? 'selected' : '' }}>📅 Bulanan</option>
+                    </select>
+
                     <div class="flex items-center gap-2">
                         <input type="date" name="date" value="{{ request()->has('date') ? request('date') : \Carbon\Carbon::today()->toDateString() }}"
                             class="text-sm border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner px-3 py-2">
                         <button type="submit" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow transition duration-150 py-2.5">Filter</button>
-                        @if(request()->has('date') || request('branch'))
+                        @if(request()->has('date') || request('branch') || request('filter_type'))
                             <a href="{{ route('owner.transactions.index') }}" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl transition duration-150 py-2.5">Reset</a>
                         @endif
                     </div>
                 </form>
 
                 <!-- Button Ekspor Excel -->
-                <a href="{{ route('owner.transactions.export', ['date' => request('date'), 'branch' => request('branch')]) }}" 
+                <a href="{{ route('owner.transactions.export', ['date' => request('date'), 'branch' => request('branch'), 'filter_type' => request('filter_type')]) }}" 
                    class="px-4 py-2 bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-800 hover:text-white text-xs font-bold rounded-xl shadow-sm transition duration-150 flex items-center gap-1.5 py-2.5">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                     </svg>
                     <span>Ekspor Excel</span>
+                </a>
+
+                <!-- Button Ekspor PDF -->
+                <a href="{{ route('owner.transactions.export', ['date' => request('date'), 'branch' => request('branch'), 'filter_type' => request('filter_type'), 'format' => 'pdf']) }}" 
+                   class="px-4 py-2 bg-rose-50 border border-rose-200 text-rose-800 hover:bg-rose-800 hover:text-white text-xs font-bold rounded-xl shadow-sm transition duration-150 flex items-center gap-1.5 py-2.5">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                    </svg>
+                    <span>Ekspor PDF</span>
                 </a>
 
                 <span class="bg-emerald-100 text-emerald-800 font-bold text-xs px-3 py-1.5 rounded-full whitespace-nowrap" x-show="activeTab === 'sales'">
@@ -251,7 +268,9 @@
                                 <th class="px-5 py-4">Cabang</th>
                                 <th class="px-5 py-4">Ringkasan Item</th>
                                 <th class="px-5 py-4">Metode</th>
+                                <th class="px-5 py-4 text-center">Status</th>
                                 <th class="px-5 py-4 text-right">Total Tagihan</th>
+                                <th class="px-5 py-4 text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 font-semibold text-slate-800">
@@ -289,20 +308,48 @@
                                     </td>
                                     <td class="px-5 py-4">
                                         <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase border
-                                            {{ $trx->payment_method === 'Cash' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : '' }}
-                                            {{ $trx->payment_method === 'QRIS' ? 'bg-teal-50 text-teal-700 border-teal-100' : '' }}
+                                            {{ $trx->payment_method === 'Cash' || $trx->payment_method === 'Tunai' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : '' }}
+                                            {{ $trx->payment_method === 'QRIS' || $trx->payment_method === 'Transfer Bank' ? 'bg-teal-50 text-teal-700 border-teal-100' : '' }}
                                             {{ $trx->payment_method === 'Debit' ? 'bg-sky-50 text-sky-700 border-sky-100' : '' }}
+                                            {{ $trx->payment_method === 'Piutang / Tempo' ? 'bg-rose-50 text-rose-700 border-rose-100' : '' }}
                                         ">
                                             {{ $trx->payment_method }}
                                         </span>
                                     </td>
+                                    <td class="px-5 py-4 text-center">
+                                        @if(($trx->payment_status ?? 'paid') === 'paid')
+                                            <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">Lunas</span>
+                                        @else
+                                            <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase bg-rose-100 text-rose-800 border border-rose-200">Tempo</span>
+                                        @endif
+                                    </td>
                                     <td class="px-5 py-4 text-right text-emerald-700 font-extrabold whitespace-nowrap">
                                         Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-5 py-4 text-center">
+                                        @if($trx->transaction_type === 'wholesale')
+                                            <div class="flex items-center justify-center gap-1.5">
+                                                <a href="{{ route('admin.wholesale-transactions.print', $trx) }}" 
+                                                   target="_blank"
+                                                   class="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition duration-150 text-xs text-center"
+                                                   title="Cetak Nota (A4)" style="text-decoration: none;">
+                                                    🖨️
+                                                </a>
+                                                <a href="{{ route('admin.wholesale-transactions.print', [$trx, 'format' => 'pdf']) }}" 
+                                                   target="_blank"
+                                                   class="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 transition duration-150 text-xs text-center"
+                                                   title="Unduh PDF" style="text-decoration: none;">
+                                                    📥
+                                                </a>
+                                            </div>
+                                        @else
+                                            <span class="text-slate-400 text-xs">-</span>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold">
+                                    <td colspan="9" class="px-6 py-12 text-center text-slate-400 font-semibold">
                                         Belum ada catatan riwayat transaksi.
                                     </td>
                                 </tr>

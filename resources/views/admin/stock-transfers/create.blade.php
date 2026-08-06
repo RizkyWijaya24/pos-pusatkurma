@@ -3,6 +3,40 @@
 @section('title', 'Buat Transfer Stok Baru')
 
 @section('content')
+<style>
+    @media (max-width: 640px) {
+        .responsive-table thead {
+            display: none !important;
+        }
+        .responsive-table tbody tr {
+            display: block !important;
+            background: rgba(248, 250, 252, 0.5) !important;
+            border: 1px solid rgba(226, 232, 240, 0.8) !important;
+            border-radius: 16px !important;
+            padding: 14px 16px !important;
+            margin-bottom: 16px !important;
+            position: relative !important;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        .dark .responsive-table tbody tr {
+            background: rgba(30, 41, 59, 0.4) !important;
+            border-color: rgba(51, 65, 85, 0.5) !important;
+        }
+        .responsive-table tbody td {
+            display: block !important;
+            width: 100% !important;
+            padding: 4px 0 !important;
+            border: none !important;
+        }
+        .responsive-table tbody td:last-child {
+            position: absolute !important;
+            top: 10px;
+            right: 12px;
+            width: auto !important;
+            padding: 0 !important;
+        }
+    }
+</style>
 <div class="flex flex-col gap-6 max-w-full overflow-hidden">
 
     {{-- Header --}}
@@ -77,7 +111,7 @@
 
                 {{-- Tabel item --}}
                 <div class="w-full overflow-visible">
-                    <table class="w-full text-sm">
+                    <table class="w-full text-sm responsive-table">
                         <thead>
                             <tr class="border-b border-slate-100 dark:border-dp-700">
                                 <th class="text-left text-slate-500 dark:text-purple-300 font-bold uppercase tracking-wider text-xs pb-3 pr-4">Produk</th>
@@ -190,6 +224,7 @@ function addProductRow() {
     tr.className = 'group';
     tr.innerHTML = `
         <td class="py-3 pr-4">
+            <label class="block sm:hidden text-[10px] font-bold text-slate-400 dark:text-purple-400 uppercase tracking-wider mb-1">Pilih Produk</label>
             <div class="relative z-30">
                 <input type="hidden" id="product_${rowCount}" value="">
                 <input type="text" 
@@ -207,16 +242,20 @@ function addProductRow() {
             </div>
         </td>
         <td class="py-3 pr-4">
-            <div id="available_${rowCount}" class="text-slate-400 dark:text-purple-400 text-xs px-2">—</div>
+            <div class="flex sm:block justify-between items-center">
+                <label class="block sm:hidden text-[10px] font-bold text-slate-400 dark:text-purple-400 uppercase tracking-wider">Stok Tersedia</label>
+                <div id="available_${rowCount}" class="text-slate-500 dark:text-purple-300 text-xs font-bold px-2">—</div>
+            </div>
         </td>
         <td class="py-3 pr-4">
+            <label class="block sm:hidden text-[10px] font-bold text-slate-400 dark:text-purple-400 uppercase tracking-wider mb-1">Jumlah Transfer</label>
             <input type="number" min="0.01" step="0.01" placeholder="0"
                    id="qty_${rowCount}"
                    oninput="onQtyChange(${rowCount})"
                    class="w-full bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-800 dark:text-purple-100 rounded-xl px-3.5 py-2.5 text-xs focus:border-emerald-500 focus:ring-emerald-500 focus:outline-none shadow-inner">
         </td>
         <td class="py-3">
-            <button onclick="removeRow(${rowCount})" class="text-slate-400 dark:text-purple-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors text-xl font-bold px-2">×</button>
+            <button onclick="removeRow(${rowCount})" class="text-slate-450 dark:text-purple-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors text-xl font-bold px-2">×</button>
         </td>
     `;
     document.getElementById('itemsTable').appendChild(tr);

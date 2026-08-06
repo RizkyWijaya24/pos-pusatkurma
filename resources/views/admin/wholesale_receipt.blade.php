@@ -7,12 +7,12 @@
     <style>
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            font-size: 13px;
-            color: #334155;
+            font-size: 12.5px;
+            color: #000000;
             margin: 0;
             padding: 20px;
             background: #f8fafc;
-            line-height: 1.5;
+            line-height: 1.4;
         }
         
         .preview-controls {
@@ -66,186 +66,82 @@
         .invoice-container {
             background: #ffffff;
             width: 100%;
-            max-width: 800px;
+            max-width: 420px;
             margin: 0 auto;
-            padding: 40px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
-            border-radius: 12px;
+            padding: 25px 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+            border-radius: 8px;
             box-sizing: border-box;
             border: 1px solid #e2e8f0;
         }
-        
-        .header-grid {
-            display: grid;
-            grid-template-cols: 1fr 1fr;
-            gap: 20px;
-            border-bottom: 2px solid #f1f5f9;
-            padding-bottom: 25px;
-            margin-bottom: 25px;
+
+        .header-section {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            margin-bottom: 15px;
         }
         
-        .company-name {
-            font-size: 24px;
-            font-weight: 800;
-            color: #064e3b;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+        .company-logo {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            object-fit: cover;
+            flex-shrink: 0;
         }
-        
-        .company-details {
-            font-size: 11px;
-            color: #64748b;
-            margin-top: 5px;
-        }
-        
-        .invoice-title-container {
-            text-align: right;
-        }
-        
-        .invoice-title {
-            font-size: 22px;
-            font-weight: 800;
-            color: #047857;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .invoice-meta {
-            margin-top: 10px;
-            font-size: 12px;
-            color: #475569;
-            display: inline-block;
-            text-align: left;
-        }
-        
-        .invoice-meta table {
-            border-collapse: collapse;
-        }
-        
-        .invoice-meta td {
-            padding: 2px 0 2px 15px;
-        }
-        
-        .info-grid {
-            display: grid;
-            grid-template-cols: 1fr 1fr;
-            gap: 40px;
-            margin-bottom: 30px;
-        }
-        
-        .info-section-title {
-            font-size: 11px;
+
+        .company-logo-placeholder {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            background-color: #059669;
+            text-align: center;
+            line-height: 55px;
+            font-size: 16px;
             font-weight: bold;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 5px;
-            margin-bottom: 10px;
+            color: #ffffff;
+            flex-shrink: 0;
         }
-        
-        .customer-name {
-            font-size: 15px;
+
+        .company-title {
+            font-size: 14.5px;
             font-weight: bold;
-            color: #0f172a;
+            line-height: 1.3;
         }
-        
-        .customer-details {
+
+        .company-subtitle {
             font-size: 12px;
-            color: #475569;
-            margin-top: 4px;
-            white-space: pre-wrap;
+            color: #333333;
+            margin-top: 3px;
         }
         
+        .divider {
+            border: 0;
+            border-top: 1px solid #000000;
+            margin: 8px 0;
+        }
+
         .items-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 30px;
+            font-size: 12.5px;
+            line-height: 1.5;
+            color: #000000;
         }
-        
-        .items-table th {
-            background: #f8fafc;
-            color: #475569;
-            font-weight: bold;
-            text-align: left;
-            padding: 12px 16px;
-            font-size: 11px;
-            text-transform: uppercase;
-            border-bottom: 2px solid #e2e8f0;
-        }
-        
-        .items-table td {
-            padding: 14px 16px;
-            border-bottom: 1px solid #f1f5f9;
-            font-size: 13px;
-        }
-        
-        .items-table tr:last-child td {
-            border-bottom: 2px solid #e2e8f0;
-        }
-        
-        .totals-grid {
-            display: grid;
-            grid-template-cols: 1.2fr 0.8fr;
-            gap: 40px;
-            margin-bottom: 40px;
-        }
-        
-        .payment-info {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 16px;
-            font-size: 12px;
-        }
-        
-        .payment-title {
-            font-weight: bold;
-            color: #0f172a;
-            margin-bottom: 8px;
-        }
-        
+
         .totals-table {
             width: 100%;
+            font-size: 12.5px;
             border-collapse: collapse;
+            color: #000000;
         }
-        
-        .totals-table td {
-            padding: 6px 0;
-            font-size: 13px;
-            color: #475569;
-        }
-        
-        .totals-table .grand-total-row td {
-            font-size: 16px;
-            font-weight: bold;
-            color: #064e3b;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 12px;
-            margin-top: 6px;
-        }
-        
-        .signature-grid {
-            display: grid;
-            grid-template-cols: 1fr 1fr;
-            gap: 40px;
+
+        .footer-section {
             text-align: center;
-            margin-top: 60px;
-        }
-        
-        .signature-title {
             font-size: 12px;
-            color: #64748b;
-            margin-bottom: 60px;
-        }
-        
-        .signature-line {
-            border-top: 1px solid #cbd5e1;
-            width: 180px;
-            margin: 0 auto;
-            padding-top: 5px;
-            font-weight: bold;
-            color: #0f172a;
+            line-height: 1.5;
+            color: #000000;
+            margin-top: 35px;
         }
         
         .no-print {
@@ -259,25 +155,15 @@
             body {
                 background: #ffffff !important;
                 padding: 0 !important;
-                color: #000 !important;
+                color: #000000 !important;
             }
             .invoice-container {
                 box-shadow: none !important;
                 border-radius: 0 !important;
-                margin: 0 !important;
+                margin: 0 auto !important;
                 max-width: 100% !important;
                 padding: 0 !important;
                 border: none !important;
-            }
-            .items-table th {
-                background: #f1f5f9 !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-            .payment-info {
-                background: #f8fafc !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
             }
         }
     </style>
@@ -289,140 +175,124 @@
         <button onclick="window.history.back()" class="btn btn-secondary">
             Kembali
         </button>
+        <a href="{{ request()->fullUrlWithQuery(['format' => 'pdf']) }}" class="btn btn-primary" style="background-color: #d97706; text-decoration: none;">
+            Unduh PDF
+        </a>
         <button onclick="window.print()" class="btn btn-primary">
-            Cetak Nota A4
+            Cetak Nota
         </button>
     </div>
 
     <!-- Invoice Container -->
     <div class="invoice-container">
-        <!-- Header -->
-        <div class="header-grid">
+        <!-- Header Section -->
+        <div class="header-section">
+            @php
+                $logoPath = public_path('images/logo.png');
+                $logoBase64 = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : null;
+            @endphp
+            @if($logoBase64)
+                <img class="company-logo" src="data:image/png;base64,{{ $logoBase64 }}" alt="Logo">
+            @else
+                <div class="company-logo-placeholder">PK</div>
+            @endif
             <div>
-                <div class="company-name">Pusat Kurma Cianjur</div>
-                <div class="company-details">
-                    Grosir & Eceran Kurma Premium, Herbal, dan Oleh-Oleh Haji<br>
-                    Cianjur, Jawa Barat, Indonesia<br>
-                    Telepon: +62 812-3456-7890 | Email: info@pusatkurma.com
-                </div>
-            </div>
-            <div class="invoice-title-container">
-                <div class="invoice-title">Nota Penjualan</div>
-                <div class="invoice-meta">
-                    <table>
-                        <tr>
-                            <td class="font-bold">No. Nota</td>
-                            <td>: {{ $transaction->transaction_code }}</td>
-                        </tr>
-                        <tr>
-                            <td class="font-bold">Tanggal</td>
-                            <td>: {{ $transaction->created_at->translatedFormat('d F Y') }}</td>
-                        </tr>
-                        <tr>
-                            <td class="font-bold">Metode</td>
-                            <td style="text-transform: uppercase;">: {{ $transaction->payment_method }}</td>
-                        </tr>
-                        <tr>
-                            <td class="font-bold">Admin</td>
-                            <td>: {{ $transaction->cashier->name ?? 'Administrator' }}</td>
-                        </tr>
-                    </table>
+                <div class="company-title">Supliyer Kurma & Oleh oleh Haji / Umroh</div>
+                <div class="company-subtitle">
+                    Tanah Abang<br>
+                    Jakarta<br>
+                    087771607774
                 </div>
             </div>
         </div>
 
-        <!-- Info Grid -->
-        <div class="info-grid">
-            <div>
-                <div class="info-section-title">Informasi Penerima</div>
-                <div class="customer-name">{{ $transaction->customer_name }}</div>
-                <div class="customer-details">
-                    @if($transaction->customer_phone)
-                        WhatsApp: {{ $transaction->customer_phone }}<br>
-                    @endif
-                    Status Pembayaran: <strong style="text-transform: uppercase;">{{ $transaction->payment_method }}</strong>
-                </div>
-            </div>
-            <div>
-                <div class="info-section-title">Asal Barang / Cabang</div>
-                <div class="customer-name">{{ $transaction->branch ?? 'Pusat Cianjur' }}</div>
-                <div class="customer-details">
-                    Barang dikirim dari gudang utama.<br>
-                    Status Nota: <strong>Partai / Grosir</strong>
-                </div>
-            </div>
+        <div style="font-size: 12.5px; font-weight: normal; margin-top: 10px;">
+            {{ $transaction->created_at->format('d/m/Y H:i') }}
         </div>
 
-        <!-- Items Table -->
+        <hr class="divider">
+
+        <div style="font-size: 12.5px; font-weight: bold; line-height: 1.4;">
+            <div>{{ $transaction->customer_name }}</div>
+            <div>{{ $transaction->customer_phone ?? $transaction->branch ?? 'Cianjur' }}</div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Items List -->
         <table class="items-table">
-            <thead>
+            @foreach ($items as $index => $item)
                 <tr>
-                    <th style="width: 5%;">No</th>
-                    <th style="width: 55%;">Nama Barang</th>
-                    <th style="width: 10%; text-align: center;">Jumlah</th>
-                    <th style="width: 15%; text-align: right;">Harga Satuan</th>
-                    <th style="width: 15%; text-align: right;">Subtotal</th>
+                    <td colspan="3" style="font-weight: bold; padding-top: 6px;">{{ $index + 1 }}) {{ $item['name'] }}</td>
                 </tr>
-            </thead>
-            <tbody>
-                @foreach ($items as $index => $item)
-                    <tr>
-                        <td style="text-align: center;">{{ $index + 1 }}</td>
-                        <td class="font-bold">{{ $item['name'] }}</td>
-                        <td style="text-align: center;">{{ $item['qty'] }} {{ $item['unit'] }}</td>
-                        <td style="text-align: right;">Rp {{ number_format($item['unit_price'], 0, ',', '.') }}</td>
-                        <td style="text-align: right; font-weight: bold;">Rp {{ number_format($item['total_price'], 0, ',', '.') }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
+                <tr>
+                    <td style="width: 25%; padding-left: 15px; vertical-align: top;">{{ $item['qty'] }} {{ $item['unit'] }}</td>
+                    <td style="width: 35%; vertical-align: top;">@ {{ number_format($item['unit_price'], 0, ',', '.') }}</td>
+                    <td style="width: 40%; text-align: right; font-weight: bold; vertical-align: top;">{{ number_format($item['total_price'], 0, ',', '.') }}</td>
+                </tr>
+            @endforeach
         </table>
 
-        <!-- Totals Grid -->
-        <div class="totals-grid">
-            <div class="payment-info">
-                <div class="payment-title">Informasi Pembayaran / Transfer:</div>
-                Rekening Resmi Pusat Kurma Premium:<br>
-                <strong>Bank Mandiri:</strong> 182-000-888-9990 a/n Pusat Kurma Indonesia<br>
-                <strong>Bank BCA:</strong> 379-000-777-1110 a/n Rizky Wijaya<br>
-                <div style="margin-top: 10px; font-size: 11px; color: #64748b; font-style: italic;">
-                    *Harap sertakan bukti transfer yang sah dan tunjukkan kepada petugas saat pengambilan/pengiriman barang.
-                </div>
-            </div>
-            <div>
-                <table class="totals-table">
-                    <tr>
-                        <td>Subtotal Barang:</td>
-                        <td style="text-align: right; font-weight: bold;">Rp {{ number_format($subtotal, 0, ',', '.') }}</td>
-                    </tr>
-                    @if ($transaction->discount > 0)
-                        <tr style="color: #e11d48;">
-                            <td>Potongan Diskon:</td>
-                            <td style="text-align: right; font-weight: bold;">-Rp {{ number_format($transaction->discount, 0, ',', '.') }}</td>
-                        </tr>
-                    @endif
-                    @if ($transaction->shipping_cost > 0)
-                        <tr>
-                            <td>Ongkos Kirim:</td>
-                            <td style="text-align: right; font-weight: bold;">Rp {{ number_format($transaction->shipping_cost, 0, ',', '.') }}</td>
-                        </tr>
-                    @endif
-                    <tr class="grand-total-row">
-                        <td>Total Akhir:</td>
-                        <td style="text-align: right;">Rp {{ number_format($transaction->total_price, 0, ',', '.') }}</td>
-                    </tr>
-                </table>
-            </div>
-        </div>
+        <hr class="divider" style="margin: 12px 0 8px 0;">
 
-        <!-- Signature Grid -->
-        <div class="signature-grid">
-            <div>
-                <div class="signature-title">Tanda Terima Pelanggan,</div>
-                <div class="signature-line">(...........................................)</div>
-            </div>
-            <div>
-                <div class="signature-title">Hormat Kami,</div>
-                <div class="signature-line">{{ auth()->user()->name }}</div>
+        <!-- Totals Table -->
+        <table class="totals-table">
+            <tr>
+                <td style="width: 45%; font-weight: bold; vertical-align: top; padding-top: 4px;">
+                    Total Qty: {{ collect($items)->sum('qty') }}
+                </td>
+                <td style="width: 55%; vertical-align: top;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        @if($transaction->discount > 0)
+                            <tr>
+                                <td style="font-weight: bold; color: #e11d48; padding-bottom: 4px;">DISKON</td>
+                                <td style="text-align: right; font-weight: bold; color: #e11d48; padding-bottom: 4px;">-{{ number_format($transaction->discount, 0, ',', '.') }}</td>
+                            </tr>
+                        @endif
+                        @if($transaction->shipping_cost > 0)
+                            <tr>
+                                <td style="font-weight: bold; padding-bottom: 4px;">ONGKIR</td>
+                                <td style="text-align: right; font-weight: bold; padding-bottom: 4px;">{{ number_format($transaction->shipping_cost, 0, ',', '.') }}</td>
+                            </tr>
+                        @endif
+                        <tr>
+                            <td style="font-weight: bold; padding-bottom: 4px;">TOTAL</td>
+                            <td style="text-align: right; font-weight: bold; font-size: 14px; padding-bottom: 4px;">{{ number_format($transaction->total_price, 0, ',', '.') }}</td>
+                        </tr>
+                        @php
+                            $displayPaid = isset($totalPaid) ? $totalPaid : (($transaction->payment_status ?? 'paid') === 'paid' ? $transaction->total_price : 0);
+                            $displayRemaining = isset($remaining) ? $remaining : (($transaction->payment_status ?? 'paid') === 'paid' ? 0 : $transaction->total_price);
+                        @endphp
+                        <tr>
+                            <td style="padding-bottom: 4px;">BAYAR</td>
+                            <td style="text-align: right; padding-bottom: 4px;">
+                                {{ number_format($displayPaid, 0, ',', '.') }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: bold; padding-bottom: 4px;">SISA</td>
+                            <td style="text-align: right; font-weight: bold; padding-bottom: 4px;">
+                                {{ number_format($displayRemaining, 0, ',', '.') }}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <hr class="divider" style="margin: 8px 0 15px 0;">
+
+        <!-- Footer Section -->
+        <div class="footer-section">
+            <div style="font-weight: bold;">*** Thank You ***</div>
+            <div style="font-weight: bold;">kami tunggu orderan berikutnya 🥰</div>
+            <div style="font-weight: bold; margin-top: 10px;">Barakallahufikum 🙏🙏</div>
+            <div style="font-weight: bold; margin-top: 12px;">Pembayaran via transfer</div>
+            <div style="font-weight: bold;">ke rekening BCA-</div>
+            <div style="font-weight: 900; font-size: 14.5px; margin: 3px 0;">1831794211</div>
+            <div style="font-weight: bold;">an. Muhammad Irshad</div>
+            <div style="font-size: 10.5px; color: #555555; margin-top: 20px;">
+                {{ now()->format('d/m/Y H:i:s') }}
             </div>
         </div>
     </div>

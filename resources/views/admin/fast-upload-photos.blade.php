@@ -341,6 +341,53 @@
     </div>
 
     <script>
+        // ─── Compress Image JS ──────────────────────────────────────────────────────
+        function compressImageJS(file, maxWidth = 800, quality = 0.75) {
+            return new Promise((resolve) => {
+                if (!file.type.startsWith('image/')) {
+                    resolve(file);
+                    return;
+                }
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > maxWidth || height > maxWidth) {
+                            if (width > height) {
+                                height = Math.round((height / width) * maxWidth);
+                                width = maxWidth;
+                            } else {
+                                width = Math.round((width / height) * maxWidth);
+                                height = maxWidth;
+                            }
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        canvas.toBlob((blob) => {
+                            if (blob) {
+                                const originalName = file.name || 'image.jpg';
+                                const dotIndex = originalName.lastIndexOf('.');
+                                const baseName = dotIndex !== -1 ? originalName.slice(0, dotIndex) : originalName;
+                                const newFile = new File([blob], baseName + '.jpg', { type: 'image/jpeg' });
+                                resolve(newFile);
+                            } else {
+                                resolve(file);
+                            }
+                        }, 'image/jpeg', quality);
+                    };
+                    img.onerror = () => resolve(file);
+                };
+                reader.onerror = () => resolve(file);
+            });
+        }
+
         // ─── Global State ──────────────────────────────────────────────────────────
         let globalAIEnabled = false;
         const CSRF_TOKEN    = document.querySelector('meta[name=csrf-token]').getAttribute('content');
@@ -430,6 +477,13 @@
             btn.disabled = true;
             const camBtn = document.getElementById('camera-btn-' + productId);
             if (camBtn) camBtn.disabled = true;
+
+            // Compress file before upload
+            try {
+                file = await compressImageJS(file);
+            } catch (err) {
+                console.error('Image compression failed:', err);
+            }
 
             if (useAI) {
                 card.classList.remove('has-photo');

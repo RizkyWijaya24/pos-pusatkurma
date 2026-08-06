@@ -141,6 +141,76 @@ class StockTransferController extends Controller
     }
 
     /**
+     * Approve transfer dengan penyesuaian jumlah oleh admin.
+     * Dipanggil ketika admin mengubah jumlah item sebelum approve.
+     */
+    public function approveWithAdjustment(Request $request, StockTransfer $stockTransfer)
+    {
+        $validated = $request->validate([
+            'items'               => 'required|array|min:1',
+            'items.*.item_id'     => 'required|integer|exists:stock_transfer_items,id',
+            'items.*.approved_qty' => 'required|numeric|min:0',
+        ], [
+            'items.required'               => 'Data item wajib dikirim.',
+            'items.*.item_id.required'     => 'ID item wajib ada.',
+            'items.*.approved_qty.required' => 'Jumlah yang disetujui wajib diisi.',
+            'items.*.approved_qty.min'      => 'Jumlah yang disetujui tidak boleh negatif.',
+        ]);
+
+        // Susun array [ item_id => approved_qty ]
+        $approvedQuantities = collect($validated['items'])
+            ->pluck('approved_qty', 'item_id')
+            ->toArray();
+
+        try {
+            $this->stockService->approveTransferWithAdjustment(
+                $stockTransfer,
+                auth()->user(),
+                $approvedQuantities
+            );
+
+            // Reload relasi untuk keperluan notifikasi
+            $stockTransfer->load('items.product');
+
+            // Susun ringkasan penyesuaian untuk notifikasi
+            $adjustmentSummary = $stockTransfer->items
+                ->filter(fn($item) => $item->approved_quantity !== null && $item->approved_quantity != $item->quantity)
+                ->map(fn($item) => "{$item->product->name}: {$item->quantity} → {$item->approved_quantity} {$item->unit}")
+                ->values()
+                ->implode(', ');
+
+            // Tentukan action type
+            $actionType = $adjustmentSummary ? 'approved_adjusted' : 'approved';
+
+            // Kirim notifikasi ke kasir pembuat request
+            if ($stockTransfer->requester) {
+                $stockTransfer->requester->notify(
+                    new \App\Notifications\StockTransferNotification(
+                        $stockTransfer,
+                        $actionType,
+                        auth()->user(),
+                        $adjustmentSummary
+                    )
+                );
+            }
+
+            $message = $adjustmentSummary
+                ? "Transfer {$stockTransfer->transfer_code} disetujui dengan penyesuaian jumlah. ({$adjustmentSummary})"
+                : "Transfer {$stockTransfer->transfer_code} berhasil disetujui! Stok telah dipindahkan.";
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
      * Reject transfer.
      */
     public function reject(Request $request, StockTransfer $stockTransfer)

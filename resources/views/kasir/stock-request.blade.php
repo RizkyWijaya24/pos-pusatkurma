@@ -25,6 +25,32 @@
         width: 100% !important;
         max-width: 100% !important;
     }
+
+    @media (max-width: 640px) {
+        .responsive-request-table thead {
+            display: none !important;
+        }
+        .responsive-request-table tbody tr {
+            display: block !important;
+            background: #ffffff !important;
+            border: 1px solid rgba(226, 232, 240, 0.8) !important;
+            border-radius: 16px !important;
+            padding: 14px 16px !important;
+            margin-bottom: 12px !important;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+        }
+        .dark .responsive-request-table tbody tr {
+            background: rgba(30, 41, 59, 0.4) !important;
+            border-color: rgba(51, 65, 85, 0.5) !important;
+        }
+        .responsive-request-table tbody td {
+            display: block !important;
+            width: 100% !important;
+            padding: 6px 0 !important;
+            border: none !important;
+            text-align: left !important;
+        }
+    }
 </style>
 <div class="py-4 px-1 sm:px-4">
 
@@ -86,7 +112,7 @@
 
                 {{-- Tabel Produk --}}
                 <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-dp-700/50 bg-slate-50/50 dark:bg-dp-950/20">
-                    <table class="w-full text-left border-collapse">
+                    <table class="w-full text-left border-collapse responsive-request-table">
                         <thead>
                             <tr class="bg-slate-100 dark:bg-dp-950/50 border-b border-slate-200 dark:border-dp-700 text-slate-600 dark:text-purple-300 text-xs font-bold uppercase tracking-wider">
                                 <th class="px-4 py-3 text-left w-auto">Nama Produk</th>
@@ -109,8 +135,7 @@
                                 $statusLabel = $stock <= 0 ? 'Habis' : 
                                                ($isCritical ? 'Kritis' : 
                                                ($isWarning ? 'Hampir Habis' : 'Aman'));
-                            @endphp
-                            <tr id="row-{{ $p->id }}" data-id="{{ $p->id }}" data-name="{{ strtolower($p->name) }}" data-category="{{ strtolower($p->category) }}" data-stock="{{ $stock }}" class="hover:bg-slate-50 dark:hover:bg-dp-800/40 transition-colors">
+                                                <tr id="row-{{ $p->id }}" data-id="{{ $p->id }}" data-name="{{ strtolower($p->name) }}" data-category="{{ strtolower($p->category) }}" data-stock="{{ $stock }}" class="hover:bg-slate-50 dark:hover:bg-dp-800/40 transition-colors">
                                 <td class="px-4 py-3">
                                     <div class="font-bold text-slate-900 dark:text-white text-sm sm:text-base leading-tight">{{ $p->name }}</div>
                                     <div class="flex flex-wrap items-center gap-1.5 mt-1">
@@ -119,28 +144,36 @@
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 text-right whitespace-nowrap">
-                                    <div class="font-extrabold text-slate-900 dark:text-white text-sm sm:text-base">
-                                        {{ number_format($stock, 2, ',', '.') }}
-                                        <span class="text-slate-500 dark:text-purple-300 text-xs font-normal ml-0.5">{{ $p->price_unit }}</span>
+                                    <div class="flex sm:block justify-between items-center">
+                                        <span class="inline sm:hidden text-xs font-bold text-slate-400 dark:text-purple-400 uppercase tracking-wider">Stok Cabang</span>
+                                        <div class="text-right">
+                                            <div class="font-extrabold text-slate-900 dark:text-white text-sm sm:text-base">
+                                                {{ number_format($stock, 2, ',', '.') }}
+                                                <span class="text-slate-500 dark:text-purple-300 text-xs font-normal ml-0.5">{{ $p->price_unit }}</span>
+                                            </div>
+                                            <span class="inline-block text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase mt-1 tracking-wide {{ $statusClass }}">
+                                                {{ $statusLabel }}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <span class="inline-block text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase mt-1 tracking-wide {{ $statusClass }}">
-                                        {{ $statusLabel }}
-                                    </span>
                                 </td>
                                 <td class="px-4 py-3">
-                                    <div class="flex items-center justify-center gap-1.5 sm:gap-2">
-                                        <button type="button" onclick="adjustQty({{ $p->id }}, -1)" 
-                                            class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-dp-800 hover:bg-slate-200 dark:hover:bg-dp-750 border border-slate-300 dark:border-dp-700 text-slate-800 dark:text-white flex items-center justify-center font-bold text-sm transition-all focus:outline-none select-none active:scale-90">
-                                            -
-                                        </button>
-                                        <input type="number" id="qty-{{ $p->id }}" min="0" step="0.01" placeholder="0"
-                                            oninput="updateItemQty({{ $p->id }}, this.value)"
-                                            data-name="{{ $p->name }}" data-unit="{{ $p->price_unit }}"
-                                            class="w-16 sm:w-20 bg-slate-50 dark:bg-dp-850 border border-slate-300 dark:border-dp-700 text-slate-900 dark:text-white rounded-lg py-1 px-1.5 text-center text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-bold">
-                                        <button type="button" onclick="adjustQty({{ $p->id }}, 1)" 
-                                            class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-dp-800 hover:bg-slate-200 dark:hover:bg-dp-750 border border-slate-300 dark:border-dp-700 text-slate-800 dark:text-white flex items-center justify-center font-bold text-sm transition-all focus:outline-none select-none active:scale-90">
-                                            +
-                                        </button>
+                                    <div class="flex flex-col sm:flex-row items-center justify-between sm:justify-center gap-2">
+                                        <span class="inline sm:hidden text-xs font-bold text-slate-400 dark:text-purple-400 uppercase tracking-wider self-start mb-1">Jumlah Request</span>
+                                        <div class="flex items-center justify-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+                                            <button type="button" onclick="adjustQty({{ $p->id }}, -1)" 
+                                                class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-dp-800 hover:bg-slate-200 dark:hover:bg-dp-750 border border-slate-300 dark:border-dp-700 text-slate-800 dark:text-white flex items-center justify-center font-bold text-sm transition-all focus:outline-none select-none active:scale-90">
+                                                -
+                                            </button>
+                                            <input type="number" id="qty-{{ $p->id }}" min="0" step="0.01" placeholder="0"
+                                                oninput="updateItemQty({{ $p->id }}, this.value)"
+                                                data-name="{{ $p->name }}" data-unit="{{ $p->price_unit }}"
+                                                class="w-16 sm:w-20 bg-slate-50 dark:bg-dp-850 border border-slate-300 dark:border-dp-700 text-slate-900 dark:text-white rounded-lg py-1 px-1.5 text-center text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-bold">
+                                            <button type="button" onclick="adjustQty({{ $p->id }}, 1)" 
+                                                class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-dp-800 hover:bg-slate-200 dark:hover:bg-dp-750 border border-slate-300 dark:border-dp-700 text-slate-800 dark:text-white flex items-center justify-center font-bold text-sm transition-all focus:outline-none select-none active:scale-90">
+                                                +
+                                            </button>
+                                        </div>
                                     </div>
                                 </td>
                             </tr>

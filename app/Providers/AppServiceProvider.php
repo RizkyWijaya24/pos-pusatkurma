@@ -33,5 +33,11 @@ class AppServiceProvider extends ServiceProvider
         if (app()->environment('production') || env('APP_ENV') === 'production') {
             URL::forceScheme('https');
         }
+
+        // Share shop settings globally to all views if table exists
+        if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {
+            $settings = \App\Models\Setting::pluck('value', 'key')->all();
+            \Illuminate\Support\Facades\View::share('shop_settings', $settings);
+        }
     }
 }
