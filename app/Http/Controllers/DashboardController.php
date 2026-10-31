@@ -607,12 +607,22 @@ class DashboardController extends Controller
             $parts = explode(', ', $trx->items_summary);
             $seenInThisTransaction = [];
             foreach ($parts as $part) {
-                if (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)$/', trim($part), $matches)) {
+                $trimmed = trim($part);
+                if (empty($trimmed)) {
+                    continue;
+                }
+
+                // Match: "Nama Produk (2 pcs x 50000)" or "Nama Produk (2 pcs)"
+                if (preg_match('/^(.*?)\s*\(\s*(\d+(?:[.,]\d+)?)\s*([a-zA-Z\s]+?)(?:\s*x\s*[\d.,]+)?\s*\)$/i', $trimmed, $matches)) {
                     $name = trim($matches[1]);
-                    $qty = floatval($matches[2]);
+                    $qty = floatval(str_replace(',', '.', $matches[2]));
                     $unit = strtolower(trim($matches[3]));
+                } elseif (preg_match('/^(.*?)\s*\(.*?\)$/', $trimmed, $matches)) {
+                    $name = trim($matches[1]);
+                    $qty = 1.0;
+                    $unit = 'pcs';
                 } else {
-                    $name = trim($part);
+                    $name = $trimmed;
                     $qty = 1.0;
                     $unit = 'pcs';
                 }
@@ -623,8 +633,10 @@ class DashboardController extends Controller
                     $unit = 'kg';
                 }
 
-                if (!isset($bestSellers[$name])) {
-                    $bestSellers[$name] = [
+                $nameKey = mb_strtolower($name);
+
+                if (!isset($bestSellers[$nameKey])) {
+                    $bestSellers[$nameKey] = [
                         'name' => $name,
                         'qty' => 0.0,
                         'unit' => $unit,
@@ -632,11 +644,14 @@ class DashboardController extends Controller
                     ];
                 }
                 
-                $bestSellers[$name]['qty'] += $qty;
+                $bestSellers[$nameKey]['qty'] += $qty;
+                if ($unit === 'kg') {
+                    $bestSellers[$nameKey]['unit'] = 'kg';
+                }
                 
-                if (!isset($seenInThisTransaction[$name])) {
-                    $bestSellers[$name]['count'] += 1;
-                    $seenInThisTransaction[$name] = true;
+                if (!isset($seenInThisTransaction[$nameKey])) {
+                    $bestSellers[$nameKey]['count'] += 1;
+                    $seenInThisTransaction[$nameKey] = true;
                 }
             }
         }
@@ -649,14 +664,14 @@ class DashboardController extends Controller
             return $b['count'] <=> $a['count'];
         });
 
-        $sliced = array_slice($bestSellers, 0, $limit);
+        $sliced = array_values(array_slice($bestSellers, 0, $limit));
         
         // Enrich with product image and category if exists
-        $names = array_keys($sliced);
-        $products = \App\Models\Product::whereIn('name', $names)->get()->keyBy('name');
+        $names = array_column($sliced, 'name');
+        $products = \App\Models\Product::whereIn('name', $names)->get()->keyBy(fn($p) => mb_strtolower($p->name));
         
         foreach ($sliced as &$item) {
-            $product = $products->get($item['name']);
+            $product = $products->get(mb_strtolower($item['name']));
             $item['image_path'] = $product ? $product->image_path : null;
             $item['category'] = $product ? $product->category : null;
         }

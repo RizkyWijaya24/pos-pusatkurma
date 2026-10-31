@@ -488,9 +488,9 @@ class ChatbotController extends Controller
             $parts = explode(', ', $trx->items_summary);
             foreach ($parts as $part) {
                 $clean = trim($part);
-                // Hapus format info harga tambahan (misal: "Beras basmati 1kg (1 pack x 35000)")
-                $clean = preg_replace('/\s*\(\d+\s*(?:pack|pcs|kg|gram|g|dus)\s*x\s*\d+\)/i', '', $clean);
-                if (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)$/', $clean, $m)) {
+                if (preg_match('/^(.*?)\s*\(\s*(\d+(?:[.,]\d+)?)\s*([a-zA-Z\s]+?)(?:\s*x\s*[\d.,]+)?\s*\)$/i', $clean, $m)) {
+                    $prodName = trim($m[1]);
+                } elseif (preg_match('/^(.*?)\s*\(.*?\)$/', $clean, $m)) {
                     $prodName = trim($m[1]);
                 } else {
                     $prodName = $clean;
