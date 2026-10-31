@@ -2,11 +2,11 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Nota Partai #{{ $transaction->transaction_code }}</title>
+    <title>Faktur Penjualan #{{ $transaction->transaction_code }}</title>
     <style>
         @page {
-            size: A4;
-            margin: 1.5cm 1.5cm;
+            size: a4 portrait;
+            margin: 12mm 14mm 14mm 14mm;
         }
         * {
             box-sizing: border-box;
@@ -15,303 +15,512 @@
         }
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            font-size: 12pt;
-            color: #000000;
-            line-height: 1.45;
-            width: 100%;
-            padding-bottom: 270px; /* Space for the fixed footer at the bottom */
+            font-size: 10pt;
+            color: #1e293b;
+            line-height: 1.4;
+            background: #ffffff;
         }
 
-        /* receipt container constrained to 90mm (small receipt size) and left-aligned with margins */
-        .receipt-container {
-            width: 90mm;
-            text-align: left;
-            margin-left: 10mm;
-            margin-top: 12mm;
-        }
-
-        /* ─── HEADER ─── */
-        .header-table {
+        /* ─── KOP HEADER TABLE ─── */
+        .kop-table {
             width: 100%;
             border-collapse: collapse;
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 12px;
+            margin-bottom: 14px;
         }
-        .header-table td {
-            vertical-align: top;
+        .kop-table td {
+            vertical-align: middle;
             border: none;
             padding: 0;
         }
-        .logo-cell {
-            width: 56px;
-            padding-right: 8px;
+        .logo-col {
+            width: 70px;
+            padding-right: 12px;
         }
         .company-logo {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
+            width: 65px;
+            height: 65px;
+            border-radius: 8px;
         }
         .company-logo-placeholder {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background-color: #059669;
+            width: 65px;
+            height: 65px;
+            border-radius: 8px;
+            background-color: #047857;
             text-align: center;
-            line-height: 48px;
-            font-size: 15pt;
+            line-height: 65px;
+            font-size: 22pt;
             font-weight: bold;
             color: #ffffff;
         }
         .company-name {
-            font-size: 12pt;
+            font-size: 15pt;
             font-weight: bold;
-            line-height: 1.35;
+            color: #047857;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            line-height: 1.2;
+        }
+        .company-tagline {
+            font-size: 9.5pt;
+            font-weight: bold;
+            color: #475569;
+            margin-top: 2px;
         }
         .company-addr {
-            font-size: 10.5pt;
-            color: #333333;
+            font-size: 8.5pt;
+            color: #64748b;
             margin-top: 2px;
-            line-height: 1.35;
+            line-height: 1.3;
         }
-
-        /* ─── DIVIDER ─── */
-        .divider {
-            border: none;
-            border-top: 1px dashed #000000;
-            margin: 6px 0;
-            width: 100%;
+        .invoice-title-col {
+            text-align: right;
+            border-left: 2px solid #e2e8f0;
+            padding-left: 15px;
+            width: 180px;
         }
-
-        /* ─── META ─── */
-        .meta-date {
-            font-size: 11pt;
-            margin-top: 6px;
+        .invoice-main-title {
+            font-size: 18pt;
+            font-weight: 900;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            line-height: 1;
         }
-        .meta-customer {
-            font-size: 11.5pt;
+        .invoice-code {
+            font-size: 10pt;
             font-weight: bold;
+            color: #047857;
             margin-top: 4px;
-            line-height: 1.4;
+        }
+
+        /* ─── META INFO TABLE ─── */
+        .meta-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+        }
+        .meta-table td {
+            vertical-align: top;
+            width: 50%;
+            padding: 0;
+        }
+        .meta-box {
+            background-color: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 10px 12px;
+        }
+        .meta-box-title {
+            font-size: 8pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: #64748b;
+            border-bottom: 1px solid #cbd5e1;
+            padding-bottom: 3px;
+            margin-bottom: 6px;
+        }
+        .meta-row-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+        }
+        .meta-row-table td {
+            padding: 2px 0;
+            border: none;
+        }
+        .meta-lbl {
+            color: #64748b;
+            width: 45%;
+        }
+        .meta-val {
+            font-weight: bold;
+            color: #0f172a;
+            text-align: right;
+            width: 55%;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 8pt;
+            font-weight: bold;
+        }
+        .status-paid {
+            background-color: #dcfce7;
+            color: #15803d;
+            border: 1px solid #86efac;
+        }
+        .status-unpaid {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fca5a5;
         }
 
         /* ─── ITEMS TABLE ─── */
         .items-table {
             width: 100%;
             border-collapse: collapse;
+            margin-bottom: 16px;
+            font-size: 9pt;
+        }
+        .items-table th {
+            background-color: #047857;
+            color: #ffffff;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 8pt;
+            padding: 7px 8px;
+            border: 1px solid #047857;
         }
         .items-table td {
-            padding: 0;
-            vertical-align: top;
-            border: none;
+            padding: 6px 8px;
+            border: 1px solid #cbd5e1;
+            color: #1e293b;
         }
-        .item-name {
-            font-size: 12pt;
-            font-weight: bold;
-            padding-top: 5px;
-            padding-bottom: 1px;
+        .items-table tr.even {
+            background-color: #f8fafc;
         }
-        .item-detail-qty {
-            font-size: 11pt;
-            width: 25%;
-            padding-left: 12px;
-            white-space: nowrap;
-        }
-        .item-detail-price {
-            font-size: 11pt;
-            width: 35%;
-            white-space: nowrap;
-        }
-        .item-detail-total {
-            font-size: 11pt;
-            font-weight: bold;
-            width: 40%;
-            text-align: right;
-            white-space: nowrap;
-        }
-
-        /* ─── TOTALS TABLE ─── */
-        .totals-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 4px;
-        }
-        .totals-table td {
-            border: none;
-            padding: 0;
-        }
-        .total-qty-cell {
-            font-size: 11.5pt;
-            font-weight: bold;
-            vertical-align: top;
-            width: 40%;
-            padding-top: 4px;
-        }
-        .total-amounts-cell {
-            width: 60%;
-            vertical-align: top;
-        }
-        .amounts-inner {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .amounts-inner td {
-            padding: 2px 0;
-            font-size: 11.5pt;
-        }
-        .lbl-col {
-            font-weight: bold;
-            padding-right: 5px;
-        }
-        .val-col {
-            text-align: right;
-            font-weight: bold;
-        }
-        .grand-total-val {
-            font-size: 14pt;
-            font-weight: bold;
-            text-align: right;
-        }
-
-        /* ─── FOOTER (Fixed at the absolute bottom of the page) ─── */
-        .footer-section {
-            position: fixed;
-            bottom: 0;
-            left: 10mm;
-            width: 90mm;
+        .center {
             text-align: center;
-            font-size: 11pt;
-            line-height: 1.5;
-            color: #000000;
         }
-        .footer-section .bca-number {
-            font-size: 14pt;
+        .right {
+            text-align: right;
+        }
+        .bold {
             font-weight: bold;
+        }
+
+        /* ─── BOTTOM SPLIT TABLE (PAYMENT + SUMMARY) ─── */
+        .bottom-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+        }
+        .bottom-table td {
+            vertical-align: top;
+            border: none;
+            padding: 0;
+        }
+        .payment-box {
+            background-color: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-right: 12px;
+        }
+        .payment-box-title {
+            font-size: 8.5pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #047857;
+            margin-bottom: 4px;
+        }
+        .bank-num {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #0f172a;
             margin: 2px 0;
         }
-        .footer-section .timestamp {
-            font-size: 10pt;
-            color: #555555;
-            margin-top: 12px;
+        .terms-text {
+            font-size: 7.5pt;
+            color: #64748b;
+            border-top: 1px dashed #cbd5e1;
+            padding-top: 6px;
+            margin-top: 6px;
+            line-height: 1.35;
+        }
+
+        .summary-box {
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            overflow: hidden;
+            background-color: #ffffff;
+        }
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+        }
+        .summary-table td {
+            padding: 5px 10px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .summary-lbl {
+            color: #64748b;
+            font-weight: 600;
+        }
+        .summary-val {
+            text-align: right;
+            font-weight: bold;
+            color: #1e293b;
+        }
+        .grand-row {
+            background-color: #f1f5f9;
+            border-top: 2px solid #cbd5e1;
+            border-bottom: 2px solid #cbd5e1;
+        }
+        .grand-lbl {
+            font-weight: bold;
+            font-size: 9.5pt;
+            color: #0f172a;
+            text-transform: uppercase;
+        }
+        .grand-val {
+            text-align: right;
+            font-weight: bold;
+            font-size: 11pt;
+            color: #047857;
+        }
+        .remaining-row {
+            background-color: #fff1f2;
+        }
+        .remaining-lbl {
+            font-weight: bold;
+            color: #b91c1c;
+        }
+        .remaining-val {
+            text-align: right;
+            font-weight: bold;
+            color: #e11d48;
+            font-size: 9.5pt;
+        }
+
+        /* ─── SIGNATURE TABLE ─── */
+        .sig-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .sig-table td {
+            width: 50%;
+            text-align: center;
+            vertical-align: top;
+            border: none;
+            padding: 0 20px;
+        }
+        .sig-header {
+            font-size: 9pt;
+            font-weight: bold;
+            color: #475569;
+        }
+        .sig-space {
+            height: 60px;
+        }
+        .sig-line {
+            border-bottom: 1px solid #0f172a;
+            width: 180px;
+            margin: 0 auto 4px auto;
+        }
+        .sig-name {
+            font-size: 9pt;
+            font-weight: bold;
+            color: #0f172a;
+        }
+        .sig-sub {
+            font-size: 8pt;
+            color: #64748b;
         }
     </style>
 </head>
 <body>
 
-    <div class="receipt-container">
-        <!-- ═══ HEADER ═══ -->
-        <table class="header-table">
+    <!-- Kop Header -->
+    <table class="kop-table">
+        <tr>
+            @php
+                $logoPath = public_path('images/logo.png');
+                $logoBase64 = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : null;
+            @endphp
+            <td class="logo-col">
+                @if($logoBase64)
+                    <img class="company-logo" src="data:image/png;base64,{{ $logoBase64 }}" alt="Logo">
+                @else
+                    <div class="company-logo-placeholder">PK</div>
+                @endif
+            </td>
+            <td>
+                <div class="company-name">{{ $settings['shop_name'] ?? 'PUSAT KURMA INDONESIA' }}</div>
+                <div class="company-tagline">{{ $settings['shop_tagline'] ?? 'Supplier Kurma & Oleh-oleh Haji / Umroh' }}</div>
+                <div class="company-addr">
+                    {{ $settings['shop_address'] ?? 'Tanah Abang, Jakarta Pusat' }}<br>
+                    Telp / WhatsApp: {{ $settings['shop_whatsapp'] ?? '0877-7160-7774' }}
+                </div>
+            </td>
+            <td class="invoice-title-col">
+                <div class="invoice-main-title">FAKTUR</div>
+                <div class="invoice-code">#{{ $transaction->transaction_code }}</div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Info Pelanggan & Transaksi -->
+    <table class="meta-table">
+        <tr>
+            <td style="padding-right: 8px;">
+                <div class="meta-box">
+                    <div class="meta-box-title">Kepada Yth. (Pelanggan)</div>
+                    <table class="meta-row-table">
+                        <tr>
+                            <td class="meta-lbl">Nama Pelanggan:</td>
+                            <td class="meta-val">{{ $transaction->customer_name }}</td>
+                        </tr>
+                        <tr>
+                            <td class="meta-lbl">No. HP / WA:</td>
+                            <td class="meta-val">{{ $transaction->customer_phone ?: '-' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </td>
+            <td style="padding-left: 8px;">
+                <div class="meta-box">
+                    <div class="meta-box-title">Detail Faktur & Status</div>
+                    <table class="meta-row-table">
+                        <tr>
+                            <td class="meta-lbl">Tanggal Transaksi:</td>
+                            <td class="meta-val">{{ $transaction->created_at->format('d/m/Y H:i') }}</td>
+                        </tr>
+                        <tr>
+                            <td class="meta-lbl">Metode Bayar:</td>
+                            <td class="meta-val">{{ $transaction->payment_method ?: 'Tunai' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="meta-lbl">Status Pembayaran:</td>
+                            <td class="meta-val">
+                                @if($remaining <= 0)
+                                    <span class="status-badge status-paid">LUNAS</span>
+                                @else
+                                    <span class="status-badge status-unpaid">TEMPO / BELUM LUNAS</span>
+                                @endif
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Tabel Rincian Barang -->
+    <table class="items-table">
+        <thead>
             <tr>
-                <td class="logo-cell">
-                    @php
-                        $logoPath = public_path('images/logo.png');
-                        $logoBase64 = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : null;
-                    @endphp
-                    @if($logoBase64)
-                        <img class="company-logo" src="data:image/png;base64,{{ $logoBase64 }}" alt="Logo">
-                    @else
-                        <div class="company-logo-placeholder">PK</div>
-                    @endif
-                </td>
-                <td>
-                    <div class="company-name">Supliyer Kurma &amp; Oleh oleh Haji / Umroh</div>
-                    <div class="company-addr">
-                        Tanah Abang<br>
-                        Jakarta<br>
-                        087771607774
-                    </div>
-                </td>
+                <th style="width: 5%;" class="center">No</th>
+                <th style="width: 47%;">Nama Produk / Barang</th>
+                <th style="width: 12%;" class="center">Qty</th>
+                <th style="width: 10%;" class="center">Satuan</th>
+                <th style="width: 13%;" class="right">Harga</th>
+                <th style="width: 13%;" class="right">Total (Rp)</th>
             </tr>
-        </table>
-
-        <!-- ═══ DATE ═══ -->
-        <div class="meta-date">{{ $transaction->created_at->format('d/m/Y H:i') }}</div>
-
-        <hr class="divider">
-
-        <!-- ═══ CUSTOMER ═══ -->
-        <div class="meta-customer">
-            {{ $transaction->customer_name }}<br>
-            {{ $transaction->customer_phone ?? $transaction->branch ?? '' }}
-        </div>
-
-        <hr class="divider">
-
-        <!-- ═══ ITEMS ═══ -->
-        <table class="items-table">
-            @foreach ($items as $index => $item)
-                {{-- Item name row --}}
-                <tr>
-                    <td colspan="3" class="item-name">{{ $index + 1 }}) {{ $item['name'] }}</td>
+        </thead>
+        <tbody>
+            @forelse ($items as $index => $item)
+                <tr class="{{ $index % 2 == 1 ? 'even' : '' }}">
+                    <td class="center">{{ $index + 1 }}</td>
+                    <td class="bold">{{ $item['name'] }}</td>
+                    <td class="center bold">{{ $item['qty'] }}</td>
+                    <td class="center">{{ $item['unit'] }}</td>
+                    <td class="right">{{ number_format($item['unit_price'], 0, ',', '.') }}</td>
+                    <td class="right bold">{{ number_format($item['total_price'], 0, ',', '.') }}</td>
                 </tr>
-                {{-- Item detail row --}}
+            @empty
                 <tr>
-                    <td class="item-detail-qty">{{ $item['qty'] }} {{ $item['unit'] }}</td>
-                    <td class="item-detail-price">@ {{ number_format($item['unit_price'], 0, ',', '.') }}</td>
-                    <td class="item-detail-total">{{ number_format($item['total_price'], 0, ',', '.') }}</td>
+                    <td colspan="6" class="center" style="padding: 12px; color: #94a3b8;">Tidak ada rincian item.</td>
                 </tr>
-            @endforeach
-        </table>
+            @endforelse
+        </tbody>
+    </table>
 
-        <hr class="divider" style="margin: 10px 0 6px 0;">
+    <!-- Ringkasan & Pembayaran -->
+    <table class="bottom-table">
+        <tr>
+            <!-- Kolom Kiri: Transfer & Ketentuan -->
+            <td style="width: 52%;">
+                <div class="payment-box">
+                    <div class="payment-box-title">Instruksi Pembayaran Transfer:</div>
+                    <div style="font-size: 8.5pt; color: #334155;">
+                        Bank BCA - Rekening Toko:<br>
+                        <div class="bank-num">1831794211</div>
+                        Atas Nama: <strong>Muhammad Irshad</strong>
+                    </div>
+                    <div class="terms-text">
+                        <strong>Catatan:</strong><br>
+                        - Mohon periksa barang saat diterima.<br>
+                        - Tagihan tempo wajib dilunasi sebelum tanggal jatuh tempo.<br>
+                        - Konfirmasi transfer via WA: {{ $settings['shop_whatsapp'] ?? '0877-7160-7774' }}
+                    </div>
+                </div>
+            </td>
 
-        <!-- ═══ TOTALS ═══ -->
-        <table class="totals-table">
-            <tr>
-                <td class="total-qty-cell">Total Qty: {{ collect($items)->sum('qty') }}</td>
-                <td class="total-amounts-cell">
-                    <table class="amounts-inner">
+            <!-- Kolom Kanan: Rekap Angka -->
+            <td style="width: 48%;">
+                <div class="summary-box">
+                    <table class="summary-table">
+                        <tr>
+                            <td class="summary-lbl">Total Kuantitas:</td>
+                            <td class="summary-val">{{ collect($items)->sum('qty') }} item</td>
+                        </tr>
+                        <tr>
+                            <td class="summary-lbl">Subtotal Barang:</td>
+                            <td class="summary-val">Rp {{ number_format($subtotal, 0, ',', '.') }}</td>
+                        </tr>
                         @if($transaction->discount > 0)
                             <tr>
-                                <td class="lbl-col" style="color:#e11d48;">DISKON</td>
-                                <td class="val-col" style="color:#e11d48;">
-                                    -{{ number_format($transaction->discount, 0, ',', '.') }}
-                                </td>
+                                <td class="summary-lbl" style="color: #e11d48;">Diskon:</td>
+                                <td class="summary-val" style="color: #e11d48;">-Rp {{ number_format($transaction->discount, 0, ',', '.') }}</td>
                             </tr>
                         @endif
                         @if($transaction->shipping_cost > 0)
                             <tr>
-                                <td class="lbl-col">ONGKIR</td>
-                                <td class="val-col">{{ number_format($transaction->shipping_cost, 0, ',', '.') }}</td>
+                                <td class="summary-lbl">Ongkos Kirim:</td>
+                                <td class="summary-val">+Rp {{ number_format($transaction->shipping_cost, 0, ',', '.') }}</td>
                             </tr>
                         @endif
-                        <tr>
-                            <td class="lbl-col">TOTAL</td>
-                            <td class="grand-total-val">{{ number_format($transaction->total_price, 0, ',', '.') }}</td>
-                        </tr>
-                        @php
-                            $displayPaid = isset($totalPaid) ? $totalPaid : (($transaction->payment_status ?? 'paid') === 'paid' ? $transaction->total_price : 0);
-                            $displayRemaining = isset($remaining) ? $remaining : (($transaction->payment_status ?? 'paid') === 'paid' ? 0 : $transaction->total_price);
-                        @endphp
-                        <tr>
-                            <td class="lbl-col" style="font-weight:normal;">BAYAR</td>
-                            <td class="val-col" style="font-weight:normal;">
-                                {{ number_format($displayPaid, 0, ',', '.') }}
-                            </td>
+                        <tr class="grand-row">
+                            <td class="grand-lbl">GRAND TOTAL:</td>
+                            <td class="grand-val">Rp {{ number_format($transaction->total_price, 0, ',', '.') }}</td>
                         </tr>
                         <tr>
-                            <td class="lbl-col">SISA</td>
-                            <td class="val-col">
-                                {{ number_format($displayRemaining, 0, ',', '.') }}
-                            </td>
+                            <td class="summary-lbl">Uang Diterima / DP:</td>
+                            <td class="summary-val">Rp {{ number_format($totalPaid, 0, ',', '.') }}</td>
                         </tr>
+                        @if($remaining > 0)
+                            <tr class="remaining-row">
+                                <td class="remaining-lbl">SISA PIUTANG (TEMPO):</td>
+                                <td class="remaining-val">Rp {{ number_format($remaining, 0, ',', '.') }}</td>
+                            </tr>
+                        @else
+                            <tr>
+                                <td class="summary-lbl" style="color: #15803d; font-weight: bold;">Sisa Tagihan:</td>
+                                <td class="summary-val" style="color: #15803d;">Rp 0 (LUNAS)</td>
+                            </tr>
+                        @endif
                     </table>
-                </td>
-            </tr>
-        </table>
-    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
 
-    <!-- ═══ FOOTER (Fixed at the bottom of the page) ═══ -->
-    <div class="footer-section">
-        <hr class="divider" style="margin: 0 0 10px 0;">
-        <div style="font-weight:bold;">*** Thank You ***</div>
-        <div style="font-weight:bold;">kami tunggu orderan berikutnya</div>
-        <br>
-        <div style="font-weight:bold;">Barakallahufikum</div>
-        <br>
-        <div style="font-weight:bold;">Pembayaran via transfer</div>
-        <div style="font-weight:bold;">ke rekening BCA-</div>
-        <div class="bca-number">1831794211</div>
-        <div style="font-weight:bold;">an. Muhammad Irshad</div>
-        <div class="timestamp">{{ now()->format('d/m/Y H:i:s') }}</div>
-    </div>
+    <!-- Tanda Tangan -->
+    <table class="sig-table">
+        <tr>
+            <td>
+                <div class="sig-header">Tanda Terima / Pembeli</div>
+                <div class="sig-space"></div>
+                <div class="sig-line"></div>
+                <div class="sig-name">{{ $transaction->customer_name }}</div>
+                <div class="sig-sub">Stempel / Tanda Tangan</div>
+            </td>
+            <td>
+                <div class="sig-header">Hormat Kami / Pengirim</div>
+                <div class="sig-space"></div>
+                <div class="sig-line"></div>
+                <div class="sig-name">{{ $settings['shop_name'] ?? 'Pusat Kurma Indonesia' }}</div>
+                <div class="sig-sub">Petugas: {{ $transaction->cashier->name ?? 'Admin' }}</div>
+            </td>
+        </tr>
+    </table>
 
 </body>
 </html>

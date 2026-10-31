@@ -296,14 +296,27 @@
                                         </span>
                                     </td>
                                     <td class="px-5 py-4 text-slate-700 text-xs">
-                                        <div class="flex flex-wrap gap-1 max-w-[280px]">
-                                            @foreach(explode(', ', $trx->items_summary) as $itemStr)
-                                                @if(trim($itemStr))
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-50/60 text-emerald-800 border border-emerald-100/50">
-                                                        {{ trim($itemStr) }}
-                                                    </span>
-                                                @endif
-                                            @endforeach
+                                        <div class="flex flex-col gap-1.5 max-w-[320px] py-1">
+                                            @forelse($trx->parsed_items as $item)
+                                                <div class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-slate-50 hover:bg-emerald-50/50 border border-slate-100 text-xs transition duration-150">
+                                                    <div class="flex items-center gap-2 min-w-0">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                                                        <span class="font-bold text-slate-800 truncate" title="{{ $item['name'] }}">{{ $item['name'] }}</span>
+                                                    </div>
+                                                    <div class="flex items-center gap-1.5 shrink-0">
+                                                        <span class="px-2 py-0.5 rounded-lg text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200/50 whitespace-nowrap">
+                                                            {{ $item['display_qty'] }}
+                                                        </span>
+                                                        @if($item['unit_price'] > 0)
+                                                            <span class="text-[11px] font-semibold text-slate-400 whitespace-nowrap">
+                                                                @ Rp {{ number_format($item['unit_price'], 0, ',', '.') }}
+                                                            </span>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            @empty
+                                                <span class="text-xs text-slate-400 italic">Tidak ada rincian item</span>
+                                            @endforelse
                                         </div>
                                     </td>
                                     <td class="px-5 py-4">
@@ -327,24 +340,61 @@
                                         Rp {{ number_format($trx->total_price, 0, ',', '.') }}
                                     </td>
                                     <td class="px-5 py-4 text-center">
-                                        @if($trx->transaction_type === 'wholesale')
-                                            <div class="flex items-center justify-center gap-1.5">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            @if($trx->transaction_type === 'wholesale')
                                                 <a href="{{ route('admin.wholesale-transactions.print', $trx) }}" 
                                                    target="_blank"
-                                                   class="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition duration-150 text-xs text-center"
+                                                   class="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition duration-150 text-xs text-center inline-flex items-center"
                                                    title="Cetak Nota (A4)" style="text-decoration: none;">
-                                                    🖨️
+                                                    <svg class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.821V7.5a.75.75 0 0 1 .75-.75h9a.75.75 0 0 1 .75.75v6.321m-10.5 0h10.5m-10.5 0-1.755-.351A1.25 1.25 0 0 1 3 12.25v-2.5a1.25 1.25 0 0 1 1.25-1.25h15.5c.69 0 1.25.56 1.25 1.25v2.5a1.25 1.25 0 0 1-1.025 1.22l-1.725.345m-12 0a1.25 1.25 0 1 0 2.5 0m9.5 0a1.25 1.25 0 1 0 2.5 0" />
+                                                    </svg>
                                                 </a>
                                                 <a href="{{ route('admin.wholesale-transactions.print', [$trx, 'format' => 'pdf']) }}" 
                                                    target="_blank"
-                                                   class="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 transition duration-150 text-xs text-center"
+                                                   class="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 transition duration-150 text-xs text-center inline-flex items-center"
                                                    title="Unduh PDF" style="text-decoration: none;">
-                                                    📥
+                                                    <svg class="h-4 w-4 text-rose-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+                                                    </svg>
                                                 </a>
-                                            </div>
-                                        @else
-                                            <span class="text-slate-400 text-xs">-</span>
-                                        @endif
+                                            @else
+                                                @php
+                                                    $ownerTrxData = [
+                                                        'id' => $trx->id,
+                                                        'transaction_code' => $trx->transaction_code,
+                                                        'created_at_formatted' => $trx->created_at->translatedFormat('d M Y - H:i'),
+                                                        'payment_method' => $trx->payment_method,
+                                                        'payment_status' => $trx->payment_status ?? 'paid',
+                                                        'branch' => $trx->branch ?? 'Pusat Cianjur',
+                                                        'cashier_name' => $trx->cashier->name ?? 'Kasir',
+                                                        'customer_name' => $trx->customer_name ?? '-',
+                                                        'customer_phone' => $trx->customer_phone ?? '-',
+                                                        'discount' => (float)$trx->discount,
+                                                        'total_price' => (float)$trx->total_price,
+                                                        'items_summary' => $trx->items_summary,
+                                                        'parsed_items' => $trx->parsed_items,
+                                                    ];
+                                                @endphp
+                                                <button type="button"
+                                                    onclick="printDirectBluetooth(@js($ownerTrxData))"
+                                                    class="p-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 transition duration-150 inline-flex items-center"
+                                                    title="Cetak Bluetooth Thermal">
+                                                    <svg class="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 3.75v16.5l6-4.5-6-4.5 6-4.5-6-4.5z"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 15.75l-6-4.5m6-4.5l-6 4.5"/>
+                                                    </svg>
+                                                </button>
+                                                <button type="button"
+                                                    onclick="printReceipt({{ $trx->id }})"
+                                                    class="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition duration-150 inline-flex items-center"
+                                                    title="Cetak Struk Browser">
+                                                    <svg class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.821V7.5a.75.75 0 0 1 .75-.75h9a.75.75 0 0 1 .75.75v6.321m-10.5 0h10.5m-10.5 0-1.755-.351A1.25 1.25 0 0 1 3 12.25v-2.5a1.25 1.25 0 0 1 1.25-1.25h15.5c.69 0 1.25.56 1.25 1.25v2.5a1.25 1.25 0 0 1-1.025 1.22l-1.725.345m-12 0a1.25 1.25 0 1 0 2.5 0m9.5 0a1.25 1.25 0 1 0 2.5 0" />
+                                                    </svg>
+                                                </button>
+                                            @endif
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
@@ -432,4 +482,212 @@
 
         </div>
     </div>
+
+    <script>
+        function printReceipt(transactionId) {
+            if (!transactionId) return;
+            const iframeId = 'receipt-print-iframe';
+            let iframe = document.getElementById(iframeId);
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = iframeId;
+                iframe.style.position = 'fixed';
+                iframe.style.right = '-1000px';
+                iframe.style.bottom = '-1000px';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.border = 'none';
+                document.body.appendChild(iframe);
+            }
+            iframe.onload = function() {
+                setTimeout(() => {
+                    try { iframe.contentWindow.focus(); iframe.contentWindow.print(); }
+                    catch (e) { console.error('Print failed:', e); }
+                }, 300);
+            };
+            iframe.src = '/kasir/transactions/' + transactionId + '/print';
+        }
+
+        async function printDirectBluetooth(transaction) {
+            if (!transaction) return;
+
+            if (!navigator.bluetooth) {
+                const msg = "Browser ini belum mendukung Web Bluetooth. Gunakan browser Google Chrome / Microsoft Edge di PC atau Chrome Android.";
+                if (window.showToast) {
+                    window.showToast(msg, "error");
+                } else {
+                    alert(msg);
+                }
+                return;
+            }
+
+            try {
+                if (window.showToast) {
+                    window.showToast("Mencari printer Bluetooth...", "info");
+                }
+
+                // 1. Scan for BLE Bluetooth printers
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [
+                        { namePrefix: 'Printer' },
+                        { namePrefix: 'MTP' },
+                        { namePrefix: 'PT-' },
+                        { namePrefix: 'POS' },
+                        { namePrefix: 'RPP' },
+                        { namePrefix: 'RP' },
+                        { namePrefix: 'MPT' },
+                        { namePrefix: 'InnerPrinter' },
+                        { namePrefix: 'Bluetooth' }
+                    ],
+                    optionalServices: [
+                        '000018f0-0000-1000-8000-00805f9b34fb', // Standard BLE printer service UUID
+                        '0000e914-0000-1000-8000-00805f9b34fb', // Custom BLE printer service UUID
+                        '49535343-fe7d-4ae5-8fa9-9fafd205e455', // ISSC Transparent
+                        '0000ffe0-0000-1000-8000-00805f9b34fb'  // HM-10 / common BLE
+                    ]
+                });
+
+                // 2. Connect GATT
+                const server = await device.gatt.connect();
+
+                // 3. Find Primary Service
+                let service;
+                const candidateUuids = [
+                    '000018f0-0000-1000-8000-00805f9b34fb',
+                    '0000e914-0000-1000-8000-00805f9b34fb',
+                    '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+                    '0000ffe0-0000-1000-8000-00805f9b34fb'
+                ];
+
+                for (const uuid of candidateUuids) {
+                    try {
+                        service = await server.getPrimaryService(uuid);
+                        if (service) break;
+                    } catch (e) {}
+                }
+
+                if (!service) {
+                    const services = await server.getPrimaryServices();
+                    if (services && services.length > 0) {
+                        service = services[0];
+                    } else {
+                        throw new Error("Layanan printer Bluetooth tidak ditemukan!");
+                    }
+                }
+
+                // 4. Get Characteristic
+                const characteristics = await service.getCharacteristics();
+                const writeCharacteristic = characteristics.find(c => c.properties.write || c.properties.writeWithoutResponse);
+                if (!writeCharacteristic) {
+                    throw new Error("Karakteristik penulisan data printer tidak ditemukan!");
+                }
+
+                // 5. Build raw ESC/POS payload (32 columns standard for 58mm)
+                const formatRupiahRaw = (num) => 'Rp ' + Math.round(num || 0).toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+                const pad2Col = (left, right, width = 32) => {
+                    left = String(left || '');
+                    right = String(right || '');
+                    const spaces = width - left.length - right.length;
+                    if (spaces >= 0) {
+                        return left + ' '.repeat(spaces) + right + '\n';
+                    } else {
+                        return left.substring(0, Math.max(0, width - right.length - 1)) + ' ' + right + '\n';
+                    }
+                };
+
+                const ESC_INIT = '\x1b\x40';
+                const ESC_ALIGN_CENTER = '\x1b\x61\x01';
+                const ESC_ALIGN_LEFT = '\x1b\x61\x00';
+                const ESC_BOLD_ON = '\x1b\x45\x01';
+                const ESC_BOLD_OFF = '\x1b\x45\x00';
+                const ESC_DOUBLE_SIZE = '\x1b\x21\x30';
+                const ESC_NORMAL_SIZE = '\x1b\x21\x00';
+
+                let escpos = '';
+                escpos += ESC_INIT;
+                escpos += ESC_ALIGN_CENTER;
+                escpos += ESC_BOLD_ON + ESC_DOUBLE_SIZE + 'PUSAT KURMA CIANJUR\n' + ESC_NORMAL_SIZE;
+                escpos += ESC_BOLD_ON + 'Al karim\n' + ESC_BOLD_OFF;
+                escpos += 'Cianjur, Jawa Barat\n';
+                escpos += '================================\n';
+
+                escpos += ESC_ALIGN_LEFT;
+                escpos += `No. Struk : ${transaction.transaction_code || '-'}\n`;
+                escpos += `Waktu     : ${transaction.created_at_formatted || '-'}\n`;
+                if (transaction.cashier_name) {
+                    escpos += `Kasir     : ${transaction.cashier_name}\n`;
+                }
+                if (transaction.branch) {
+                    escpos += `Cabang    : ${transaction.branch}\n`;
+                }
+                if (transaction.customer_name && transaction.customer_name !== '-') {
+                    escpos += `Pelanggan : ${transaction.customer_name}\n`;
+                }
+                escpos += `Metode    : ${(transaction.payment_method || 'CASH').toUpperCase()}\n`;
+                escpos += '--------------------------------\n';
+
+                // Items
+                const parsedItems = transaction.parsed_items && transaction.parsed_items.length > 0
+                    ? transaction.parsed_items
+                    : null;
+
+                if (parsedItems) {
+                    parsedItems.forEach(it => {
+                        escpos += ESC_BOLD_ON + (it.name || '-') + '\n' + ESC_BOLD_OFF;
+                        const qtyText = `  ${it.display_qty || it.qty} x ${formatRupiahRaw(it.unit_price)}`;
+                        const subText = formatRupiahRaw(it.total_price);
+                        escpos += pad2Col(qtyText, subText, 32);
+                    });
+                } else if (transaction.items_summary) {
+                    const rawParts = transaction.items_summary.split(', ');
+                    rawParts.forEach(part => {
+                        escpos += ESC_BOLD_ON + part + '\n' + ESC_BOLD_OFF;
+                    });
+                }
+                escpos += '--------------------------------\n';
+
+                // Financial totals
+                const discount = Number(transaction.discount || 0);
+                const total = Number(transaction.total_price || 0);
+                const subtotal = total + discount;
+
+                escpos += pad2Col('Subtotal', formatRupiahRaw(subtotal), 32);
+                if (discount > 0) {
+                    escpos += pad2Col('Diskon', '-' + formatRupiahRaw(discount), 32);
+                }
+                escpos += ESC_BOLD_ON;
+                escpos += pad2Col('TOTAL', formatRupiahRaw(total), 32);
+                escpos += ESC_BOLD_OFF;
+                escpos += '================================\n';
+
+                escpos += ESC_ALIGN_CENTER;
+                escpos += '*** TERIMA KASIH ***\n';
+                escpos += 'Terima kasih atas kunjungan Anda\n';
+                escpos += 'Barang yang dibeli tidak dapat\n';
+                escpos += 'ditukar / dikembalikan\n\n\n\n';
+
+                // 6. Encode and write in chunks of 20 bytes
+                const encoder = new TextEncoder();
+                const dataBytes = encoder.encode(escpos);
+                const chunkSize = 20;
+
+                for (let i = 0; i < dataBytes.length; i += chunkSize) {
+                    const chunk = dataBytes.slice(i, i + chunkSize);
+                    await writeCharacteristic.writeValue(chunk);
+                    await new Promise(r => setTimeout(r, 25));
+                }
+
+                if (window.showToast) {
+                    window.showToast("Cetak struk via Bluetooth berhasil!", "success");
+                }
+            } catch (error) {
+                console.error("Direct Bluetooth printing failed:", error);
+                if (window.showToast) {
+                    window.showToast("Cetak Bluetooth gagal: " + error.message, "error");
+                } else {
+                    alert("Cetak Bluetooth gagal: " + error.message);
+                }
+            }
+        }
+    </script>
 </x-app-layout>

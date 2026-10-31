@@ -11,6 +11,8 @@ class Transaction extends Model
 
     protected $fillable = [
         'cashier_id',
+        'affiliate_id',
+        'pax_count',
         'transaction_code',
         'transaction_type',
         'customer_name',
@@ -34,10 +36,133 @@ class Transaction extends Model
     }
 
     /**
+     * Get the affiliate (Tour Leader) that brought this transaction.
+     */
+    public function affiliate()
+    {
+        return $this->belongsTo(Affiliate::class);
+    }
+
+    /**
+     * Get the commission ledger entry associated with this transaction.
+     */
+    public function komisiLedger()
+    {
+        return $this->hasOne(KomisiLedger::class);
+    }
+
+    /**
      * Get the installment payments for the transaction.
      */
     public function installments()
     {
         return $this->hasMany(InstallmentPayment::class);
+    }
+
+    /**
+     * Hitung rincian nominal pembayaran per metode (termasuk jika transaksi SPLIT).
+     * Mengembalikan array ['cash' => int, 'qris' => int, 'debit' => int, 'is_split' => bool]
+     */
+    public function getPaymentBreakdownAttribute(): array
+    {
+        $method = $this->payment_method ?? 'Cash';
+        $total  = (float) $this->total_price;
+
+        $breakdown = [
+            'cash'     => 0,
+            'qris'     => 0,
+            'debit'    => 0,
+            'is_split' => false,
+        ];
+
+        if ($method === 'Cash') {
+            $breakdown['cash'] = $total;
+        } elseif ($method === 'QRIS') {
+            $breakdown['qris'] = $total;
+        } elseif ($method === 'Debit') {
+            $breakdown['debit'] = $total;
+        } elseif (str_starts_with($method, 'SPLIT:')) {
+            $breakdown['is_split'] = true;
+
+            // Format tersimpan: "SPLIT: Cash Rp 40.000 + QRIS Rp 60.000"
+            if (preg_match('/Cash\s*Rp\s*([\d\.]+)/i', $method, $mCash)) {
+                $breakdown['cash'] = (float) str_replace('.', '', $mCash[1]);
+            }
+            if (preg_match('/QRIS\s*Rp\s*([\d\.]+)/i', $method, $mQris)) {
+                $breakdown['qris'] = (float) str_replace('.', '', $mQris[1]);
+            }
+            if (preg_match('/Debit\s*Rp\s*([\d\.]+)/i', $method, $mDebit)) {
+                $breakdown['debit'] = (float) str_replace('.', '', $mDebit[1]);
+            }
+        } else {
+            // Default fallback
+            $breakdown['cash'] = $total;
+        }
+
+        return $breakdown;
+    }
+
+    /**
+     * Cek apakah transaksi sudah lunas (berdasarkan payment_status atau total cicilan)
+     */
+    public function getIsPaidAttribute(): bool
+    {
+        if (($this->payment_status ?? 'paid') === 'paid') {
+            return true;
+        }
+
+        if ($this->relationLoaded('installments')) {
+            return $this->installments->sum('amount') >= $this->total_price;
+        }
+
+        return $this->installments()->sum('amount') >= $this->total_price;
+    }
+
+    /**
+     * Parse items_summary into structured array of items with formatted quantities and prices.
+     */
+    public function getParsedItemsAttribute(): array
+    {
+        $items = [];
+        $summary = $this->items_summary;
+        if (empty($summary)) {
+            return $items;
+        }
+
+        $parts = explode(', ', $summary);
+        foreach ($parts as $part) {
+            if (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z\s]+)\s*x\s*(\d+)\)$/', $part, $matches)) {
+                $name = trim($matches[1]);
+                $qty = floatval($matches[2]);
+                $unit = trim($matches[3]);
+                $price = intval($matches[4]);
+
+                $displayQty = (round($qty, 2) == round($qty) ? (int)$qty : number_format($qty, 2, ',', '.')) . ' ' . $unit;
+                if (strtolower($unit) === 'gram' && $qty >= 1000) {
+                    $kg = $qty / 1000;
+                    $displayQty = (round($kg, 2) == round($kg) ? (int)$kg : number_format($kg, 2, ',', '.')) . ' kg (' . number_format($qty, 0, ',', '.') . ' g)';
+                }
+
+                $items[] = [
+                    'name' => $name,
+                    'qty' => $qty,
+                    'unit' => $unit,
+                    'display_qty' => $displayQty,
+                    'unit_price' => $price,
+                    'total_price' => (float) ($qty * $price),
+                ];
+            } else {
+                $items[] = [
+                    'name' => trim($part),
+                    'qty' => 1,
+                    'unit' => 'item',
+                    'display_qty' => '1 item',
+                    'unit_price' => 0,
+                    'total_price' => 0,
+                ];
+            }
+        }
+
+        return $items;
     }
 }

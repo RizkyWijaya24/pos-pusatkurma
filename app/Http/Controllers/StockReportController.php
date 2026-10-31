@@ -28,9 +28,13 @@ class StockReportController extends Controller
             $query->where('category', $request->category);
         }
 
-        // Filter nama produk
+        // Filter nama produk atau SKU
         if ($request->filled('search')) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+            $term = trim($request->search);
+            $query->where(function ($q) use ($term) {
+                $q->where('name', 'like', '%' . $term . '%')
+                  ->orWhere('sku', 'like', '%' . $term . '%');
+            });
         }
 
         $products   = $query->paginate(30)->withQueryString();
@@ -42,6 +46,15 @@ class StockReportController extends Controller
             foreach ($product->productStocks as $ps) {
                 $stockMatrix[$product->id][$ps->location_id] = $ps->stock;
             }
+        }
+
+        // Jika request via AJAX (Live Search), kembalikan JSON potongan HTML tabel
+        if ($request->ajax()) {
+            return response()->json([
+                'html'  => view('owner.partials.stock-matrix-table', compact('products', 'locations', 'stockMatrix'))->render(),
+                'total' => $products->total(),
+                'count' => $products->count(),
+            ]);
         }
 
         // Total stok per lokasi (semua produk)

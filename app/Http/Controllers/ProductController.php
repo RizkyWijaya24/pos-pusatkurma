@@ -74,6 +74,14 @@ class ProductController extends Controller
             $validated['weight_grams'] = 500;
         }
 
+        // Validasi: Harga jual tidak boleh di bawah harga modal (mencegah salah ketik harga modal)
+        if ($validated['selling_price'] < $validated['cost_price']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Harga jual (Rp ' . number_format($validated['selling_price'], 0, ',', '.') . ') tidak boleh lebih rendah dari harga modal (Rp ' . number_format($validated['cost_price'], 0, ',', '.') . '). Mohon periksa kembali input harga modal/jual Anda.'
+            ], 422);
+        }
+
 
         if ($request->hasFile('image')) {
             $path = $this->compressAndStoreImage($request->file('image'));
@@ -214,6 +222,14 @@ class ProductController extends Controller
         // Default weight to 500g if not provided
         if (empty($validated['weight_grams'])) {
             $validated['weight_grams'] = 500;
+        }
+
+        // Validasi: Harga jual tidak boleh di bawah harga modal (mencegah salah ketik harga modal)
+        if ($validated['selling_price'] < $validated['cost_price']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Harga jual (Rp ' . number_format($validated['selling_price'], 0, ',', '.') . ') tidak boleh lebih rendah dari harga modal (Rp ' . number_format($validated['cost_price'], 0, ',', '.') . '). Mohon periksa kembali input harga modal/jual Anda.'
+            ], 422);
         }
 
 

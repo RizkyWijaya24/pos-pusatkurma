@@ -51,16 +51,26 @@
         <script type="application/json" id="transactions-data">@json($todayTransactionsMapped)</script>
         <script type="application/json" id="expenses-data">@json($todayExpensesMapped)</script>
         <script type="application/json" id="categories-data">@json($categories)</script>
+        <script type="application/json" id="affiliates-data">@json($affiliates)</script>
 
-        <!-- Alpine.js POS State -->
-        <div x-data="{
-            search: '',
-            activeCategory: 'Semua',
-            
-            products: JSON.parse(document.getElementById('products-data').textContent),
+        <!-- Alpine.js POS State Definition -->
+        <script>
+        function kasirPosState() {
+            return {
+                search: '',
+                activeCategory: 'Semua',
+                
+                products: JSON.parse(document.getElementById('products-data').textContent),
             todayTransactions: JSON.parse(document.getElementById('transactions-data').textContent),
             expenses: JSON.parse(document.getElementById('expenses-data').textContent),
             categories: JSON.parse(document.getElementById('categories-data').textContent),
+            affiliates: JSON.parse(document.getElementById('affiliates-data')?.textContent || '[]'),
+            selectedAffiliateId: '',
+            paxCount: '',
+            getSelectedAffiliateRate() {
+                const aff = this.affiliates.find(a => a.id == this.selectedAffiliateId);
+                return aff ? aff.commission_rate_percentage : 0;
+            },
             
             showExpenseModal: false,
             newExpense: { amount: '', category: 'Operasional Toko', description: '' },
@@ -70,8 +80,21 @@
             waNumber: '{{ config('app.whatsapp_report_number', '') }}',
             waMessage: '',
             
-            cart: [],
-            discount: '',
+            cart: (function() {
+                try {
+                    const saved = localStorage.getItem('pos_kasir_cart');
+                    return saved ? JSON.parse(saved) : [];
+                } catch(e) {
+                    return [];
+                }
+            })(),
+            discount: (function() {
+                try {
+                    return localStorage.getItem('pos_kasir_discount') || '';
+                } catch(e) {
+                    return '';
+                }
+            })(),
             showReceipt: false,
             showQtyModal: false,
             qtyProduct: null,
@@ -80,12 +103,29 @@
             qtyCartId: null,
             paymentMethod: '',
             cashReceived: '',
+            splitCashAmount: '',
+            splitNonCashMethod: 'QRIS', // 'QRIS' or 'Debit'
+            splitNonCashAmount: 0,
             printMethod: 'iframe',
 
             checkoutStage: 0, // 0 = closed, 1 = details entry, 2 = loading/processing, 3 = success/receipt
             statusMessage: '',
             cardDigits: '',
             latestTransaction: null,
+
+            init() {
+                // Auto-save cart & discount to localStorage whenever modified
+                this.$watch('cart', val => {
+                    try {
+                        localStorage.setItem('pos_kasir_cart', JSON.stringify(val || []));
+                    } catch(e) {}
+                });
+                this.$watch('discount', val => {
+                    try {
+                        localStorage.setItem('pos_kasir_discount', val || '');
+                    } catch(e) {}
+                });
+            },
 
             showToast(message, type = 'success') {
                 if (window.showToast) {
@@ -154,15 +194,209 @@
 
 
 
-        get filteredProducts() {
-    return this.products.filter(p => {
-        const matchesSearch = !this.search || this.fuzzyMatch(p.name, this.search) || this.fuzzyMatch(p.sku, this.search);
-        const currentActive = String(this.activeCategory || 'semua').trim().toLowerCase();
-        const productCat = p.category ? String(p.category).trim().toLowerCase() : '';
-        const matchesCategory = currentActive === 'semua' || productCat === currentActive;
-        return matchesSearch && matchesCategory;
-    });
-},
+            calculateSearchScore(product, rawQuery) {
+                if (!rawQuery) return 1;
+                const q = rawQuery.toLowerCase().trim();
+                if (!q) return 1;
+
+                const name = (product.name || '').toLowerCase().trim();
+                const sku = (product.sku || '').toLowerCase().trim();
+
+                // 1. Exact match (Prioritas Tertinggi #1)
+                if (name === q) return 100000;
+                if (sku === q) return 95000;
+
+                // 2. Awalan nama persis sama (Starts with prefix)
+                if (name.startsWith(q)) {
+                    // Semakin mendekati panjang query, semakin tinggi skor
+                    return 80000 - (name.length - q.length) * 10;
+                }
+                if (sku.startsWith(q)) {
+                    return 75000 - (sku.length - q.length) * 10;
+                }
+
+                // 3. Substring utuh di nama (Contains query)
+                const nameSubIndex = name.indexOf(q);
+                if (nameSubIndex !== -1) {
+                    // Cek apakah kecocokan ada di batas awal kata (word boundary)
+                    const isWordBoundary = nameSubIndex === 0 || name[nameSubIndex - 1] === ' ';
+                    const boundaryBonus = isWordBoundary ? 20000 : 0;
+                    return 50000 + boundaryBonus - (nameSubIndex * 150) - (name.length - q.length) * 5;
+                }
+
+                if (sku.indexOf(q) !== -1) {
+                    return 40000 - (sku.indexOf(q) * 50);
+                }
+
+                // 4. Multi-kata & Pencarian Fuzzy per kata dengan toleransi typo
+                const qWords = q.split(/\s+/).filter(Boolean);
+                if (qWords.length === 0) return 0;
+
+                const nameWords = name.split(/\s+/).filter(Boolean);
+                const skuWords = sku.split(/\s+/).filter(Boolean);
+
+                let totalWordScore = 0;
+                let matchedWordsCount = 0;
+                const usedNameWordIndices = new Set();
+                const usedSkuWordIndices = new Set();
+
+                for (let qi = 0; qi < qWords.length; qi++) {
+                    const qWord = qWords[qi];
+                    let bestScore = 0;
+                    let bestType = null;
+                    let bestIdx = -1;
+
+                    // Cocokkan terhadap setiap kata di nama produk yang BELUM dipasangkan
+                    for (let i = 0; i < nameWords.length; i++) {
+                        if (usedNameWordIndices.has(i)) continue;
+                        const tWord = nameWords[i];
+
+                        // Kata persis sama
+                        if (tWord === qWord) {
+                            const score = 10000 - (i * 100);
+                            if (score > bestScore) {
+                                bestScore = score;
+                                bestType = 'name';
+                                bestIdx = i;
+                            }
+                            continue;
+                        }
+
+                        // Kata diawali query
+                        if (tWord.startsWith(qWord)) {
+                            const score = 7000 - (tWord.length - qWord.length) * 30 - (i * 100);
+                            if (score > bestScore) {
+                                bestScore = score;
+                                bestType = 'name';
+                                bestIdx = i;
+                            }
+                            continue;
+                        }
+
+                        // Query lebih panjang dan memuat kata target
+                        if (qWord.startsWith(tWord) && tWord.length >= 3) {
+                            const score = 5000 - (qWord.length - tWord.length) * 40 - (i * 100);
+                            if (score > bestScore) {
+                                bestScore = score;
+                                bestType = 'name';
+                                bestIdx = i;
+                            }
+                            continue;
+                        }
+
+                        // Substring di dalam kata
+                        if (tWord.includes(qWord)) {
+                            const score = 4000 - (tWord.length - qWord.length) * 20 - (i * 100);
+                            if (score > bestScore) {
+                                bestScore = score;
+                                bestType = 'name';
+                                bestIdx = i;
+                            }
+                            continue;
+                        }
+
+                        // Toleransi typo / salah ketik via Levenshtein distance
+                        const maxAllowedTypo = qWord.length <= 4 ? 1 : 2;
+                        if (Math.abs(tWord.length - qWord.length) <= maxAllowedTypo) {
+                            const dist = this.levenshteinDistance(qWord, tWord);
+                            if (dist <= maxAllowedTypo) {
+                                const similarity = 1 - (dist / Math.max(qWord.length, tWord.length));
+                                const score = Math.round(3000 * similarity) - (dist * 600) - (i * 100);
+                                if (score > bestScore) {
+                                    bestScore = score;
+                                    bestType = 'name';
+                                    bestIdx = i;
+                                }
+                            }
+                        }
+                    }
+
+                    // Cocokkan juga terhadap SKU bila belum ada skor kata
+                    if (bestScore === 0) {
+                        for (let j = 0; j < skuWords.length; j++) {
+                            if (usedSkuWordIndices.has(j)) continue;
+                            const sWord = skuWords[j];
+                            if (sWord === qWord || sWord.startsWith(qWord) || sWord.includes(qWord)) {
+                                const score = 2500;
+                                if (score > bestScore) {
+                                    bestScore = score;
+                                    bestType = 'sku';
+                                    bestIdx = j;
+                                }
+                            }
+                        }
+                    }
+
+                    if (bestScore > 0) {
+                        matchedWordsCount++;
+                        totalWordScore += bestScore;
+                        if (bestType === 'name') usedNameWordIndices.add(bestIdx);
+                        if (bestType === 'sku') usedSkuWordIndices.add(bestIdx);
+                    }
+                }
+
+                // Seluruh kata kunci yang diketik wajib cocok (dengan toleransi typo)
+                if (matchedWordsCount === qWords.length) {
+                    // Bonus jika urutan kata di nama produk sama dengan yang diketik
+                    let orderBonus = 0;
+                    let lastIdx = -1;
+                    let inOrder = true;
+                    for (const qWord of qWords) {
+                        const idx = name.indexOf(qWord);
+                        if (idx !== -1) {
+                            if (idx < lastIdx) {
+                                inOrder = false;
+                                break;
+                            }
+                            lastIdx = idx;
+                        }
+                    }
+                    if (inOrder && lastIdx !== -1) {
+                        orderBonus = 4000;
+                    }
+
+                    const lengthPenalty = Math.min(1000, name.length * 5);
+                    return Math.max(1, 10000 + totalWordScore + orderBonus - lengthPenalty);
+                }
+
+                return 0; // Tidak cocok
+            },
+
+            get filteredProducts() {
+                const currentActive = String(this.activeCategory || 'semua').trim().toLowerCase();
+                const trimmedSearch = (this.search || '').trim();
+
+                // 1. Filter kategori terlebih dahulu
+                const categoryFiltered = this.products.filter(p => {
+                    const productCat = p.category ? String(p.category).trim().toLowerCase() : '';
+                    return currentActive === 'semua' || productCat === currentActive;
+                });
+
+                // 2. Jika tidak ada pencarian, tampilkan urutan standar katalog
+                if (!trimmedSearch) {
+                    return categoryFiltered;
+                }
+
+                // 3. Hitung skor relevansi & kemiripan pencarian
+                const scoredList = [];
+                for (let i = 0; i < categoryFiltered.length; i++) {
+                    const p = categoryFiltered[i];
+                    const score = this.calculateSearchScore(p, trimmedSearch);
+                    if (score > 0) {
+                        scoredList.push({ product: p, score: score, origIndex: i });
+                    }
+                }
+
+                // 4. Urutkan berdasarkan skor relevansi tertinggi (paling mirip di urutan teratas)
+                scoredList.sort((a, b) => {
+                    if (b.score !== a.score) {
+                        return b.score - a.score;
+                    }
+                    return a.origIndex - b.origIndex;
+                });
+
+                return scoredList.map(item => item.product);
+            },
 
             addToCart(product) {
                 if (product.price_unit === 'gram' || product.price_unit === 'kg') {
@@ -290,7 +524,21 @@
             },
 
             get todayNetCash() {
-                return this.todaySalesTotal - this.todayExpensesTotal;
+                // Hitung total tunai fisik masuk (termasuk porsi Cash dari transaksi SPLIT)
+                const cashSales = this.todayTransactions.reduce((sum, t) => {
+                    const method = t.payment_method || 'Cash';
+                    if (method === 'Cash') {
+                        return sum + parseFloat(t.total_price);
+                    } else if (method.startsWith('SPLIT:')) {
+                        const match = method.match(/Cash\s*Rp\s*([\d\.]+)/i);
+                        if (match) {
+                            const val = parseFloat(match[1].replace(/\./g, '')) || 0;
+                            return sum + val;
+                        }
+                    }
+                    return sum;
+                }, 0);
+                return cashSales - this.todayExpensesTotal;
             },
 
             processCheckout(method) {
@@ -300,6 +548,8 @@
                 }
                 this.paymentMethod = method;
                 this.cashReceived = '';
+                this.splitCashAmount = '';
+                this.splitNonCashMethod = 'QRIS';
                 this.cardDigits = '';
                 this.latestTransaction = null;
                 if (method === 'QRIS' || method === 'Debit') {
@@ -311,6 +561,13 @@
 
             finishTransaction() {
                 if (this.cart.length === 0) return;
+
+                let finalPaymentMethod = this.paymentMethod;
+                if (this.paymentMethod === 'SPLIT') {
+                    const cashPart = parseFloat(this.splitCashAmount) || 0;
+                    const nonCashPart = Math.max(0, this.total - cashPart);
+                    finalPaymentMethod = `SPLIT: Cash Rp ${this.formatNumberOnly(cashPart)} + ${this.splitNonCashMethod} Rp ${this.formatNumberOnly(nonCashPart)}`;
+                }
 
                 this.checkoutStage = 2; // Transition to Stage 2: Processing
                 this.statusMessage = 'Menghubungkan ke gateway pembayaran...';
@@ -332,7 +589,9 @@
                         body: JSON.stringify({
                             total_price: this.total,
                             discount: this.discountAmount,
-                            payment_method: this.paymentMethod,
+                            payment_method: finalPaymentMethod,
+                            affiliate_id: this.selectedAffiliateId || null,
+                            pax_count: this.paxCount ? parseInt(this.paxCount) : 0,
                             items: this.cart.map(item => ({
                                 id: item.id,
                                 name: item.name,
@@ -386,8 +645,12 @@
                 this.showReceipt = false;
                 this.checkoutStage = 0;
                 this.cashReceived = '';
+                this.splitCashAmount = '';
+                this.splitNonCashMethod = 'QRIS';
                 this.paymentMethod = '';
                 this.cardDigits = '';
+                this.selectedAffiliateId = '';
+                this.paxCount = '';
                 this.latestTransaction = null;
             },
 
@@ -395,6 +658,8 @@
                 this.showReceipt = false;
                 this.checkoutStage = 0;
                 this.cashReceived = '';
+                this.splitCashAmount = '';
+                this.splitNonCashMethod = 'QRIS';
                 this.paymentMethod = '';
                 this.cardDigits = '';
                 this.latestTransaction = null;
@@ -500,6 +765,11 @@
                 return 'Rp ' + Math.round(num).toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
             },
 
+            formatNumberOnly(num) {
+                if (num === null || num === undefined) return '0';
+                return Math.round(num).toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+            },
+
             formatStock(stock, unit) {
                 if (unit === 'gram' && stock >= 1000) {
                     return (stock / 1000).toFixed(2).replace(/\.?0+$/, '') + ' kg';
@@ -533,20 +803,47 @@
                 msg += `--------------------------------------\n\n`;
                 
                 msg += `*RINCIAN METODE PEMBAYARAN*\n`;
-                const methods = { 'Cash': 0, 'QRIS': 0, 'Debit': 0 };
-                const methodCounts = { 'Cash': 0, 'QRIS': 0, 'Debit': 0 };
+                const methods = { 'Cash': 0, 'QRIS': 0, 'Debit': 0, 'Split': 0 };
+                const methodCounts = { 'Cash': 0, 'QRIS': 0, 'Debit': 0, 'Split': 0 };
                 
                 this.todayTransactions.forEach(t => {
                     const m = t.payment_method || 'Cash';
-                    if (methods[m] !== undefined) {
+                    if (m === 'Cash' || m === 'QRIS' || m === 'Debit') {
                         methods[m] += parseFloat(t.total_price);
                         methodCounts[m]++;
+                    } else if (m.startsWith('SPLIT:')) {
+                        methods['Split'] += parseFloat(t.total_price);
+                        methodCounts['Split']++;
+                        
+                        // Parse split amounts into Cash and non-cash totals
+                        const cashMatch = m.match(/Cash\s*Rp\s*([\d\.]+)/i);
+                        if (cashMatch) {
+                            const cVal = parseFloat(cashMatch[1].replace(/\./g, '')) || 0;
+                            methods['Cash'] += cVal;
+                        }
+                        const qrisMatch = m.match(/QRIS\s*Rp\s*([\d\.]+)/i);
+                        if (qrisMatch) {
+                            const qVal = parseFloat(qrisMatch[1].replace(/\./g, '')) || 0;
+                            methods['QRIS'] += qVal;
+                        }
+                        const debitMatch = m.match(/Debit\s*Rp\s*([\d\.]+)/i);
+                        if (debitMatch) {
+                            const dVal = parseFloat(debitMatch[1].replace(/\./g, '')) || 0;
+                            methods['Debit'] += dVal;
+                        }
+                    } else {
+                        // Fallback default
+                        methods['Cash'] += parseFloat(t.total_price);
+                        methodCounts['Cash']++;
                     }
                 });
                 
-                msg += `• *Tunai (Cash):* ${this.formatRupiah(methods['Cash'])} (${methodCounts['Cash']} trx)\n`;
-                msg += `• *QRIS:* ${this.formatRupiah(methods['QRIS'])} (${methodCounts['QRIS']} trx)\n`;
-                msg += `• *Debit:* ${this.formatRupiah(methods['Debit'])} (${methodCounts['Debit']} trx)\n`;
+                msg += `• *Tunai (Cash):* ${this.formatRupiah(methods['Cash'])}\n`;
+                msg += `• *QRIS:* ${this.formatRupiah(methods['QRIS'])}\n`;
+                msg += `• *Debit:* ${this.formatRupiah(methods['Debit'])}\n`;
+                if (methodCounts['Split'] > 0) {
+                    msg += `• *Transaksi Split (Kombinasi):* ${methodCounts['Split']} trx (${this.formatRupiah(methods['Split'])})\n`;
+                }
                 msg += `--------------------------------------\n\n`;
                 
                 msg += `*RINCIAN PENGELUARAN*\n`;
@@ -638,7 +935,12 @@
                 window.open(url, '_blank');
                 this.showWaModal = false;
             }
-        }" class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full max-w-full overflow-hidden">
+        };
+    }
+    </script>
+
+    <!-- Kasir POS UI Grid -->
+    <div x-data="kasirPosState()" class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full max-w-full overflow-hidden">
 
             <!-- LEFT SIDE: Product Catalogue (8 cols on desktop, full on mobile) -->
             <div class="lg:col-span-8 flex flex-col gap-6">
@@ -707,7 +1009,16 @@
                         <input type="text" 
                             x-model="search"
                             placeholder="Cari kurma atau SKU..." 
-                            class="w-full pl-9 pr-4 py-2 text-sm border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner">
+                            class="w-full pl-9 pr-8 py-2 text-sm border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner">
+                        <button type="button" 
+                            x-show="search" 
+                            @click="search = ''" 
+                            class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-rose-600 transition" 
+                            title="Hapus pencarian">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
@@ -782,7 +1093,16 @@
                         </svg>
                         <h3 class="font-extrabold text-slate-800 text-lg">Keranjang Belanja</h3>
                     </div>
-                    <span class="bg-emerald-100 text-emerald-800 font-bold text-xs px-2.5 py-1 rounded-full" x-text="cart.reduce((sum, item) => sum + item.qty, 0) + ' item'"></span>
+                    <div class="flex items-center gap-2">
+                        <button type="button" 
+                                x-show="cart.length > 0" 
+                                @click="if(confirm('Kosongkan semua barang di keranjang?')) { cart = []; discount = ''; showToast('Keranjang telah dikosongkan.', 'info'); }" 
+                                class="text-[11px] font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 rounded-lg transition" 
+                                title="Kosongkan Keranjang">
+                            Bersihkan
+                        </button>
+                        <span class="bg-emerald-100 text-emerald-800 font-bold text-xs px-2.5 py-1 rounded-full" x-text="cart.reduce((sum, item) => sum + item.qty, 0) + ' item'"></span>
+                    </div>
                 </div>
 
                 <!-- Cart Items list -->
@@ -848,10 +1168,10 @@
                     </div>
 
                     <!-- Big Touch-Friendly Checkout Buttons -->
-                    <div class="grid grid-cols-3 gap-3">
+                    <div class="grid grid-cols-4 gap-2">
                         <button type="button" 
                                 @click="processCheckout('Cash')"
-                                class="py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl font-extrabold text-xs tracking-wide uppercase transition duration-150 flex flex-col items-center gap-1 shadow-md shadow-emerald-700/10">
+                                class="py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl font-extrabold text-[11px] tracking-wide uppercase transition duration-150 flex flex-col items-center gap-1 shadow-md shadow-emerald-700/10">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H3m0 0h-.375c-.621 0-1.125.504-1.125 1.125V18m0 0H3.375c.621 0 1.125-.504 1.125-1.125V18M3 18.75h-.375A1.125 1.125 0 011.5 17.625V6M2.25 18.75h2.25m-2.25 0v-4.5m18 4.5v-4.5m-18 4.5h18" />
                             </svg>
@@ -859,7 +1179,7 @@
                         </button>
                         <button type="button" 
                                 @click="processCheckout('QRIS')"
-                                class="py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-extrabold text-xs tracking-wide uppercase transition duration-150 flex flex-col items-center gap-1 shadow-md shadow-teal-600/10">
+                                class="py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-extrabold text-[11px] tracking-wide uppercase transition duration-150 flex flex-col items-center gap-1 shadow-md shadow-teal-600/10">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 15h.008v.008H15V15zm0 2.25h.008v.008H15v-.008zm-2.25-2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H15v-.008zm-2.25 0h.008v.008h-.008v-.008zm4.5 4.5h.008v.008H17.25V15zm0 2.25h.008v.008H17.25v-.008z" />
@@ -868,11 +1188,20 @@
                         </button>
                         <button type="button" 
                                 @click="processCheckout('Debit')"
-                                class="py-3 bg-sky-600 hover:bg-sky-700 text-white rounded-2xl font-extrabold text-xs tracking-wide uppercase transition duration-150 flex flex-col items-center gap-1 shadow-md shadow-sky-600/10">
+                                class="py-3 bg-sky-600 hover:bg-sky-700 text-white rounded-2xl font-extrabold text-[11px] tracking-wide uppercase transition duration-150 flex flex-col items-center gap-1 shadow-md shadow-sky-600/10">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-19.5 5.25h12.75A1.125 1.125 0 0016.5 13.125v-1.5a1.125 1.125 0 00-1.125-1.125H3.75A1.125 1.125 0 002.625 11.625v1.5a1.125 1.125 0 001.125 1.125z" />
                             </svg>
                             DEBIT
+                        </button>
+                        <button type="button" 
+                                @click="processCheckout('SPLIT')"
+                                class="py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-2xl font-extrabold text-[11px] tracking-wide uppercase transition duration-150 flex flex-col items-center gap-1 shadow-md shadow-violet-600/10"
+                                title="Bayar sebagian tunai dan sebagian QRIS/Debit">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                            </svg>
+                            SPLIT
                         </button>
                     </div>
                 </div>
@@ -902,6 +1231,42 @@
                             <div class="bg-emerald-50/50 border border-emerald-100/50 rounded-2xl p-4 flex flex-col items-center justify-center text-center">
                                 <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Tagihan</span>
                                 <span class="text-2xl font-black text-emerald-800 mt-1" x-text="formatRupiah(total)"></span>
+                            </div>
+
+                            <!-- B2B Tour Leader / Afiliasi Selector (Opsional) -->
+                            <div class="bg-slate-50 dark:bg-dp-800 border border-slate-200 dark:border-dp-700 rounded-2xl p-3 flex flex-col gap-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[11px] font-extrabold text-slate-700 dark:text-purple-200 flex items-center gap-1.5">
+                                        <span>Mitra Tour Leader (B2B)</span>
+                                        <span class="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 rounded">Opsional</span>
+                                    </span>
+                                    <template x-if="selectedAffiliateId">
+                                        <span class="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-dp-900 px-2 py-0.5 rounded-md border border-emerald-200">
+                                            Komisi: <strong x-text="getSelectedAffiliateRate() + '%'"></strong>
+                                            (~ <span x-text="formatRupiah(Math.round(total * (getSelectedAffiliateRate() / 100)))"></span>)
+                                        </span>
+                                    </template>
+                                </div>
+
+                                <div class="grid grid-cols-3 gap-2">
+                                    <div class="col-span-2">
+                                        <select x-model="selectedAffiliateId" 
+                                                class="w-full text-xs font-semibold py-2 px-2.5 border border-slate-200 dark:border-dp-600 rounded-xl bg-white dark:bg-dp-900 text-slate-800 dark:text-purple-100 focus:border-emerald-500 focus:ring-emerald-500">
+                                            <option value="">-- Tanpa Afiliasi / Reguler --</option>
+                                            <template x-for="aff in affiliates" :key="aff.id">
+                                                <option :value="aff.id" x-text="aff.code + ' - ' + aff.name + ' (' + aff.commission_rate_percentage + '%)'"></option>
+                                            </template>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <input type="number" 
+                                               min="0"
+                                               x-model="paxCount" 
+                                               placeholder="Pax" 
+                                               title="Jumlah Jamaah / Pax dalam Rombongan"
+                                               class="w-full text-xs font-bold py-2 px-2 border border-slate-200 dark:border-dp-600 rounded-xl bg-white dark:bg-dp-900 text-slate-800 dark:text-purple-100 text-center focus:border-emerald-500 focus:ring-emerald-500">
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- CASH payment logic -->
@@ -986,13 +1351,78 @@
                                 </div>
                             </template>
 
+                            <!-- SPLIT payment logic (Cash + QRIS/Debit) -->
+                            <template x-if="paymentMethod === 'SPLIT'">
+                                <div class="flex flex-col gap-3">
+                                    <div class="bg-violet-50/70 border border-violet-100 p-3 rounded-2xl flex flex-col gap-1 text-center">
+                                        <span class="text-[10px] font-bold text-violet-700 uppercase tracking-wider">Pembayaran Campuran (Split Payment)</span>
+                                        <p class="text-xs text-slate-600 font-medium">Bagi tagihan menjadi pembayaran Tunai & Non-Tunai.</p>
+                                    </div>
+
+                                    <!-- Bagian 1: Nominal Tunai -->
+                                    <div class="flex flex-col gap-1.5">
+                                        <div class="flex justify-between items-center">
+                                            <label class="text-xs font-bold text-slate-600 uppercase tracking-wider">1. Bayar Tunai (Cash)</label>
+                                            <span class="text-[10px] text-slate-400 font-semibold">Nominal tunai yang dibayar</span>
+                                        </div>
+                                        <input type="number" 
+                                            x-model="splitCashAmount" 
+                                            min="0"
+                                            :max="total"
+                                            placeholder="Contoh: 50000"
+                                            class="w-full py-2.5 px-4 border-slate-200 rounded-xl text-center font-extrabold text-lg text-slate-800 focus:border-violet-500 focus:ring-violet-500 shadow-inner">
+                                    </div>
+
+                                    <!-- Bagian 2: Sisa Non-Tunai -->
+                                    <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-2">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">2. Sisa Tagihan (Non-Tunai)</span>
+                                            <div class="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200">
+                                                <button type="button" 
+                                                    @click="splitNonCashMethod = 'QRIS'" 
+                                                    :class="splitNonCashMethod === 'QRIS' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+                                                    class="px-2 py-0.5 rounded text-[10px] font-extrabold transition">
+                                                    QRIS
+                                                </button>
+                                                <button type="button" 
+                                                    @click="splitNonCashMethod = 'Debit'" 
+                                                    :class="splitNonCashMethod === 'Debit' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+                                                    class="px-2 py-0.5 rounded text-[10px] font-extrabold transition">
+                                                    DEBIT
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="flex justify-between items-center pt-1 border-t border-slate-200/60">
+                                            <span class="text-xs text-slate-500 font-semibold" x-text="'Wajib bayar via ' + splitNonCashMethod + ':'"></span>
+                                            <span class="text-base font-extrabold text-violet-700" x-text="formatRupiah(Math.max(0, total - (parseFloat(splitCashAmount) || 0)))"></span>
+                                        </div>
+                                    </div>
+
+                                    <template x-if="splitNonCashMethod === 'Debit' && (parseFloat(splitCashAmount) || 0) < total">
+                                        <div class="flex flex-col gap-1">
+                                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">4 Digit Kartu Debit</label>
+                                            <input type="text" 
+                                                x-model="cardDigits" 
+                                                maxlength="4"
+                                                placeholder="Contoh: 1234" 
+                                                class="w-full py-1.5 px-3 border-slate-200 rounded-lg text-center font-bold text-xs focus:border-violet-500 focus:ring-violet-500 shadow-inner">
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+
                             <!-- Confirm & Cancel Actions -->
                             <div class="grid grid-cols-2 gap-3 pt-2">
                                 <button type="button" @click="cancelCheckout()" class="py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold transition duration-150">Batal</button>
                                 <button type="button" 
                                     @click="finishTransaction()" 
-                                    :disabled="(paymentMethod === 'Cash' && (!cashReceived || parseFloat(cashReceived) < total)) || (paymentMethod === 'Debit' && cardDigits.length !== 4)"
-                                    :class="(paymentMethod === 'Cash' && (!cashReceived || parseFloat(cashReceived) < total)) || (paymentMethod === 'Debit' && cardDigits.length !== 4) ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-md shadow-emerald-700/10'"
+                                    :disabled="(paymentMethod === 'Cash' && (!cashReceived || parseFloat(cashReceived) < total)) || 
+                                               (paymentMethod === 'Debit' && cardDigits.length !== 4) ||
+                                               (paymentMethod === 'SPLIT' && ((parseFloat(splitCashAmount) || 0) <= 0 || (parseFloat(splitCashAmount) || 0) >= total || (splitNonCashMethod === 'Debit' && cardDigits.length !== 4)))"
+                                    :class="(paymentMethod === 'Cash' && (!cashReceived || parseFloat(cashReceived) < total)) || 
+                                            (paymentMethod === 'Debit' && cardDigits.length !== 4) ||
+                                            (paymentMethod === 'SPLIT' && ((parseFloat(splitCashAmount) || 0) <= 0 || (parseFloat(splitCashAmount) || 0) >= total || (splitNonCashMethod === 'Debit' && cardDigits.length !== 4))) 
+                                            ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-md shadow-emerald-700/10'"
                                     class="py-3 rounded-2xl font-bold transition duration-150">
                                     Proses Transaksi
                                 </button>

@@ -71,7 +71,7 @@
                 z-index: 999999;
                 max-width: 24rem;
                 width: calc(100% - 2.5rem);
-                background-color: rgba(255, 255, 255, 0.97);
+                background-color: rgba(255, 255, 255, 0.98);
                 backdrop-filter: blur(12px);
                 -webkit-backdrop-filter: blur(12px);
                 border-radius: 1rem;
@@ -89,10 +89,59 @@
                 box-sizing: border-box;
             }
 
+            .dark #global-toast {
+                background-color: rgba(20, 14, 45, 0.96);
+                border-color: rgba(109, 40, 217, 0.4);
+                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+            }
+
             #global-toast.show {
                 transform: translateX(0);
                 opacity: 1;
                 pointer-events: auto;
+            }
+
+            @media (max-width: 640px) {
+                #global-toast {
+                    top: 4.5rem;
+                    left: 1rem;
+                    right: 1rem;
+                    width: auto;
+                    max-width: none;
+                }
+            }
+
+            /* NOTIFICATION DROPDOWN PANEL - RESPONSIVE PC & MOBILE */
+            #notification-dropdown-panel {
+                position: absolute;
+                right: 0;
+                left: auto;
+                top: calc(100% + 0.75rem);
+                width: 27rem;
+                max-width: 90vw;
+                z-index: 50;
+            }
+
+            @media (max-width: 640px) {
+                #notification-dropdown-panel {
+                    position: fixed !important;
+                    top: 4.25rem !important;
+                    left: 0.75rem !important;
+                    right: 0.75rem !important;
+                    width: auto !important;
+                    max-width: calc(100vw - 1.5rem) !important;
+                    z-index: 50 !important;
+                }
+
+                /* OPTIMASI LOW-SPEC: Matikan komputasi GPU filter blur berat pada layar HP */
+                .backdrop-blur-md,
+                .backdrop-blur-sm,
+                .backdrop-blur-xs,
+                .backdrop-blur-lg,
+                .backdrop-blur-xl {
+                    backdrop-filter: none !important;
+                    -webkit-backdrop-filter: none !important;
+                }
             }
         </style>
 
@@ -298,15 +347,17 @@
                         lowStockCount: {{ $lowStockCount }},
                         
                         init() {
-                            // Poll every 10 seconds for new notifications
+                            // Poll every 30 seconds for new notifications (hemat baterai & memori di low-spec)
                             setInterval(() => {
+                                // Jangan request jika tab browser sedang tidak aktif / diminimize
+                                if (document.hidden) return;
                                 this.fetchUnreadCount();
-                            }, 10000);
+                            }, 30000);
                         },
 
                         async fetchUnreadCount() {
                             try {
-                                const res = await fetch('{{ route("notifications.unread-count") }}', {
+                                const res = await fetch('/notifications/unread-count', {
                                     headers: {
                                         'Accept': 'application/json',
                                         'X-Requested-With': 'XMLHttpRequest'
@@ -345,36 +396,62 @@
                         }
                     }" @click.away="notifOpen = false">
                         <button type="button" @click="notifOpen = !notifOpen" class="relative rounded-full p-2 text-slate-400 dark:text-purple-400 hover:text-slate-500 dark:hover:text-purple-200 hover:bg-slate-100 dark:hover:bg-dp-800 transition duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">
-                            <span x-show="unreadCount > 0" class="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-dp-900 animate-pulse" x-text="unreadCount"></span>
+                            <span x-show="totalCount > 0" class="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-dp-900 animate-pulse" x-text="totalCount > 99 ? '99+' : totalCount"></span>
                             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
                             </svg>
                         </button>
 
+                        <!-- Mobile Backdrop -->
                         <div 
+                            x-show="notifOpen" 
+                            x-transition:enter="transition-opacity ease-linear duration-200"
+                            x-transition:enter-start="opacity-0"
+                            x-transition:enter-end="opacity-100"
+                            x-transition:leave="transition-opacity ease-linear duration-150"
+                            x-transition:leave-start="opacity-100"
+                            x-transition:leave-end="opacity-0"
+                            class="fixed inset-0 bg-slate-950/50 backdrop-blur-xs z-40 sm:hidden"
+                            @click="notifOpen = false"
+                            style="display: none;"
+                        ></div>
+
+                        <!-- Dropdown Panel -->
+                        <div 
+                            id="notification-dropdown-panel"
                             x-show="notifOpen" 
                             x-transition:enter="transition ease-out duration-200"
                             x-transition:enter-start="opacity-0 scale-95"
                             x-transition:enter-end="opacity-100 scale-100"
-                            x-transition:leave="transition ease-in duration-75"
+                            x-transition:leave="transition ease-in duration-100"
                             x-transition:leave-start="opacity-100 scale-100"
                             x-transition:leave-end="opacity-0 scale-95"
-                            class="absolute right-0 mt-3 origin-top-right rounded-2xl bg-white dark:bg-dp-800 shadow-2xl ring-1 ring-black/5 dark:ring-white/10 z-50 border border-slate-100 dark:border-dp-700 overflow-hidden w-[calc(100vw-32px)] sm:w-[480px]"
+                            class="origin-top-right rounded-2xl bg-white dark:bg-dp-800 shadow-2xl ring-1 ring-black/5 dark:ring-white/10 border border-slate-100 dark:border-dp-700 overflow-hidden"
                             style="display: none;"
                         >
                             <!-- Header -->
                             <div class="px-4 py-3 bg-slate-50 dark:bg-dp-750 border-b border-slate-100 dark:border-dp-700 flex items-center justify-between">
-                                <span class="font-bold text-sm text-slate-800 dark:text-purple-100">Notifikasi & Peringatan</span>
-                                <form action="{{ route('notifications.read-all') }}" method="POST" x-show="unreadCount > 0" style="display: none;">
-                                    @csrf
-                                    <button type="submit" class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline">
-                                        Tandai semua dibaca
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-sm text-slate-800 dark:text-purple-100">Notifikasi & Peringatan</span>
+                                    <span x-show="totalCount > 0" class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400" x-text="totalCount"></span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <form action="{{ route('notifications.read-all') }}" method="POST" x-show="unreadCount > 0" style="display: none;">
+                                        @csrf
+                                        <button type="submit" class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline">
+                                            Tandai semua dibaca
+                                        </button>
+                                    </form>
+                                    <button type="button" @click="notifOpen = false" class="sm:hidden p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:text-purple-300 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-dp-700 transition" aria-label="Tutup notifikasi">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
                                     </button>
-                                </form>
+                                </div>
                             </div>
 
                             <!-- List Container -->
-                            <div class="divide-y divide-slate-100 dark:divide-dp-700" style="max-height: 320px; overflow-y: auto !important; -webkit-overflow-scrolling: touch; position: relative;">
+                            <div class="divide-y divide-slate-100 dark:divide-dp-700 overflow-y-auto max-h-[65vh] sm:max-h-[380px]" style="-webkit-overflow-scrolling: touch;">
                                 
                                 {{-- SECTION 1: DATABASE NOTIFICATIONS (LOG & REQUEST TRANSFER) --}}
                                 @if($dbNotifications->isNotEmpty())
@@ -382,9 +459,9 @@
                                         Log & Transfer Stok
                                     </div>
                                     @foreach($dbNotifications as $n)
-                                        <a href="{{ route('notifications.read', $n->id) }}" class="flex gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-dp-700 transition duration-150 {{ !$n->read_at ? 'bg-emerald-50/40 dark:bg-emerald-950/10' : '' }}">
+                                        <a href="{{ route('notifications.read', $n->id) }}" class="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-dp-700 transition duration-150 {{ !$n->read_at ? 'bg-emerald-50/40 dark:bg-emerald-950/10' : '' }}">
                                             <!-- Icon wrapper based on status -->
-                                            <div class="flex-shrink-0">
+                                            <div class="flex-shrink-0 mt-0.5">
                                                 @php
                                                     $actType = $n->data['action_type'] ?? '';
                                                     $iconBg = 'bg-slate-100 dark:bg-dp-600 text-slate-500 dark:text-purple-300';
@@ -419,16 +496,16 @@
                                             </div>
                                             <!-- Message and Time -->
                                             <div class="flex-1 min-w-0">
-                                                <p class="text-xs text-slate-600 dark:text-purple-200 leading-normal">
+                                                <p class="text-xs text-slate-700 dark:text-purple-200 leading-relaxed break-words">
                                                     {!! $n->data['message'] ?? 'Notifikasi transfer stok.' !!}
                                                 </p>
-                                                <span class="text-[10px] text-slate-400 dark:text-purple-400 mt-1 block">
+                                                <span class="text-[10px] text-slate-400 dark:text-purple-400 mt-1 block font-medium">
                                                     {{ $n->created_at->diffForHumans() }}
                                                 </span>
                                             </div>
                                             <!-- Unread dot -->
                                             @if(!$n->read_at)
-                                                <div class="flex-shrink-0 flex items-center">
+                                                <div class="flex-shrink-0 flex items-center self-center">
                                                     <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                                                 </div>
                                             @endif
@@ -447,8 +524,8 @@
                                                 ? route('kasir.stock-request') 
                                                 : route('admin.stock-transfers.create', ['product_id' => $ps->product_id]);
                                         @endphp
-                                        <a href="{{ $destUrl }}" class="flex gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-dp-700 transition duration-150 bg-rose-50/20 dark:bg-rose-950/5">
-                                            <div class="flex-shrink-0">
+                                        <a href="{{ $destUrl }}" class="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-dp-700 transition duration-150 bg-rose-50/20 dark:bg-rose-950/5">
+                                            <div class="flex-shrink-0 mt-0.5">
                                                 <div class="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center">
                                                     <!-- Warning Triangle Icon -->
                                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -457,7 +534,7 @@
                                                 </div>
                                             </div>
                                             <div class="flex-1 min-w-0">
-                                                <p class="text-xs text-slate-700 dark:text-purple-200 leading-normal">
+                                                <p class="text-xs text-slate-700 dark:text-purple-200 leading-relaxed break-words">
                                                     @if(auth()->user()->isKasir())
                                                         Stok <strong>{{ $ps->product->name }}</strong> di cabang Anda menipis. Sisa: <strong class="text-rose-600 dark:text-rose-400">{{ floatval($ps->stock) }} {{ $ps->product->price_unit }}</strong>.
                                                     @else
@@ -639,8 +716,8 @@
              <div id="toast-icon-bg" class="w-10 h-10 rounded-full flex items-center justify-center shrink-0">
                  <span id="toast-icon-slot"></span>
              </div>
-             <div class="flex-grow">
-                 <p id="toast-message" style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 0.875rem; font-weight: 700; line-height: 1.25rem;"></p>
+             <div class="flex-grow min-w-0">
+                 <p id="toast-message" style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 0.875rem; font-weight: 700; line-height: 1.25rem; word-break: break-word;"></p>
              </div>
              <button type="button" onclick="hideGlobalToast()" style="background: none; border: none; padding: 0; cursor: pointer; transition: color 0.2s;" class="shrink-0 text-slate-400 hover:text-slate-600 dark:text-purple-400 dark:hover:text-purple-200">
                  <svg style="width: 1rem; height: 1rem;" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

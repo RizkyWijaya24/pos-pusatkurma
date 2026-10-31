@@ -27,15 +27,33 @@ class TransactionController extends Controller
             ->paginate(15);
 
         // ---- Today totals ----
-        $todayStats  = Transaction::where('cashier_id', $cashierId)
+        $todayTrxList = Transaction::where('cashier_id', $cashierId)
             ->whereDate('created_at', Carbon::today())
-            ->selectRaw('COALESCE(SUM(total_price),0) as omset, 
-                         COALESCE(SUM(total_price - total_cost),0) as profit, 
-                         COUNT(*) as count,
-                         COALESCE(SUM(CASE WHEN payment_method = \'Cash\' THEN total_price ELSE 0 END),0) as cash_total,
-                         COALESCE(SUM(CASE WHEN payment_method = \'QRIS\' THEN total_price ELSE 0 END),0) as qris_total,
-                         COALESCE(SUM(CASE WHEN payment_method = \'Debit\' THEN total_price ELSE 0 END),0) as debit_total')
-            ->first();
+            ->get();
+
+        $omsetSum = 0;
+        $profitSum = 0;
+        $cashSum = 0;
+        $qrisSum = 0;
+        $debitSum = 0;
+
+        foreach ($todayTrxList as $trx) {
+            $omsetSum  += (float) $trx->total_price;
+            $profitSum += (float) ($trx->total_price - $trx->total_cost);
+            $bd = $trx->payment_breakdown;
+            $cashSum  += $bd['cash'];
+            $qrisSum  += $bd['qris'];
+            $debitSum += $bd['debit'];
+        }
+
+        $todayStats = (object) [
+            'omset'       => $omsetSum,
+            'profit'      => $profitSum,
+            'count'       => $todayTrxList->count(),
+            'cash_total'  => $cashSum,
+            'qris_total'  => $qrisSum,
+            'debit_total' => $debitSum,
+        ];
 
         // ---- Weekly summary (Mon–Sun) ----
         $startOfWeek = $now->copy()->startOfWeek();
@@ -515,32 +533,36 @@ class TransactionController extends Controller
             ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->first();
 
-        $todayStatsQuery = $statsQuery()
-            ->selectRaw('SUM(total_price) as omset, 
-                         SUM(total_price - total_cost) as profit,
-                         COALESCE(SUM(CASE WHEN payment_method = \'Cash\' THEN total_price ELSE 0 END),0) as cash_total,
-                         COALESCE(SUM(CASE WHEN payment_method = \'QRIS\' THEN total_price ELSE 0 END),0) as qris_total,
-                         COALESCE(SUM(CASE WHEN payment_method = \'Debit\' THEN total_price ELSE 0 END),0) as debit_total');
-        
+        $periodTrxs = $statsQuery();
         $carbonDate = Carbon::parse($date);
         if ($filterType === 'mingguan') {
-            $todayStatsQuery->whereBetween('created_at', [$carbonDate->copy()->startOfWeek(), $carbonDate->copy()->endOfWeek()]);
+            $periodTrxs->whereBetween('created_at', [$carbonDate->copy()->startOfWeek(), $carbonDate->copy()->endOfWeek()]);
         } elseif ($filterType === 'bulanan') {
-            $todayStatsQuery->whereBetween('created_at', [$carbonDate->copy()->startOfMonth(), $carbonDate->copy()->endOfMonth()]);
+            $periodTrxs->whereBetween('created_at', [$carbonDate->copy()->startOfMonth(), $carbonDate->copy()->endOfMonth()]);
         } else {
-            $todayStatsQuery->whereDate('created_at', $today);
+            $periodTrxs->whereDate('created_at', $today);
         }
-        $todayStats = $todayStatsQuery->first();
+        $periodTrxList = $periodTrxs->get();
 
-        $weeklyOmset   = $weeklyStats->omset ?? 0;
-        $weeklyProfit  = $weeklyStats->profit ?? 0;
-        $monthlyOmset  = $monthlyStats->omset ?? 0;
-        $monthlyProfit = $monthlyStats->profit ?? 0;
-        $todayOmset    = $todayStats->omset ?? 0;
-        $todayProfit   = $todayStats->profit ?? 0;
-        $todayCash     = $todayStats->cash_total ?? 0;
-        $todayQris     = $todayStats->qris_total ?? 0;
-        $todayDebit    = $todayStats->debit_total ?? 0;
+        $todayOmset  = 0;
+        $todayProfit = 0;
+        $todayCash   = 0;
+        $todayQris   = 0;
+        $todayDebit  = 0;
+
+        foreach ($periodTrxList as $trx) {
+            $todayOmset  += (float) $trx->total_price;
+            $todayProfit += (float) ($trx->total_price - $trx->total_cost);
+            $bd = $trx->payment_breakdown;
+            $todayCash  += $bd['cash'];
+            $todayQris  += $bd['qris'];
+            $todayDebit += $bd['debit'];
+        }
+
+        $weeklyOmset   = (float) ($weeklyStats->omset ?? 0);
+        $weeklyProfit  = (float) ($weeklyStats->profit ?? 0);
+        $monthlyOmset  = (float) ($monthlyStats->omset ?? 0);
+        $monthlyProfit = (float) ($monthlyStats->profit ?? 0);
 
         // All unique branches for dropdown — optimized single UNION query
         $branches = \DB::table('users')
@@ -658,32 +680,36 @@ class TransactionController extends Controller
             ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->first();
 
-        $todayStatsQuery = $statsQuery()
-            ->selectRaw('SUM(total_price) as omset, 
-                         SUM(total_price - total_cost) as profit,
-                         COALESCE(SUM(CASE WHEN payment_method = \'Cash\' THEN total_price ELSE 0 END),0) as cash_total,
-                         COALESCE(SUM(CASE WHEN payment_method = \'QRIS\' THEN total_price ELSE 0 END),0) as qris_total,
-                         COALESCE(SUM(CASE WHEN payment_method = \'Debit\' THEN total_price ELSE 0 END),0) as debit_total');
-        
+        $periodTrxs = $statsQuery();
         $carbonDate = Carbon::parse($date);
         if ($filterType === 'mingguan') {
-            $todayStatsQuery->whereBetween('created_at', [$carbonDate->copy()->startOfWeek(), $carbonDate->copy()->endOfWeek()]);
+            $periodTrxs->whereBetween('created_at', [$carbonDate->copy()->startOfWeek(), $carbonDate->copy()->endOfWeek()]);
         } elseif ($filterType === 'bulanan') {
-            $todayStatsQuery->whereBetween('created_at', [$carbonDate->copy()->startOfMonth(), $carbonDate->copy()->endOfMonth()]);
+            $periodTrxs->whereBetween('created_at', [$carbonDate->copy()->startOfMonth(), $carbonDate->copy()->endOfMonth()]);
         } else {
-            $todayStatsQuery->whereDate('created_at', $today);
+            $periodTrxs->whereDate('created_at', $today);
         }
-        $todayStats = $todayStatsQuery->first();
+        $periodTrxList = $periodTrxs->get();
 
-        $weeklyOmset   = $weeklyStats->omset ?? 0;
-        $weeklyProfit  = $weeklyStats->profit ?? 0;
-        $monthlyOmset  = $monthlyStats->omset ?? 0;
-        $monthlyProfit = $monthlyStats->profit ?? 0;
-        $todayOmset    = $todayStats->omset ?? 0;
-        $todayProfit   = $todayStats->profit ?? 0;
-        $todayCash     = $todayStats->cash_total ?? 0;
-        $todayQris     = $todayStats->qris_total ?? 0;
-        $todayDebit    = $todayStats->debit_total ?? 0;
+        $todayOmset  = 0;
+        $todayProfit = 0;
+        $todayCash   = 0;
+        $todayQris   = 0;
+        $todayDebit  = 0;
+
+        foreach ($periodTrxList as $trx) {
+            $todayOmset  += (float) $trx->total_price;
+            $todayProfit += (float) ($trx->total_price - $trx->total_cost);
+            $bd = $trx->payment_breakdown;
+            $todayCash  += $bd['cash'];
+            $todayQris  += $bd['qris'];
+            $todayDebit += $bd['debit'];
+        }
+
+        $weeklyOmset   = (float) ($weeklyStats->omset ?? 0);
+        $weeklyProfit  = (float) ($weeklyStats->profit ?? 0);
+        $monthlyOmset  = (float) ($monthlyStats->omset ?? 0);
+        $monthlyProfit = (float) ($monthlyStats->profit ?? 0);
 
         // All unique branches for dropdown — optimized single UNION query
         $branches = \DB::table('users')
@@ -733,6 +759,8 @@ class TransactionController extends Controller
             'total_price' => 'required|integer|min:0',
             'discount' => 'nullable|integer|min:0',
             'payment_method' => 'required|string',
+            'affiliate_id' => 'nullable|exists:affiliates,id',
+            'pax_count' => 'nullable|integer|min:0',
             'items' => 'required|array|min:1',
             'items.*.id' => 'nullable|integer',
             'items.*.name' => 'required|string',
@@ -821,6 +849,8 @@ class TransactionController extends Controller
         ) {
             $trx = Transaction::create([
                 'cashier_id'       => auth()->id(),
+                'affiliate_id'     => $request->input('affiliate_id'),
+                'pax_count'        => $request->input('pax_count', 0),
                 'transaction_code' => 'TRX-' . Carbon::now()->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6)),
                 'items_summary'    => $itemsSummary,
                 'total_price'      => $request->total_price,
@@ -829,6 +859,15 @@ class TransactionController extends Controller
                 'payment_method'   => $request->payment_method,
                 'branch'           => $cashierBranch,
             ]);
+
+            // Hitung & catat potongan komisi dari omset ke komisi_ledger jika berafiliasi
+            if ($request->filled('affiliate_id')) {
+                app(\App\Services\AffiliateService::class)->recordCommission(
+                    $trx,
+                    $request->input('affiliate_id'),
+                    (int) $request->input('pax_count', 0)
+                );
+            }
 
             // Kurangi stok per cabang kasir via StockService
             $stockService   = app(\App\Services\StockService::class);
@@ -1123,8 +1162,8 @@ class TransactionController extends Controller
      */
     public function print(Transaction $transaction)
     {
-        // Security check: Only cashier who made the transaction or admin can print
-        if (!auth()->user()->isAdmin() && $transaction->cashier_id !== auth()->id()) {
+        // Security check: Cashier who made the transaction, admin, or owner can print
+        if (!auth()->user()->isAdmin() && !auth()->user()->isOwner() && $transaction->cashier_id !== auth()->id()) {
             abort(403, 'Anda tidak memiliki akses untuk mencetak nota ini.');
         }
 
@@ -1308,6 +1347,8 @@ class TransactionController extends Controller
 
         $transaction = Transaction::create([
             'cashier_id'       => auth()->id(),
+            'affiliate_id'     => $request->input('affiliate_id'),
+            'pax_count'        => $request->input('pax_count', 0),
             'transaction_code' => 'PRT-' . Carbon::now()->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6)),
             'transaction_type' => 'wholesale',
             'customer_name'    => $request->customer_name,
@@ -1321,6 +1362,14 @@ class TransactionController extends Controller
             'branch'           => 'Cabang Rumah', // Defaults to Pusat
             'payment_status'   => $paymentStatus,
         ]);
+
+        if ($request->filled('affiliate_id')) {
+            app(\App\Services\AffiliateService::class)->recordCommission(
+                $transaction,
+                $request->input('affiliate_id'),
+                (int) $request->input('pax_count', 0)
+            );
+        }
 
         if ($received > 0) {
             $transaction->installments()->create([
@@ -1396,14 +1445,19 @@ class TransactionController extends Controller
         // Calculate installment totals
         $totalPaid = $transaction->installments()->sum('amount');
         $remaining = max(0, $transaction->total_price - $totalPaid);
+        $settings = \App\Models\Setting::pluck('value', 'key')->all();
 
         if (request()->query('format') === 'pdf') {
-            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.wholesale_receipt_pdf', compact('transaction', 'items', 'subtotal', 'totalPaid', 'remaining'));
-            $pdf->setPaper([0, 0, 226.77, 750], 'portrait');
-            return $pdf->stream('Nota_Partai_' . $transaction->transaction_code . '.pdf');
+            if (!extension_loaded('gd')) {
+                return redirect()->to(url()->current())
+                    ->with('error', 'Ekstensi PHP GD belum aktif di server. Menampilkan format cetak web (HTML).');
+            }
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.wholesale_receipt_pdf', compact('transaction', 'items', 'subtotal', 'totalPaid', 'remaining', 'settings'));
+            $pdf->setPaper('a4', 'portrait');
+            return $pdf->stream('Faktur_' . $transaction->transaction_code . '.pdf');
         }
 
-        return view('admin.wholesale_receipt', compact('transaction', 'items', 'subtotal', 'totalPaid', 'remaining'));
+        return view('admin.wholesale_receipt', compact('transaction', 'items', 'subtotal', 'totalPaid', 'remaining', 'settings'));
     }
 
     /**
@@ -1514,6 +1568,17 @@ class TransactionController extends Controller
 
         $transaction->update(['payment_status' => 'paid']);
 
+        // Jika ada sisa piutang belum tercatat di installment, catat pelunasan otomatis agar sinkron
+        $paidSoFar = $transaction->installments()->sum('amount');
+        $remaining = $transaction->total_price - $paidSoFar;
+        if ($remaining > 0) {
+            $transaction->installments()->create([
+                'amount' => $remaining,
+                'payment_method' => 'Tunai',
+                'note' => 'Pelunasan langsung via Nota Partai'
+            ]);
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Nota partai berhasil ditandai LUNAS!'
@@ -1563,6 +1628,8 @@ class TransactionController extends Controller
                         'total_price' => $trx->total_price,
                         'paid_amount' => $paid,
                         'outstanding_amount' => $trx->total_price - $paid,
+                        'items_summary' => $trx->items_summary,
+                        'parsed_items' => $this->parseItemsSummary($trx->items_summary),
                         'installments' => $trx->installments->map(function ($inst) {
                             return [
                                 'id' => $inst->id,
@@ -1578,6 +1645,87 @@ class TransactionController extends Controller
         })->values();
 
         return response()->json($grouped);
+    }
+
+    /**
+     * Get history of settled receivables and installment payments (Admin/Owner only).
+     */
+    public function getReceivablesHistory()
+    {
+        if (!auth()->user()->isAdmin() && !auth()->user()->isOwner()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk melakukan tindakan ini.'
+            ], 403);
+        }
+
+        // 1. Transaksi wholesale berstatus Piutang / Tempo yang sudah lunas (atau memiliki cicilan)
+        $historyTransactions = Transaction::where('transaction_type', 'wholesale')
+            ->where(function ($q) {
+                $q->where('payment_method', 'Piutang / Tempo')
+                  ->orWhereHas('installments');
+            })
+            ->where('payment_status', 'paid')
+            ->with(['installments' => function ($q) {
+                $q->latest();
+            }])
+            ->latest()
+            ->take(50)
+            ->get();
+
+        $history = $historyTransactions->map(function ($trx) {
+            $totalPaid = $trx->installments->sum('amount');
+            $lastPayment = $trx->installments->first();
+
+            return [
+                'id' => $trx->id,
+                'transaction_code' => $trx->transaction_code,
+                'customer_name' => $trx->customer_name,
+                'customer_phone' => $trx->customer_phone,
+                'date' => $trx->created_at->format('d/m/Y H:i'),
+                'total_price' => (float) $trx->total_price,
+                'total_paid' => (float) ($totalPaid > 0 ? $totalPaid : $trx->total_price),
+                'is_paid' => true,
+                'items_summary' => $trx->items_summary,
+                'parsed_items' => $this->parseItemsSummary($trx->items_summary),
+                'last_payment_date' => $lastPayment ? $lastPayment->created_at->format('d/m/Y H:i') : $trx->updated_at->format('d/m/Y H:i'),
+                'installments_count' => $trx->installments->count(),
+                'installments' => $trx->installments->map(function ($inst) {
+                    return [
+                        'id' => $inst->id,
+                        'amount' => (float) $inst->amount,
+                        'payment_method' => $inst->payment_method,
+                        'note' => $inst->note,
+                        'date' => $inst->created_at->format('d/m/Y H:i')
+                    ];
+                })->values()
+            ];
+        })->values();
+
+        // 2. Seluruh log riwayat pembayaran cicilan masuk
+        $logs = InstallmentPayment::with('transaction')
+            ->latest()
+            ->take(100)
+            ->get()
+            ->map(function ($inst) {
+                return [
+                    'id' => $inst->id,
+                    'transaction_id' => $inst->transaction_id,
+                    'transaction_code' => $inst->transaction ? $inst->transaction->transaction_code : '-',
+                    'customer_name' => $inst->transaction ? $inst->transaction->customer_name : '-',
+                    'amount' => (float) $inst->amount,
+                    'payment_method' => $inst->payment_method,
+                    'note' => $inst->note,
+                    'date' => $inst->created_at->format('d/m/Y H:i'),
+                    'is_settled' => $inst->transaction ? $inst->transaction->is_paid : true,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'history' => $history,
+            'logs' => $logs
+        ]);
     }
 
     /**
@@ -1617,13 +1765,64 @@ class TransactionController extends Controller
 
         // Check if fully paid
         $totalPaid = $transaction->installments()->sum('amount');
+        $isPaid = false;
         if ($totalPaid >= $transaction->total_price) {
             $transaction->update(['payment_status' => 'paid']);
+            $isPaid = true;
         }
 
         return response()->json([
             'success' => true,
+            'is_paid' => $isPaid,
+            'transaction_id' => $transaction->id,
             'message' => 'Pembayaran cicilan berhasil disimpan!'
         ]);
+    }
+
+    /**
+     * Parse items_summary string into structured array of items with formatted quantities and prices.
+     */
+    protected function parseItemsSummary(?string $summary): array
+    {
+        $items = [];
+        if (empty($summary)) {
+            return $items;
+        }
+
+        $parts = explode(', ', $summary);
+        foreach ($parts as $part) {
+            if (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z\s]+)\s*x\s*(\d+)\)$/', $part, $matches)) {
+                $name = trim($matches[1]);
+                $qty = floatval($matches[2]);
+                $unit = trim($matches[3]);
+                $price = intval($matches[4]);
+
+                $displayQty = (round($qty, 2) == round($qty) ? (int)$qty : number_format($qty, 2, ',', '.')) . ' ' . $unit;
+                if (strtolower($unit) === 'gram' && $qty >= 1000) {
+                    $kg = $qty / 1000;
+                    $displayQty = (round($kg, 2) == round($kg) ? (int)$kg : number_format($kg, 2, ',', '.')) . ' kg (' . number_format($qty, 0, ',', '.') . ' g)';
+                }
+
+                $items[] = [
+                    'name' => $name,
+                    'qty' => $qty,
+                    'unit' => $unit,
+                    'display_qty' => $displayQty,
+                    'unit_price' => $price,
+                    'total_price' => (float) ($qty * $price),
+                ];
+            } else {
+                $items[] = [
+                    'name' => trim($part),
+                    'qty' => 1,
+                    'unit' => 'item',
+                    'display_qty' => '1 item',
+                    'unit_price' => 0,
+                    'total_price' => 0,
+                ];
+            }
+        }
+
+        return $items;
     }
 }

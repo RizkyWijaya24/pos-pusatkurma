@@ -46,12 +46,38 @@ class DashboardController extends Controller
 
         // Ambil riwayat nota partai terbaru
         $wholesaleTransactions = \App\Models\Transaction::where('transaction_type', 'wholesale')
-            ->with('cashier')
+            ->with(['cashier', 'installments'])
             ->latest()
             ->take(10)
             ->get();
 
-        return view('admin.dashboard', compact('products', 'cashiers', 'categories', 'settings', 'wholesaleTransactions'));
+        // Ambil data rekap pelanggan nota partai & piutang berjalan mereka
+        $wholesaleCustomers = \App\Models\Transaction::where('transaction_type', 'wholesale')
+            ->whereNotNull('customer_name')
+            ->where('customer_name', '!=', '')
+            ->with('installments')
+            ->get()
+            ->groupBy(fn($t) => strtolower(trim($t->customer_name)))
+            ->map(function ($group) {
+                $first = $group->first();
+                $unpaidTrx = $group->where('payment_status', 'unpaid');
+                $outstandingDebt = $unpaidTrx->sum(function ($t) {
+                    return max(0, $t->total_price - $t->installments->sum('amount'));
+                });
+                $unpaidCount = $unpaidTrx->count();
+                $lastPhone = $group->whereNotNull('customer_phone')->where('customer_phone', '!=', '')->first()?->customer_phone;
+
+                return [
+                    'name' => $first->customer_name,
+                    'phone' => $lastPhone ?? '',
+                    'outstanding_debt' => (float) $outstandingDebt,
+                    'unpaid_count' => (int) $unpaidCount,
+                    'total_orders' => (int) $group->count(),
+                ];
+            })
+            ->values();
+
+        return view('admin.dashboard', compact('products', 'cashiers', 'categories', 'settings', 'wholesaleTransactions', 'wholesaleCustomers'));
     }
 
     public function kasir(Request $request)
@@ -152,7 +178,13 @@ class DashboardController extends Controller
             fn() => \App\Models\Category::select('id', 'name')->get()
         );
 
-        return view('kasir.dashboard', compact('products', 'todayTransactionsMapped', 'todayExpensesMapped', 'categories'));
+        // Ambil daftar agen B2B / Tour Leader aktif untuk pilihan komisi afiliasi di kasir
+        $affiliates = \App\Models\Affiliate::active()
+            ->select('id', 'name', 'code', 'agency_name', 'commission_rate_percentage')
+            ->orderBy('name', 'asc')
+            ->get();
+
+        return view('kasir.dashboard', compact('products', 'todayTransactionsMapped', 'todayExpensesMapped', 'categories', 'affiliates'));
     }
 
     /**

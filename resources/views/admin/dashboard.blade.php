@@ -43,33 +43,35 @@
                      style="display: none;">
                     
                     <button type="button" @click="setTab('inventory', 'Stok Inventori')" 
-                            class="w-full text-left px-3 py-2.5 text-xs font-bold rounded-lg transition duration-150 hover:bg-slate-50 dark:hover:bg-dp-700 text-slate-700 dark:text-purple-200 flex items-center gap-2">
-                        <span>📦</span> <span>Stok Inventori</span>
+                            class="w-full text-left px-3 py-2 text-xs font-bold rounded-lg transition duration-150 hover:bg-slate-50 dark:hover:bg-dp-700 text-slate-700 dark:text-purple-200 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                        <span>Stok Inventori</span>
                     </button>
                     <button type="button" @click="setTab('cashiers', 'Kelola Kasir')" 
-                            class="w-full text-left px-3 py-2.5 text-xs font-bold rounded-lg transition duration-150 hover:bg-slate-50 dark:hover:bg-dp-700 text-slate-700 dark:text-purple-200 flex items-center gap-2">
-                        <span>👥</span> <span>Kelola Kasir</span>
+                            class="w-full text-left px-3 py-2 text-xs font-bold rounded-lg transition duration-150 hover:bg-slate-50 dark:hover:bg-dp-700 text-slate-700 dark:text-purple-200 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                        <span>Kelola Kasir</span>
                     </button>
                     <button type="button" @click="setTab('categories', 'Kelola Kategori')" 
-                            class="w-full text-left px-3 py-2.5 text-xs font-bold rounded-lg transition duration-150 hover:bg-slate-50 dark:hover:bg-dp-700 text-slate-700 dark:text-purple-200 flex items-center gap-2">
-                        <span>🏷️</span> <span>Kelola Kategori</span>
+                            class="w-full text-left px-3 py-2 text-xs font-bold rounded-lg transition duration-150 hover:bg-slate-50 dark:hover:bg-dp-700 text-slate-700 dark:text-purple-200 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+                        <span>Kelola Kategori</span>
                     </button>
                     <button type="button" @click="setTab('wholesale', 'Nota Partai')" 
-                            class="w-full text-left px-3 py-2.5 text-xs font-bold rounded-lg transition duration-150 hover:bg-slate-50 dark:hover:bg-dp-700 text-slate-700 dark:text-purple-200 flex items-center gap-2">
-                        <span>📝</span> <span>Nota Partai</span>
-                    </button>
-                    <button type="button" @click="setTab('receivables', 'Kelola Piutang')" 
-                            class="w-full text-left px-3 py-2.5 text-xs font-bold rounded-lg transition duration-150 hover:bg-slate-50 dark:hover:bg-dp-700 text-slate-700 dark:text-purple-200 flex items-center gap-2">
-                        <span>💳</span> <span>Kelola Piutang</span>
+                            class="w-full text-left px-3 py-2 text-xs font-bold rounded-lg transition duration-150 hover:bg-slate-50 dark:hover:bg-dp-700 text-slate-700 dark:text-purple-200 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <span>Nota Partai</span>
                     </button>
                     <button type="button" @click="setTab('settings', 'Pengaturan Shop')" 
-                            class="w-full text-left px-3 py-2.5 text-xs font-bold rounded-lg transition duration-150 hover:bg-slate-50 dark:hover:bg-dp-700 text-slate-700 dark:text-purple-200 flex items-center gap-2">
-                        <span>⚙️</span> <span>Pengaturan Shop</span>
+                            class="w-full text-left px-3 py-2 text-xs font-bold rounded-lg transition duration-150 hover:bg-slate-50 dark:hover:bg-dp-700 text-slate-700 dark:text-purple-200 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <span>Pengaturan Shop</span>
                     </button>
                     <hr class="border-slate-100 dark:border-dp-700 my-0.5">
                     <a href="{{ route('admin.orders.index') }}"
-                       class="w-full text-left px-3 py-2.5 text-xs font-bold rounded-lg transition duration-150 hover:bg-emerald-50 dark:hover:bg-dp-700 text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
-                        <span>🛍️</span> <span>Pesanan Online</span>
+                       class="w-full text-left px-3 py-2 text-xs font-bold rounded-lg transition duration-150 hover:bg-emerald-50 dark:hover:bg-dp-700 text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                        <span>Pesanan Online</span>
                     </a>
                 </div>
             </div>
@@ -256,6 +258,7 @@
             return {
         activeTab: 'inventory',
         showProductModal: false,
+        showDiagnoseModal: false,
         showCashierModal: false,
         isEditingCashier: false,
         editingCashierId: null,
@@ -284,6 +287,8 @@
         costPricePct: 50,       // default 50% dari harga jual
         
         // Wholesale Form State
+        wholesaleCustomersList: @js($wholesaleCustomers ?? []),
+        customerSuggestionsOpen: false,
         wholesaleForm: {
             customer_name: '',
             customer_phone: '',
@@ -304,7 +309,12 @@
 
         // Receivables / Piutang State
         receivables: [],
+        receivablesSubTab: 'active', // 'active' | 'history' | 'logs'
+        receivablesHistory: [],
+        receivablesLogs: [],
+        receivablesHistorySearch: '',
         selectedCustomer: null,
+        selectedHistoryTrx: null,
         showInstallmentModal: false,
         installmentForm: { transaction_id: null, transaction_code: '', amount: '', payment_method: 'Tunai', note: '', max_amount: 0 },
 
@@ -344,15 +354,21 @@
             this.$watch('activeTab', value => {
                 if (value === 'receivables') {
                     this.fetchReceivables();
+                    this.fetchReceivablesHistory();
                 }
             });
             if (this.activeTab === 'receivables') {
                 this.fetchReceivables();
+                this.fetchReceivablesHistory();
             }
             // Keep hash in sync when tab changes via event
             window.addEventListener('change-tab', (e) => {
                 this.activeTab = e.detail;
                 window.location.hash = e.detail;
+                if (e.detail === 'receivables') {
+                    this.fetchReceivables();
+                    this.fetchReceivablesHistory();
+                }
             });
         },
 
@@ -360,16 +376,55 @@
             fetch('/admin/receivables')
                 .then(res => res.json())
                 .then(data => {
-                    this.receivables = data;
+                    this.receivables = Array.isArray(data) ? data : [];
                     // If we have a selected customer, refresh their data too
                     if (this.selectedCustomer) {
-                        const refreshed = data.find(c => c.customer_name.toLowerCase() === this.selectedCustomer.customer_name.toLowerCase());
+                        const refreshed = this.receivables.find(c => c.customer_name.toLowerCase() === this.selectedCustomer.customer_name.toLowerCase());
                         this.selectedCustomer = refreshed || null;
                     }
                 })
                 .catch(err => {
                     this.showToast('Gagal memuat data piutang!', 'error');
                 });
+        },
+
+        fetchReceivablesHistory() {
+            fetch('/admin/receivables/history')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        this.receivablesHistory = data.history || [];
+                        this.receivablesLogs = data.logs || [];
+                    }
+                })
+                .catch(err => {
+                    console.error('Gagal memuat riwayat piutang:', err);
+                });
+        },
+
+        get filteredReceivablesHistory() {
+            if (!this.receivablesHistorySearch) {
+                return this.receivablesHistory;
+            }
+            const q = this.receivablesHistorySearch.toLowerCase().trim();
+            return this.receivablesHistory.filter(t => 
+                (t.customer_name && t.customer_name.toLowerCase().includes(q)) ||
+                (t.transaction_code && t.transaction_code.toLowerCase().includes(q)) ||
+                (t.customer_phone && t.customer_phone.includes(q))
+            );
+        },
+
+        get filteredReceivablesLogs() {
+            if (!this.receivablesHistorySearch) {
+                return this.receivablesLogs;
+            }
+            const q = this.receivablesHistorySearch.toLowerCase().trim();
+            return this.receivablesLogs.filter(l => 
+                (l.customer_name && l.customer_name.toLowerCase().includes(q)) ||
+                (l.transaction_code && l.transaction_code.toLowerCase().includes(q)) ||
+                (l.payment_method && l.payment_method.toLowerCase().includes(q)) ||
+                (l.note && l.note.toLowerCase().includes(q))
+            );
         },
 
         openInstallmentModal(trx) {
@@ -421,6 +476,20 @@
                     this.showToast(data.message, 'success');
                     this.showInstallmentModal = false;
                     this.fetchReceivables();
+                    this.fetchReceivablesHistory();
+
+                    // Sinkronisasi status Nota Partai langsung tanpa perlu refresh manual
+                    const trxId = data.transaction_id || this.installmentForm.transaction_id;
+                    if (trxId && (data.is_paid || this.installmentForm.amount >= this.installmentForm.max_amount)) {
+                        const statusEl = document.getElementById('wholesale-status-' + trxId);
+                        if (statusEl) {
+                            statusEl.innerHTML = '<span class="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">Lunas</span>';
+                        }
+                        const btnEl = document.getElementById('wholesale-action-btn-' + trxId);
+                        if (btnEl) {
+                            btnEl.innerHTML = '';
+                        }
+                    }
                 }
             })
             .catch(err => {
@@ -491,19 +560,213 @@
             });
         },
 
+        calculateSearchScore(product, rawQuery) {
+            if (!rawQuery) return 1;
+            const q = rawQuery.toLowerCase().trim();
+            if (!q) return 1;
+
+            const name = (product.name || '').toLowerCase().trim();
+            const sku = (product.sku || '').toLowerCase().trim();
+
+            // 1. Exact match (Prioritas Mutlak #1)
+            if (name === q) return 100000;
+            if (sku === q) return 95000;
+
+            // 2. Starts with query (Prefix match)
+            if (name.startsWith(q)) {
+                return 80000 - (name.length - q.length) * 10;
+            }
+            if (sku.startsWith(q)) {
+                return 75000 - (sku.length - q.length) * 10;
+            }
+
+            // 3. Full query substring contains
+            const nameSubIndex = name.indexOf(q);
+            if (nameSubIndex !== -1) {
+                // Word boundary bonus (e.g. "kurma ajwa" contains "ajwa" at a word boundary)
+                const isWordBoundary = nameSubIndex === 0 || name[nameSubIndex - 1] === ' ';
+                const boundaryBonus = isWordBoundary ? 20000 : 0;
+                return 50000 + boundaryBonus - (nameSubIndex * 150) - (name.length - q.length) * 5;
+            }
+
+            if (sku.indexOf(q) !== -1) {
+                return 40000 - (sku.indexOf(q) * 50);
+            }
+
+            // 4. Multi-word or Fuzzy Word Matching
+            const qWords = q.split(/\s+/).filter(Boolean);
+            if (qWords.length === 0) return 0;
+
+            const nameWords = name.split(/\s+/).filter(Boolean);
+            const skuWords = sku.split(/\s+/).filter(Boolean);
+
+            let totalWordScore = 0;
+            let matchedWordsCount = 0;
+            const usedNameWordIndices = new Set();
+            const usedSkuWordIndices = new Set();
+
+            for (let qi = 0; qi < qWords.length; qi++) {
+                const qWord = qWords[qi];
+                let bestScore = 0;
+                let bestType = null;
+                let bestIdx = -1;
+
+                // Cek ke setiap kata di nama produk yang BELUM dipasangkan
+                for (let i = 0; i < nameWords.length; i++) {
+                    if (usedNameWordIndices.has(i)) continue;
+                    const tWord = nameWords[i];
+
+                    // Exact word match
+                    if (tWord === qWord) {
+                        const score = 10000 - (i * 100);
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestType = 'name';
+                            bestIdx = i;
+                        }
+                        continue;
+                    }
+
+                    // Word starts with query word
+                    if (tWord.startsWith(qWord)) {
+                        const score = 7000 - (tWord.length - qWord.length) * 30 - (i * 100);
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestType = 'name';
+                            bestIdx = i;
+                        }
+                        continue;
+                    }
+
+                    // Query word starts with target word (if query word is longer)
+                    if (qWord.startsWith(tWord) && tWord.length >= 3) {
+                        const score = 5000 - (qWord.length - tWord.length) * 40 - (i * 100);
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestType = 'name';
+                            bestIdx = i;
+                        }
+                        continue;
+                    }
+
+                    // Substring in word
+                    if (tWord.includes(qWord)) {
+                        const score = 4000 - (tWord.length - qWord.length) * 20 - (i * 100);
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestType = 'name';
+                            bestIdx = i;
+                        }
+                        continue;
+                    }
+
+                    // Typo tolerance (Levenshtein distance)
+                    const maxAllowedTypo = qWord.length <= 4 ? 1 : 2;
+                    if (Math.abs(tWord.length - qWord.length) <= maxAllowedTypo) {
+                        const dist = this.levenshteinDistance(qWord, tWord);
+                        if (dist <= maxAllowedTypo) {
+                            const similarity = 1 - (dist / Math.max(qWord.length, tWord.length));
+                            const score = Math.round(3000 * similarity) - (dist * 600) - (i * 100);
+                            if (score > bestScore) {
+                                bestScore = score;
+                                bestType = 'name';
+                                bestIdx = i;
+                            }
+                        }
+                    }
+                }
+
+                // Jika belum cocok di nama, cek ke SKU
+                if (bestScore === 0) {
+                    for (let j = 0; j < skuWords.length; j++) {
+                        if (usedSkuWordIndices.has(j)) continue;
+                        const sWord = skuWords[j];
+                        if (sWord === qWord || sWord.startsWith(qWord) || sWord.includes(qWord)) {
+                            const score = 2500;
+                            if (score > bestScore) {
+                                bestScore = score;
+                                bestType = 'sku';
+                                bestIdx = j;
+                            }
+                        }
+                    }
+                }
+
+                if (bestScore > 0) {
+                    matchedWordsCount++;
+                    totalWordScore += bestScore;
+                    if (bestType === 'name') usedNameWordIndices.add(bestIdx);
+                    if (bestType === 'sku') usedSkuWordIndices.add(bestIdx);
+                }
+            }
+
+            // Seluruh kata dalam query wajib cocok (1-to-1)
+            if (matchedWordsCount === qWords.length) {
+                let orderBonus = 0;
+                let lastIdx = -1;
+                let inOrder = true;
+                for (const qWord of qWords) {
+                    const idx = name.indexOf(qWord);
+                    if (idx !== -1) {
+                        if (idx < lastIdx) {
+                            inOrder = false;
+                            break;
+                        }
+                        lastIdx = idx;
+                    }
+                }
+                if (inOrder && lastIdx !== -1) {
+                    orderBonus = 4000;
+                }
+
+                const lengthPenalty = Math.min(1000, name.length * 5);
+                return Math.max(1, 10000 + totalWordScore + orderBonus - lengthPenalty);
+            }
+
+            return 0; // Tidak cocok
+        },
+
         get filteredProducts() {
-            return this.products.filter(p => {
-                const matchesCategory = this.activeCategory === 'Semua' || p.category === this.activeCategory;
+            const currentActive = String(this.activeCategory || 'Semua').trim().toLowerCase();
+            const trimmedSearch = (this.search || '').trim();
+
+            // 1. Filter kategori dan status aktif terlebih dahulu
+            const baseFiltered = this.products.filter(p => {
+                const productCat = p.category ? String(p.category).trim().toLowerCase() : '';
+                const matchesCategory = currentActive === 'semua' || productCat === currentActive;
                 if (!matchesCategory) return false;
-                
+
                 const isAct = p.is_active !== undefined ? Boolean(p.is_active) : true;
                 if (this.statusFilter === 'active' && !isAct) return false;
                 if (this.statusFilter === 'inactive' && isAct) return false;
 
-                const matchesName = p.name ? this.fuzzyMatch(p.name, this.search) : false;
-                const matchesSku = p.sku ? this.fuzzyMatch(p.sku, this.search) : false;
-                return matchesName || matchesSku;
+                return true;
             });
+
+            // 2. Jika tidak ada teks pencarian, kembalikan daftar berurutan normal
+            if (!trimmedSearch) {
+                return baseFiltered;
+            }
+
+            // 3. Hitung skor relevansi & kemiripan pencarian
+            const scoredList = [];
+            for (let i = 0; i < baseFiltered.length; i++) {
+                const p = baseFiltered[i];
+                const score = this.calculateSearchScore(p, trimmedSearch);
+                if (score > 0) {
+                    scoredList.push({ product: p, score: score, origIndex: i });
+                }
+            }
+
+            // 4. Urutkan berdasarkan skor relevansi tertinggi (paling mirip di urutan teratas)
+            scoredList.sort((a, b) => {
+                if (b.score !== a.score) {
+                    return b.score - a.score;
+                }
+                return a.origIndex - b.origIndex;
+            });
+
+            return scoredList.map(item => item.product);
         },
 
         get totalPages() {
@@ -518,6 +781,14 @@
             const start = (this.currentPage - 1) * this.itemsPerPage;
             const end = start + this.itemsPerPage;
             return this.filteredProducts.slice(start, end);
+        },
+
+        get anomalyProducts() {
+            return this.products.filter(p => {
+                const cost = parseFloat(p.cost_price) || 0;
+                const sell = parseFloat(p.selling_price) || 0;
+                return cost > 0 && sell > 0 && sell < cost;
+            });
         },
 
         async toggleProductActive(product) {
@@ -859,6 +1130,14 @@
             }
             if (this.newProduct.is_bundle && (!this.newProduct.bundle_items || this.newProduct.bundle_items.length === 0)) {
                 this.showToast('Silakan tambahkan minimal satu produk komponen untuk bundling!', 'warning');
+                return;
+            }
+
+            // Validasi: Harga jual tidak boleh lebih rendah dari harga modal
+            const sellPrice = parseFloat(this.newProduct.selling_price) || 0;
+            const costPrice = parseFloat(this.newProduct.cost_price) || 0;
+            if (sellPrice < costPrice) {
+                this.showToast('Harga jual (Rp ' + this.formatNumberOnly(sellPrice) + ') tidak boleh lebih rendah dari harga modal (Rp ' + this.formatNumberOnly(costPrice) + ')! Periksa kembali input Anda.', 'error');
                 return;
             }
 
@@ -1249,6 +1528,31 @@
             );
         },
 
+        get filteredWholesaleCustomers() {
+            if (!this.wholesaleForm.customer_name || !this.wholesaleForm.customer_name.trim()) {
+                return this.wholesaleCustomersList.slice(0, 10);
+            }
+            const q = this.wholesaleForm.customer_name.toLowerCase().trim();
+            return this.wholesaleCustomersList.filter(c => 
+                (c.name && c.name.toLowerCase().includes(q)) || 
+                (c.phone && c.phone.includes(q))
+            ).slice(0, 10);
+        },
+
+        get activeCustomerDebt() {
+            if (!this.wholesaleForm.customer_name || !this.wholesaleForm.customer_name.trim()) return null;
+            const q = this.wholesaleForm.customer_name.toLowerCase().trim();
+            return this.wholesaleCustomersList.find(c => c.name.toLowerCase().trim() === q) || null;
+        },
+
+        selectWholesaleCustomer(customer) {
+            this.wholesaleForm.customer_name = customer.name;
+            if (customer.phone) {
+                this.wholesaleForm.customer_phone = customer.phone;
+            }
+            this.customerSuggestionsOpen = false;
+        },
+
         shareWholesaleToWa() {
             if (!this.wholesaleForm.customer_name.trim()) {
                 this.showToast('Nama pelanggan wajib diisi untuk share WA!', 'warning');
@@ -1345,7 +1649,19 @@
             return this.products.filter(p => 
                 (p.name && p.name.toLowerCase().includes(q)) || 
                 (p.sku && p.sku.toLowerCase().includes(q))
-            ).slice(0, 5);
+            ).sort((a, b) => {
+                const aName = (a.name || '').toLowerCase();
+                const bName = (b.name || '').toLowerCase();
+                const aExact = aName === q;
+                const bExact = bName === q;
+                if (aExact !== bExact) return bExact ? 1 : -1;
+
+                const aStart = aName.startsWith(q);
+                const bStart = bName.startsWith(q);
+                if (aStart !== bStart) return bStart ? 1 : -1;
+
+                return aName.length - bName.length;
+            }).slice(0, 8);
         },
 
         selectWholesaleProduct(idx, product) {
@@ -1514,7 +1830,17 @@
                     .then(data => {
                         if (data.success) {
                             this.showToast(data.message, 'success');
-                            setTimeout(() => location.reload(), 1000);
+                            const statusEl = document.getElementById('wholesale-status-' + trxId);
+                            if (statusEl) {
+                                statusEl.innerHTML = '<span class="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">Lunas</span>';
+                            }
+                            const btnEl = document.getElementById('wholesale-action-btn-' + trxId);
+                            if (btnEl) {
+                                btnEl.innerHTML = '';
+                            }
+                            if (typeof this.fetchReceivables === 'function') {
+                                this.fetchReceivables();
+                            }
                         }
                     })
                     .catch(err => {
@@ -1578,6 +1904,18 @@
                     <p class="text-sm text-slate-400 dark:text-purple-400 font-medium mt-1">Kelola stok, harga, dan SKU semua produk kurma</p>
                 </div> -->
                 <div class="flex items-center gap-2 flex-shrink-0">
+                    <button type="button"
+                            @click="showDiagnoseModal = true"
+                            :class="anomalyProducts.length > 0 ? 'bg-rose-50 border-2 border-rose-400 text-rose-700 hover:bg-rose-100 shadow-rose-600/10' : 'bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100'"
+                            class="px-4 py-3 rounded-xl font-bold text-sm transition duration-150 flex items-center gap-2 shadow-md whitespace-nowrap">
+                        <svg class="h-4 w-4" :class="anomalyProducts.length > 0 ? 'text-rose-600' : 'text-slate-500'" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span>Diagnosa Harga</span>
+                        <template x-if="anomalyProducts.length > 0">
+                            <span class="px-2 py-0.5 rounded-full text-xs font-black bg-rose-600 text-white" x-text="anomalyProducts.length"></span>
+                        </template>
+                    </button>
                     <a href="{{ route('admin.products.fast-upload') }}"
                        class="px-5 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold text-sm transition duration-150 flex items-center gap-2 shadow-md shadow-violet-600/20 whitespace-nowrap">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -1595,6 +1933,28 @@
                     </button>
                 </div>
             </div>
+
+            <!-- Alert Banner jika ada anomali harga jual < modal -->
+            <template x-if="anomalyProducts.length > 0">
+                <div class="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm animate-fadeIn">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center font-black text-lg shrink-0">
+                            <svg class="w-5 h-5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h4 class="font-extrabold text-rose-900 text-sm">
+                                Peringatan Diagnosa: Terdeteksi <span class="underline" x-text="anomalyProducts.length + ' Produk'"></span> dengan Harga Jual di Bawah Harga Modal!
+                            </h4>
+                            <p class="text-xs text-rose-700">Ada produk yang berpotensi salah ketik harga modal (modal lebih tinggi dari harga jual). Segera periksa dan perbaiki.</p>
+                        </div>
+                    </div>
+                    <button type="button" @click="showDiagnoseModal = true" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-xl shadow-md transition whitespace-nowrap active:scale-95">
+                        Lihat & Perbaiki Sekarang
+                    </button>
+                </div>
+            </template>
 
             <!-- Category and Search Panel -->
             <div class="admin-card bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
@@ -1666,7 +2026,7 @@
                                          <div class="flex items-center gap-2">
                                              <span x-text="p.name"></span>
                                              <template x-if="p.is_bundle">
-                                                 <span class="text-[9px] bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-extrabold uppercase px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-800">📦 Paket</span>
+                                                 <span class="text-[9px] bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-extrabold uppercase px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-800">Paket</span>
                                              </template>
                                          </div>
                                      </td>
@@ -1703,7 +2063,7 @@
                                                 <!-- Shop Active Status Badge -->
                                                 <template x-if="p.is_active_in_shop">
                                                     <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-bold rounded bg-sky-50 text-sky-700 border border-sky-100">
-                                                        🌐 Shop Aktif
+                                                        Shop Aktif
                                                     </span>
                                                 </template>
                                             </div>
@@ -1939,14 +2299,61 @@
                     <!-- Customer Information Card -->
                     <div class="admin-card bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-4">
                         <span class="text-xs font-black text-emerald-800 uppercase tracking-wider block border-b border-slate-100 pb-2">Informasi Penerima / Pelanggan</span>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Nama Pelanggan (Wajib)</label>
-                                <input type="text" 
-                                       x-model="wholesaleForm.customer_name" 
-                                       placeholder="Contoh: Ibu Fatimah / Toko Kurma Berkah" 
-                                       class="w-full border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 font-semibold shadow-inner text-sm py-2.5 px-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                            <!-- Nama Pelanggan with Live Autocomplete -->
+                            <div class="relative" @click.away="customerSuggestionsOpen = false">
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Pelanggan (Wajib)</label>
+                                    <span class="text-[10px] text-slate-400 font-semibold" x-text="wholesaleCustomersList.length + ' Pelanggan Terdaftar'"></span>
+                                </div>
+                                <div class="relative">
+                                    <input type="text" 
+                                           x-model="wholesaleForm.customer_name" 
+                                           @focus="customerSuggestionsOpen = true"
+                                           @input="customerSuggestionsOpen = true"
+                                           placeholder="Ketik nama toko / pelanggan..." 
+                                           class="w-full border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 font-semibold shadow-inner text-sm py-2.5 px-4 pr-9">
+                                    <div class="absolute right-3 top-3 text-slate-400 pointer-events-none">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </div>
+                                </div>
+
+                                <!-- Customer Autocomplete Dropdown -->
+                                <div x-show="customerSuggestionsOpen && filteredWholesaleCustomers.length > 0"
+                                     x-cloak
+                                     style="position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 9999; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 16px; box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.15);"
+                                     class="overflow-hidden">
+                                    <div class="p-2 border-b border-slate-100 bg-slate-50 text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
+                                        Pilih Pelanggan Tersimpan
+                                    </div>
+                                    <div class="max-h-52 overflow-y-auto divide-y divide-slate-100">
+                                        <template x-for="c in filteredWholesaleCustomers" :key="c.name">
+                                            <div @click="selectWholesaleCustomer(c)" 
+                                                 class="p-2.5 hover:bg-emerald-50 transition cursor-pointer flex items-center justify-between gap-3 group">
+                                                <div>
+                                                    <span class="font-extrabold text-xs text-slate-800 group-hover:text-emerald-900 block" x-text="c.name"></span>
+                                                    <span class="text-[10px] text-slate-400" x-text="c.phone ? 'WA: ' + c.phone : 'Tanpa No. WA'"></span>
+                                                </div>
+                                                <div class="text-right">
+                                                    <template x-if="c.outstanding_debt > 0">
+                                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-700 block whitespace-nowrap"
+                                                              x-text="'Utang: ' + formatRupiah(c.outstanding_debt)"></span>
+                                                    </template>
+                                                    <template x-if="c.outstanding_debt <= 0">
+                                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 block whitespace-nowrap">
+                                                            Lunas
+                                                        </span>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
                             </div>
+
+                            <!-- Nomor WhatsApp -->
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Nomor WhatsApp Pelanggan (Opsional)</label>
                                 <input type="text" 
@@ -1954,6 +2361,39 @@
                                        placeholder="Contoh: 081234567890" 
                                        class="w-full border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 font-semibold shadow-inner text-sm py-2.5 px-4">
                             </div>
+
+                            <!-- BANNER SISA HUTANG BERJALAN PELANGGAN TERPILIH -->
+                            <template x-if="activeCustomerDebt && activeCustomerDebt.outstanding_debt > 0">
+                                <div class="col-span-full p-3.5 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-800 flex items-center justify-center shrink-0">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <span class="font-extrabold text-slate-800" x-text="activeCustomerDebt.name"></span>
+                                            <span class="text-slate-600"> memiliki sisa utang piutang berjalan sebesar:</span>
+                                            <strong class="text-rose-600 font-black text-sm ml-1" x-text="formatRupiah(activeCustomerDebt.outstanding_debt)"></strong>
+                                            <span class="text-slate-500 font-semibold text-[11px] block sm:inline sm:ml-1" x-text="'(' + activeCustomerDebt.unpaid_count + ' nota tempo aktif)'"></span>
+                                        </div>
+                                    </div>
+                                    <a :href="'{{ route('admin.purchases.index', ['tab' => 'receivables']) }}'" 
+                                       target="_blank"
+                                       class="shrink-0 px-3 py-1.5 bg-white hover:bg-amber-100 text-amber-900 font-extrabold text-xs rounded-xl border border-amber-300 shadow-sm transition flex items-center gap-1 self-start sm:self-auto">
+                                        <span>Cek di Kelola Piutang</span>
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                    </a>
+                                </div>
+                            </template>
+                            
+                            <!-- JIKA PELANGGAN SUDAH TERDAFTAR DAN TIDAK MEMILIKI UTANG -->
+                            <template x-if="activeCustomerDebt && activeCustomerDebt.outstanding_debt <= 0">
+                                <div class="col-span-full p-2.5 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 flex items-center gap-2 text-xs text-emerald-800">
+                                    <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                    <span>Pelanggan terdaftar: <strong><span x-text="activeCustomerDebt.name"></span></strong> (Tidak ada tunggakan utang / Lunas).</span>
+                                </div>
+                            </template>
                         </div>
                     </div>
 
@@ -2141,9 +2581,9 @@
                         <div class="flex flex-col gap-1 mt-1">
                             <span class="text-xs font-bold text-slate-500 uppercase">Metode Pembayaran</span>
                             <select x-model="wholesaleForm.payment_method" class="w-full border-slate-200 rounded-xl text-xs font-bold focus:border-emerald-500 focus:ring-emerald-500 py-2.5 px-3 shadow-inner bg-slate-50 text-slate-700">
-                                <option value="Tunai">💵 Uang Tunai (Cash)</option>
-                                <option value="Transfer Bank">🏢 Transfer Rekening Bank</option>
-                                <option value="Piutang / Tempo">⏱️ Piutang / Tempo</option>
+                                <option value="Tunai">Uang Tunai (Cash)</option>
+                                <option value="Transfer Bank">Transfer Rekening Bank</option>
+                                <option value="Piutang / Tempo">Piutang / Tempo</option>
                             </select>
                         </div>
 
@@ -2168,6 +2608,30 @@
                             <span :class="calculateWholesaleRemaining() >= 0 ? 'text-rose-600 font-extrabold' : 'text-emerald-700 font-extrabold'" 
                                   x-text="formatRupiah(Math.abs(calculateWholesaleRemaining()))"></span>
                         </div>
+
+                        <!-- Akumulasi Piutang Simulation Box -->
+                        <template x-if="wholesaleForm.payment_method === 'Piutang / Tempo' && activeCustomerDebt && activeCustomerDebt.outstanding_debt > 0">
+                            <div class="mt-2 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs flex flex-col gap-1.5 animate-fadeIn">
+                                <div class="flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-300">
+                                    <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                    </svg>
+                                    <span>Akumulasi Piutang Berjalan:</span>
+                                </div>
+                                <div class="flex justify-between items-center text-slate-500 mt-0.5">
+                                    <span>Utang Sebelumnya:</span>
+                                    <span class="font-bold text-slate-700" x-text="formatRupiah(activeCustomerDebt.outstanding_debt)"></span>
+                                </div>
+                                <div class="flex justify-between items-center text-slate-500">
+                                    <span>Sisa Tagihan Nota Ini:</span>
+                                    <span class="font-bold text-slate-700" x-text="formatRupiah(Math.max(0, calculateWholesaleRemaining()))"></span>
+                                </div>
+                                <div class="flex justify-between items-center border-t border-amber-500/20 pt-1.5 font-black text-rose-700">
+                                    <span>Total Akumulasi Utang:</span>
+                                    <span class="text-sm font-black" x-text="formatRupiah(activeCustomerDebt.outstanding_debt + Math.max(0, calculateWholesaleRemaining()))"></span>
+                                </div>
+                            </div>
+                        </template>
 
                     </div>
 
@@ -2246,8 +2710,8 @@
                                     <td class="px-5 py-4 text-right text-emerald-700 font-extrabold whitespace-nowrap">
                                         Rp {{ number_format($wTrx->total_price, 0, ',', '.') }}
                                     </td>
-                                    <td class="px-5 py-4 text-center whitespace-nowrap">
-                                        @if(($wTrx->payment_status ?? 'paid') === 'paid')
+                                    <td id="wholesale-status-{{ $wTrx->id }}" class="px-5 py-4 text-center whitespace-nowrap">
+                                        @if($wTrx->is_paid)
                                             <span class="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">Lunas</span>
                                         @else
                                             <span class="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-rose-100 text-rose-800 border border-rose-200">Tempo</span>
@@ -2258,33 +2722,35 @@
                                             <!-- Print Screen -->
                                             <a href="{{ route('admin.wholesale-transactions.print', $wTrx) }}" 
                                                target="_blank"
-                                               class="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition duration-150 text-xs text-center"
+                                               class="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition duration-150 text-xs text-center inline-flex items-center justify-center"
                                                title="Cetak Nota (A4)" style="text-decoration: none;">
-                                                🖨️
+                                                <svg class="w-3.5 h-3.5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                                             </a>
                                             <!-- Download PDF -->
                                             <a href="{{ route('admin.wholesale-transactions.print', [$wTrx, 'format' => 'pdf']) }}" 
                                                target="_blank"
-                                               class="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 transition duration-150 text-xs text-center"
+                                               class="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 transition duration-150 text-xs text-center inline-flex items-center justify-center"
                                                title="Unduh PDF" style="text-decoration: none;">
-                                                📥
+                                                <svg class="w-3.5 h-3.5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                             </a>
                                             <!-- Delete Transaction -->
                                             <button type="button"
                                                     @click="deleteWholesaleTransaction({{ $wTrx->id }})"
-                                                    class="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 transition duration-150 text-xs text-center"
+                                                    class="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 transition duration-150 text-xs text-center inline-flex items-center justify-center"
                                                     title="Hapus Transaksi">
-                                                🗑️
+                                                <svg class="w-3.5 h-3.5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                             </button>
                                             <!-- Quick Mark As Paid -->
-                                            @if(($wTrx->payment_status ?? 'paid') !== 'paid')
-                                                <button type="button"
-                                                        @click="markWholesalePaid({{ $wTrx->id }})"
-                                                        class="px-2.5 py-1.5 text-[10px] font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg transition duration-150 shadow-sm"
-                                                        title="Tandai Lunas">
-                                                    Tandai Lunas
-                                                </button>
-                                            @endif
+                                            <span id="wholesale-action-btn-{{ $wTrx->id }}">
+                                                @if(!$wTrx->is_paid)
+                                                    <button type="button"
+                                                            @click="markWholesalePaid({{ $wTrx->id }})"
+                                                            class="px-2.5 py-1.5 text-[10px] font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg transition duration-150 shadow-sm"
+                                                            title="Tandai Lunas">
+                                                        Tandai Lunas
+                                                    </button>
+                                                @endif
+                                            </span>
                                         </div>
                                     </td>
                                 </tr>
@@ -2336,7 +2802,46 @@
                 }
             </style>
 
-            <div class="receivables-flex-container">
+            <!-- Sub-tab Navigation for Kelola Piutang -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="inline-flex p-1.5 bg-slate-100 rounded-2xl border border-slate-200/80 text-xs font-bold gap-1">
+                    <button type="button" 
+                            @click="receivablesSubTab = 'active'"
+                            :class="receivablesSubTab === 'active' ? 'bg-white text-emerald-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
+                            class="px-4 py-2 rounded-xl transition flex items-center gap-2">
+                        <span>Piutang Aktif</span>
+                        <template x-if="receivables.length > 0">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] bg-rose-100 text-rose-700 font-extrabold" x-text="receivables.length"></span>
+                        </template>
+                    </button>
+                    <button type="button" 
+                            @click="receivablesSubTab = 'history'; fetchReceivablesHistory()"
+                            :class="receivablesSubTab === 'history' ? 'bg-white text-emerald-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
+                            class="px-4 py-2 rounded-xl transition flex items-center gap-2">
+                        <span>Riwayat Piutang Lunas</span>
+                        <template x-if="receivablesHistory.length > 0">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-800 font-extrabold" x-text="receivablesHistory.length"></span>
+                        </template>
+                    </button>
+                    <button type="button" 
+                            @click="receivablesSubTab = 'logs'; fetchReceivablesHistory()"
+                            :class="receivablesSubTab === 'logs' ? 'bg-white text-emerald-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
+                            class="px-4 py-2 rounded-xl transition flex items-center gap-2">
+                        <span>Log Pembayaran Masuk</span>
+                    </button>
+                </div>
+
+                <!-- Search bar for History / Logs -->
+                <div x-show="receivablesSubTab !== 'active'" class="w-full sm:w-72">
+                    <input type="text"
+                           x-model="receivablesHistorySearch"
+                           placeholder="Cari pelanggan / invoice..."
+                           class="w-full border-slate-200 rounded-xl text-xs font-semibold focus:border-emerald-500 focus:ring-emerald-500 py-2 px-3 shadow-inner bg-white">
+                </div>
+            </div>
+
+            <!-- SUB-TAB 1: PIUTANG AKTIF -->
+            <div x-show="receivablesSubTab === 'active'" class="receivables-flex-container">
                 
                 <!-- LEFT PANEL: Customer List -->
                 <div :class="selectedCustomer ? 'receivables-left-panel split-view' : 'receivables-left-panel full-view'" class="flex flex-col gap-6 shrink-0">
@@ -2378,7 +2883,14 @@
                                     <template x-if="receivables.length === 0">
                                         <tr>
                                             <td colspan="5" class="px-4 py-12 text-center text-slate-400 font-semibold">
-                                                Tidak ada piutang aktif saat ini. Semua lunas! 🎉
+                                                <div class="flex flex-col items-center justify-center gap-2">
+                                                    <span class="font-bold text-slate-700 text-sm">Tidak ada piutang aktif saat ini. Semua tagihan telah lunas.</span>
+                                                    <button type="button" 
+                                                            @click="receivablesSubTab = 'history'; fetchReceivablesHistory()"
+                                                            class="mt-2 px-3.5 py-1.5 text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition">
+                                                        Lihat Riwayat Piutang Lunas &rarr;
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     </template>
@@ -2399,7 +2911,7 @@
                             <button type="button" 
                                     @click="selectedCustomer = null"
                                     class="px-3 py-1.5 text-xs font-bold bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-xl border border-slate-200 transition duration-150">
-                                ✕ Tutup Detail
+                                Tutup Detail
                             </button>
                         </div>
 
@@ -2470,7 +2982,7 @@
                                         <button type="button"
                                                 @click="openInstallmentModal(t)"
                                                 class="px-4 py-2 text-xs font-extrabold bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl transition shadow-md shadow-emerald-700/10">
-                                            💵 Bayar Cicilan
+                                            Bayar Cicilan
                                         </button>
                                     </div>
                                 </div>
@@ -2479,6 +2991,295 @@
                     </div>
                 </div>
 
+            </div>
+
+            <!-- SUB-TAB 2: RIWAYAT PIUTANG LUNAS -->
+            <div x-show="receivablesSubTab === 'history'" class="flex flex-col gap-6" style="display: none;">
+                <div class="admin-card bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-4">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-slate-100 pb-3">
+                        <div>
+                            <span class="text-xs font-black text-emerald-800 uppercase tracking-wider">Riwayat Nota Piutang Yang Telah Lunas</span>
+                            <p class="text-[11px] text-slate-400 font-medium">Daftar transaksi nota partai tempo yang telah selesai dibayar dan dilunasi</p>
+                        </div>
+                        <button type="button" 
+                                @click="fetchReceivablesHistory()" 
+                                class="self-start sm:self-auto px-3 py-1.5 text-xs font-bold bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl border border-slate-200 transition flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span>Segarkan</span>
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto w-full">
+                        <table class="min-w-full divide-y divide-slate-100 text-left text-sm text-slate-700">
+                            <thead class="bg-slate-50 font-bold text-slate-500 uppercase tracking-wider text-xs">
+                                <tr>
+                                    <th class="px-4 py-3">Tanggal Nota</th>
+                                    <th class="px-4 py-3">Kode Nota</th>
+                                    <th class="px-4 py-3">Pelanggan</th>
+                                    <th class="px-4 py-3">Ringkasan Produk</th>
+                                    <th class="px-4 py-3 text-right">Total Belanja</th>
+                                    <th class="px-4 py-3 text-right text-emerald-600">Total Terbayar</th>
+                                    <th class="px-4 py-3 text-center">Status</th>
+                                    <th class="px-4 py-3 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 font-semibold text-slate-800">
+                                <template x-for="t in filteredReceivablesHistory" :key="t.id">
+                                    <tr class="hover:bg-slate-50/50 transition duration-150">
+                                        <td class="px-4 py-3.5 whitespace-nowrap text-xs text-slate-500">
+                                            <div class="font-bold text-slate-700" x-text="t.date"></div>
+                                            <div class="text-[10px] text-slate-400" x-text="'Lunas: ' + (t.last_payment_date || '-')"></div>
+                                        </td>
+                                        <td class="px-4 py-3.5 whitespace-nowrap text-xs font-mono font-bold text-emerald-800" x-text="t.transaction_code"></td>
+                                        <td class="px-4 py-3.5 whitespace-nowrap">
+                                            <div class="font-extrabold text-slate-800" x-text="t.customer_name"></div>
+                                            <div class="text-[10px] text-slate-400" x-text="t.customer_phone ? 'WA: ' + t.customer_phone : '-'"></div>
+                                        </td>
+                                        <td class="px-4 py-3.5 text-xs text-slate-600 max-w-[260px]">
+                                            <div class="flex flex-wrap gap-1">
+                                                <template x-for="(item, idx) in (t.parsed_items || [])" :key="idx">
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-50 text-slate-700 border border-slate-200/80">
+                                                        <span class="font-extrabold text-slate-800" x-text="item.name"></span>
+                                                        <span class="text-emerald-700 font-extrabold ml-1" x-text="'(' + item.display_qty + ')'"></span>
+                                                    </span>
+                                                </template>
+                                                <template x-if="!t.parsed_items || t.parsed_items.length === 0">
+                                                    <span class="truncate block text-slate-600" :title="t.items_summary" x-text="t.items_summary || '-'"></span>
+                                                </template>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3.5 text-right whitespace-nowrap font-bold text-slate-700" x-text="formatRupiah(t.total_price)"></td>
+                                        <td class="px-4 py-3.5 text-right whitespace-nowrap font-extrabold text-emerald-600" x-text="formatRupiah(t.total_paid)"></td>
+                                        <td class="px-4 py-3.5 text-center whitespace-nowrap">
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">Lunas</span>
+                                            <div class="text-[9px] text-slate-400 mt-0.5" x-text="t.installments_count ? t.installments_count + 'x Cicilan' : 'Langsung'"></div>
+                                        </td>
+                                        <td class="px-4 py-3.5 text-center whitespace-nowrap">
+                                            <div class="flex items-center justify-center gap-1.5">
+                                                <button type="button" 
+                                                        @click="selectedHistoryTrx = t"
+                                                        class="px-2.5 py-1.5 text-xs font-bold bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg transition duration-150 border border-slate-200"
+                                                        title="Detail Cicilan">
+                                                    Detail
+                                                </button>
+                                                <a :href="'/admin/wholesale-transactions/' + t.id + '/print'" 
+                                                   target="_blank"
+                                                   class="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition text-xs inline-flex items-center justify-center"
+                                                   title="Cetak Nota">
+                                                    <svg class="w-3.5 h-3.5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                                </a>
+                                                <a :href="'/admin/wholesale-transactions/' + t.id + '/print?format=pdf'" 
+                                                   target="_blank"
+                                                   class="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 transition text-xs inline-flex items-center justify-center"
+                                                   title="Unduh PDF">
+                                                    <svg class="w-3.5 h-3.5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <template x-if="filteredReceivablesHistory.length === 0">
+                                    <tr>
+                                        <td colspan="8" class="px-4 py-12 text-center text-slate-400 font-semibold">
+                                            Belum ada riwayat piutang yang selesai dilunasi.
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUB-TAB 3: LOG PEMBAYARAN CICILAN MASUK -->
+            <div x-show="receivablesSubTab === 'logs'" class="flex flex-col gap-6" style="display: none;">
+                <div class="admin-card bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-4">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-slate-100 pb-3">
+                        <div>
+                            <span class="text-xs font-black text-emerald-800 uppercase tracking-wider">Log Riwayat Pembayaran Cicilan Masuk</span>
+                            <p class="text-[11px] text-slate-400 font-medium">Semua transaksi pembayaran cicilan piutang yang telah diterima dan tercatat di sistem</p>
+                        </div>
+                        <button type="button" 
+                                @click="fetchReceivablesHistory()" 
+                                class="self-start sm:self-auto px-3 py-1.5 text-xs font-bold bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl border border-slate-200 transition flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span>Segarkan</span>
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto w-full">
+                        <table class="min-w-full divide-y divide-slate-100 text-left text-sm text-slate-700">
+                            <thead class="bg-slate-50 font-bold text-slate-500 uppercase tracking-wider text-xs">
+                                <tr>
+                                    <th class="px-4 py-3">Waktu Bayar</th>
+                                    <th class="px-4 py-3">Invoice Nota</th>
+                                    <th class="px-4 py-3">Pelanggan</th>
+                                    <th class="px-4 py-3 text-right">Nominal Masuk</th>
+                                    <th class="px-4 py-3 text-center">Metode</th>
+                                    <th class="px-4 py-3">Keterangan / Catatan</th>
+                                    <th class="px-4 py-3 text-center">Status Nota</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 font-semibold text-slate-800">
+                                <template x-for="l in filteredReceivablesLogs" :key="l.id">
+                                    <tr class="hover:bg-slate-50/50 transition duration-150">
+                                        <td class="px-4 py-3.5 whitespace-nowrap text-xs text-slate-500 font-semibold" x-text="l.date"></td>
+                                        <td class="px-4 py-3.5 whitespace-nowrap text-xs font-mono font-bold text-emerald-800" x-text="l.transaction_code"></td>
+                                        <td class="px-4 py-3.5 whitespace-nowrap font-extrabold text-slate-800 text-xs" x-text="l.customer_name"></td>
+                                        <td class="px-4 py-3.5 text-right whitespace-nowrap font-extrabold text-emerald-600 text-xs" x-text="formatRupiah(l.amount)"></td>
+                                        <td class="px-4 py-3.5 text-center whitespace-nowrap">
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-bold" 
+                                                  :class="l.payment_method === 'Tunai' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-100 text-blue-800 border border-blue-200'"
+                                                  x-text="l.payment_method">
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3.5 text-xs text-slate-600" x-text="l.note || '-'"></td>
+                                        <td class="px-4 py-3.5 text-center whitespace-nowrap">
+                                            <template x-if="l.is_settled">
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">Lunas</span>
+                                            </template>
+                                            <template x-if="!l.is_settled">
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-rose-100 text-rose-800 border border-rose-200">Tempo</span>
+                                            </template>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <template x-if="filteredReceivablesLogs.length === 0">
+                                    <tr>
+                                        <td colspan="7" class="px-4 py-12 text-center text-slate-400 font-semibold">
+                                            Belum ada log pembayaran cicilan tercatat.
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DETAIL RIWAYAT PIUTANG MODAL -->
+            <div x-show="selectedHistoryTrx" 
+                 class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm"
+                 style="display: none;">
+                <div class="modal-card bg-white p-6 rounded-3xl border border-slate-100 shadow-2xl w-full max-w-lg max-h-screen overflow-y-auto"
+                     @click.away="selectedHistoryTrx = null">
+                    
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+                        <div>
+                            <span class="text-xs font-black text-slate-400 uppercase tracking-wider block">Rincian Pelunasan Piutang</span>
+                            <h3 class="text-base font-extrabold text-slate-800" x-text="selectedHistoryTrx ? selectedHistoryTrx.transaction_code : ''"></h3>
+                        </div>
+                        <button type="button" @click="selectedHistoryTrx = null" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <template x-if="selectedHistoryTrx">
+                        <div class="flex flex-col gap-4">
+                            <!-- Info Pelanggan & Nilai -->
+                            <div class="bg-slate-50/60 p-4 rounded-2xl border border-slate-100 flex flex-col gap-2 text-xs">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">Pelanggan:</span>
+                                    <strong class="text-slate-800" x-text="selectedHistoryTrx.customer_name"></strong>
+                                </div>
+                                <div class="flex justify-between" x-show="selectedHistoryTrx.customer_phone">
+                                    <span class="text-slate-500">No. WhatsApp:</span>
+                                    <span class="text-slate-700 font-semibold" x-text="selectedHistoryTrx.customer_phone"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">Tanggal Transaksi:</span>
+                                    <span class="text-slate-700 font-semibold" x-text="selectedHistoryTrx.date"></span>
+                                </div>
+                                <div class="flex justify-between border-t border-slate-100/80 pt-2 font-bold">
+                                    <span class="text-slate-500">Total Nilai Tagihan:</span>
+                                    <span class="text-emerald-700 font-extrabold" x-text="formatRupiah(selectedHistoryTrx.total_price)"></span>
+                                </div>
+                                <div class="flex justify-between font-bold">
+                                    <span class="text-slate-500">Status Pembayaran:</span>
+                                    <span class="text-emerald-600 font-extrabold">LUNAS (100%)</span>
+                                </div>
+                            </div>
+
+                            <!-- Ringkasan Produk Terstruktur -->
+                            <div class="flex flex-col gap-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-[10px] font-bold text-slate-400 tracking-wide block uppercase">Barang / Produk Dibeli</span>
+                                    <span class="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100" 
+                                          x-text="(selectedHistoryTrx.parsed_items ? selectedHistoryTrx.parsed_items.length : 0) + ' Macam Produk'"></span>
+                                </div>
+                                
+                                <div class="border border-slate-200/80 rounded-2xl overflow-hidden bg-white shadow-sm">
+                                    <table class="min-w-full text-xs divide-y divide-slate-100">
+                                        <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                                            <tr>
+                                                <th class="px-3.5 py-2.5 text-left">Nama Produk</th>
+                                                <th class="px-3 py-2.5 text-center">Jumlah</th>
+                                                <th class="px-3 py-2.5 text-right">Harga Satuan</th>
+                                                <th class="px-3.5 py-2.5 text-right">Subtotal</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
+                                            <template x-for="(item, idx) in (selectedHistoryTrx.parsed_items || [])" :key="idx">
+                                                <tr class="hover:bg-slate-50/70 transition">
+                                                    <td class="px-3.5 py-2.5">
+                                                        <span class="font-extrabold text-slate-800 block text-xs" x-text="item.name"></span>
+                                                    </td>
+                                                    <td class="px-3 py-2.5 text-center whitespace-nowrap">
+                                                        <span class="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 font-bold text-[11px] border border-emerald-100/70" x-text="item.display_qty"></span>
+                                                    </td>
+                                                    <td class="px-3 py-2.5 text-right whitespace-nowrap text-slate-500 font-semibold text-xs" x-text="item.unit_price > 0 ? formatRupiah(item.unit_price) : '-'"></td>
+                                                    <td class="px-3.5 py-2.5 text-right whitespace-nowrap font-extrabold text-emerald-700 text-xs" x-text="item.total_price > 0 ? formatRupiah(item.total_price) : '-'"></td>
+                                                </tr>
+                                            </template>
+                                            <template x-if="!selectedHistoryTrx.parsed_items || selectedHistoryTrx.parsed_items.length === 0">
+                                                <tr>
+                                                    <td colspan="4" class="px-3.5 py-3 text-slate-500 italic" x-text="selectedHistoryTrx.items_summary || '-'"></td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Log Pembayaran Cicilan -->
+                            <div class="flex flex-col gap-2">
+                                <span class="text-[10px] font-bold text-slate-400 tracking-wide block uppercase">Riwayat Pembayaran & Cicilan:</span>
+                                <div class="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
+                                    <template x-for="(inst, idx) in selectedHistoryTrx.installments" :key="inst.id">
+                                        <div class="p-3 rounded-xl border border-slate-100 bg-emerald-50/20 flex justify-between items-center text-xs">
+                                            <div>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="font-extrabold text-slate-800" x-text="formatRupiah(inst.amount)"></span>
+                                                    <span class="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold" x-text="inst.payment_method"></span>
+                                                </div>
+                                                <span class="text-[10px] text-slate-400 block mt-0.5" x-text="inst.note || 'Pembayaran cicilan'"></span>
+                                            </div>
+                                            <span class="text-[10px] text-slate-400 font-bold whitespace-nowrap" x-text="inst.date"></span>
+                                        </div>
+                                    </template>
+                                    <template x-if="!selectedHistoryTrx.installments || selectedHistoryTrx.installments.length === 0">
+                                        <span class="text-xs text-slate-400 italic">Pelunasan langsung saat pembuatan nota.</span>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Footer Actions -->
+                            <div class="flex gap-2 justify-end pt-3 border-t border-slate-100">
+                                <button type="button" 
+                                        @click="selectedHistoryTrx = null"
+                                        class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-xs transition">
+                                    Tutup
+                                </button>
+                                <a :href="'/admin/wholesale-transactions/' + selectedHistoryTrx.id + '/print'" 
+                                   target="_blank"
+                                   class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-extrabold text-xs transition flex items-center gap-1.5 shadow-sm">
+                                    <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                    <span>Cetak Nota</span>
+                                </a>
+                            </div>
+                        </div>
+                    </template>
+                </div>
             </div>
         </div>
 
@@ -2491,7 +3292,9 @@
                 
                 <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
                     <h3 class="text-base font-extrabold text-slate-800">Catat Cicilan Pembayaran</h3>
-                    <button type="button" @click="showInstallmentModal = false" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+                    <button type="button" @click="showInstallmentModal = false" class="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
                 </div>
 
                 <div class="flex flex-col gap-4">
@@ -2520,8 +3323,8 @@
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Metode Pembayaran</label>
                         <select x-model="installmentForm.payment_method" class="w-full border-slate-200 rounded-xl text-xs font-bold focus:border-emerald-500 focus:ring-emerald-500 py-2.5 px-3 shadow-inner bg-slate-50 text-slate-700">
-                            <option value="Tunai">💵 Uang Tunai (Cash)</option>
-                            <option value="Transfer Bank">🏢 Transfer Rekening Bank</option>
+                            <option value="Tunai">Uang Tunai (Cash)</option>
+                            <option value="Transfer Bank">Transfer Rekening Bank</option>
                         </select>
                     </div>
 
@@ -2558,8 +3361,8 @@
             <!-- Sync Banner dari API Profile Web -->
             <div class="bg-gradient-to-r from-emerald-800 to-teal-900 p-6 rounded-3xl text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-4">
                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl">
-                        🔄
+                    <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-white">
+                        <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                     </div>
                     <div>
                         <h4 class="font-extrabold text-base tracking-tight text-white">Sinkronkan Profil Toko dari Web API</h4>
@@ -2569,7 +3372,8 @@
                 <form action="{{ route('admin.settings.sync_profile') }}" method="POST">
                     @csrf
                     <button type="submit" onclick="return confirm('Apakah Anda yakin ingin memperbarui data profil toko dari API web profil?')" class="px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-black rounded-xl text-xs uppercase tracking-wider transition-all duration-200 shadow-md flex items-center gap-2 whitespace-nowrap">
-                        <span>⚡</span> Sync Data Profil
+                        <svg class="w-4 h-4 text-emerald-950" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <span>Sync Data Profil</span>
                     </button>
                 </form>
             </div>
@@ -2597,7 +3401,7 @@
                                     <input type="text" 
                                            name="settings[shop_tagline]" 
                                            value="{{ $settings['shop_tagline'] ?? '' }}" 
-                                           placeholder="Contoh: Cianjur ✦ Premium Dates" 
+                                           placeholder="Contoh: Cianjur - Premium Dates" 
                                            class="w-full border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 font-semibold shadow-inner text-sm py-2.5 px-4">
                                 </div>
                                 <div class="md:col-span-2">
@@ -2692,7 +3496,7 @@
                         <!-- Produk Gratis Ongkir Config Card -->
                         <div class="admin-card bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-4"
                              x-data="{ searchFreeShippingQuery: '' }">
-                            <span class="text-xs font-black text-emerald-800 uppercase tracking-wider block border-b border-slate-100 pb-2">🚚 Produk Gratis Ongkir (Free Shipping Products)</span>
+                            <span class="text-xs font-black text-emerald-800 uppercase tracking-wider block border-b border-slate-100 pb-2">Produk Bebas Ongkir (Free Shipping Products)</span>
                             <div class="flex flex-col gap-3">
                                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Pilih produk yang mendapatkan fasilitas bebas ongkos kirim:</label>
                                 
@@ -3012,6 +3816,19 @@
                             </div>
                         </div>
 
+                        <!-- Warning Alert jika harga modal > harga jual -->
+                        <template x-if="parseFloat(newProduct.selling_price) > 0 && parseFloat(effectiveCostPrice) > parseFloat(newProduct.selling_price)">
+                            <div class="p-3 bg-rose-50 border border-rose-300 rounded-xl text-xs flex items-start gap-2 text-rose-800 animate-fadeIn mt-1">
+                                <svg class="w-4 h-4 text-rose-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                </svg>
+                                <div>
+                                    <strong class="font-bold block">Peringatan: Harga Jual di Bawah Modal!</strong>
+                                    Harga jual (<span class="font-extrabold" x-text="formatRupiah(newProduct.selling_price)"></span>) lebih rendah dari modal (<span class="font-extrabold" x-text="formatRupiah(effectiveCostPrice)"></span>). Potensi rugi <span class="font-black text-rose-700" x-text="formatRupiah(parseFloat(effectiveCostPrice) - parseFloat(newProduct.selling_price))"></span> per satuan. Pastikan tidak ada kelebihan angka 0 atau salah satuan.
+                                </div>
+                            </div>
+                        </template>
+
                         {{-- Hint Bundling --}}
                         <div x-show="newProduct.is_bundle" class="bg-purple-50 border border-purple-100 rounded-xl px-4 py-2.5 flex flex-col gap-1 text-xs text-purple-700 mt-1">
                             <div class="flex justify-between font-bold">
@@ -3224,6 +4041,90 @@
                     <button type="button" @click="resetProductForm()" class="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold">Batal</button>
                     <button type="button" @click="saveProduct()" class="py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold">Simpan</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- MODAL DIAGNOSA ANOMALI HARGA PRODUK -->
+        <div x-show="showDiagnoseModal" 
+             class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             style="display: none;">
+            
+            <div class="modal-card bg-white rounded-3xl p-6 w-full max-w-2xl border border-slate-100 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto" @click.away="showDiagnoseModal = false">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center font-black">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="font-extrabold text-slate-800 text-base">Diagnosa Anomali Harga Produk</h3>
+                            <p class="text-xs text-slate-500">Mendeteksi produk yang harga jualnya di bawah harga modal (potensi salah input angka modal).</p>
+                        </div>
+                    </div>
+                    <button type="button" @click="showDiagnoseModal = false" class="p-2 text-slate-400 hover:text-slate-600 rounded-xl transition">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Status jika tidak ada anomali -->
+                <template x-if="anomalyProducts.length === 0">
+                    <div class="p-8 text-center flex flex-col items-center gap-3">
+                        <div class="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-2xl font-black">
+                            ✓
+                        </div>
+                        <h4 class="font-extrabold text-slate-800 text-base">Katalog Produk Sehat & Normal</h4>
+                        <p class="text-xs text-slate-500 max-w-sm">Tidak ditemukan produk dengan harga jual di bawah harga modal. Seluruh margin laba produk aman.</p>
+                        <button type="button" @click="showDiagnoseModal = false" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition mt-2">
+                            Tutup
+                        </button>
+                    </div>
+                </template>
+
+                <!-- List Produk Anomali -->
+                <template x-if="anomalyProducts.length > 0">
+                    <div class="flex flex-col gap-3">
+                        <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center gap-2">
+                            <span>⚠️</span>
+                            <span>Ditemukan <strong x-text="anomalyProducts.length"></strong> produk bermasalah. Klik tombol <strong>Perbaiki</strong> untuk mengubah nominal modal atau harga jual yang tepat.</span>
+                        </div>
+
+                        <div class="flex flex-col gap-2.5 divide-y divide-slate-100">
+                            <template x-for="p in anomalyProducts" :key="p.id">
+                                <div class="pt-2.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50 hover:bg-rose-50/40 border border-slate-100 transition">
+                                    <div class="flex flex-col gap-1">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xs font-black text-slate-800" x-text="p.name"></span>
+                                            <span class="text-[10px] px-2 py-0.5 rounded font-black bg-slate-200 text-slate-600 uppercase" x-text="p.sku"></span>
+                                            <span class="text-[10px] px-2 py-0.5 rounded font-black bg-rose-100 text-rose-700 uppercase" x-text="'Satuan: ' + p.price_unit"></span>
+                                        </div>
+                                        <div class="flex items-center gap-4 text-xs mt-0.5">
+                                            <span class="text-slate-500">Harga Modal: <strong class="text-rose-700 font-black" x-text="formatRupiah(p.cost_price)"></strong></span>
+                                            <span class="text-slate-500">Harga Jual: <strong class="text-emerald-700 font-black" x-text="formatRupiah(p.selling_price)"></strong></span>
+                                            <span class="text-rose-600 font-bold">Rugi: <strong x-text="'-' + formatRupiah(parseFloat(p.cost_price) - parseFloat(p.selling_price))"></strong></span>
+                                        </div>
+                                    </div>
+                                    <button type="button" 
+                                            @click="editProduct(p); showDiagnoseModal = false;" 
+                                            class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs rounded-xl shadow-md transition whitespace-nowrap active:scale-95 flex items-center gap-1.5 shrink-0">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                        <span>Perbaiki</span>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
             </div>
         </div>
 

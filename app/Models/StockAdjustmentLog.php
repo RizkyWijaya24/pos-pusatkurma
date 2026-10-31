@@ -61,6 +61,9 @@ class StockAdjustmentLog extends Model
      */
     public function getTypeLabelAttribute(): string
     {
+        if ($this->reference_type === 'purchase') {
+            return 'Pembelian (Stok Masuk)';
+        }
         return match ($this->type) {
             'initial'      => 'Stok Awal',
             'sale'         => 'Penjualan',

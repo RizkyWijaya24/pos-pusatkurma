@@ -35,9 +35,13 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // Share shop settings globally to all views if table exists
-        if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {
-            $settings = \App\Models\Setting::pluck('value', 'key')->all();
-            \Illuminate\Support\Facades\View::share('shop_settings', $settings);
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {
+                $settings = \App\Models\Setting::pluck('value', 'key')->all();
+                \Illuminate\Support\Facades\View::share('shop_settings', $settings);
+            }
+        } catch (\Throwable $e) {
+            // Prevent artisan commands from crashing when DB is uninitialized or unreachable
         }
     }
 }

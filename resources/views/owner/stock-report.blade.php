@@ -68,27 +68,41 @@
     </div>
     @endif
 
-    {{-- Filter --}}
+    {{-- Filter (Live Search & Kategori) --}}
     <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl p-5 shadow-md">
-        <form method="GET" class="flex flex-wrap gap-4 items-end">
+        <form id="filter-form" onsubmit="event.preventDefault();" class="flex flex-wrap gap-4 items-end">
             <div>
                 <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2">Kategori</label>
-                <select name="category" class="bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-700 dark:text-purple-200 rounded-xl px-3.5 py-2.5 text-sm focus:border-purple-500 focus:ring-purple-500 shadow-inner">
+                <select id="category-filter" name="category" class="bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-700 dark:text-purple-200 rounded-xl px-3.5 py-2.5 text-sm focus:border-purple-500 focus:ring-purple-500 shadow-inner">
                     <option value="">Semua Kategori</option>
                     @foreach($categories as $cat)
                     <option value="{{ $cat->name }}" {{ request('category') == $cat->name ? 'selected' : '' }}>{{ $cat->name }}</option>
                     @endforeach
                 </select>
             </div>
-            <div>
-                <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2">Cari Produk</label>
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Nama produk..."
-                       class="bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-700 dark:text-purple-200 rounded-xl px-4 py-2.5 text-sm focus:border-purple-500 focus:ring-purple-500 shadow-inner w-48">
+            <div class="relative flex-1 min-w-[260px] max-w-md">
+                <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2">Cari Produk (Live Search)</label>
+                <div class="relative">
+                    <input type="text" id="live-search-input" name="search" value="{{ request('search') }}" autocomplete="off" placeholder="Ketik nama produk atau SKU..."
+                           class="w-full bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-700 dark:text-purple-200 rounded-xl pl-10 pr-9 py-2.5 text-sm focus:border-purple-500 focus:ring-purple-500 shadow-inner">
+                    <span class="absolute left-3.5 top-3 text-slate-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </span>
+                    <button type="button" id="clear-search-btn" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 hidden text-sm font-bold" title="Hapus pencarian">✕</button>
+                    <span id="search-spinner" class="absolute right-3 top-3 hidden">
+                        <svg class="animate-spin w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </span>
+                </div>
             </div>
-            <button type="submit" class="bg-purple-700 hover:bg-purple-800 text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider shadow transition duration-150">🔍 Filter</button>
-            @if(request()->hasAny(['category','search']))
-            <a href="{{ route('owner.stock-report') }}" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 dark:text-purple-300 text-xs font-bold rounded-xl transition duration-150">✕ Reset</a>
-            @endif
+            <button type="button" id="reset-filter-btn" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-dp-700 dark:hover:bg-dp-600 text-slate-600 dark:text-purple-300 text-xs font-bold rounded-xl transition duration-150">
+                ✕ Reset
+            </button>
+            <div class="ml-auto self-center text-xs font-bold text-slate-500 dark:text-purple-300" id="search-result-count">
+                Total: {{ number_format($products->total(), 0, ',', '.') }} Produk
+            </div>
         </form>
     </div>
 
@@ -107,121 +121,9 @@
         @endforeach
     </div>
 
-    {{-- Matrix Stok --}}
-    <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl shadow-md overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100 dark:border-dp-700 flex items-center justify-between flex-wrap gap-2">
-            <h2 class="text-slate-800 dark:text-purple-100 font-extrabold text-md">Matriks Stok Produk × Lokasi</h2>
-            <p class="text-slate-400 dark:text-purple-400 text-xs font-semibold">
-                🔴 Kritis (≤5) &nbsp; 🟡 Rendah (≤10) &nbsp; 🟢 Aman (&gt;10)
-                @if(Auth::user()->isAdmin())
-                &nbsp;|&nbsp; <span class="text-purple-500 dark:text-purple-400 font-bold">✏️ Klik angka untuk edit</span>
-                @endif
-            </p>
-        </div>
-        <div class="overflow-x-auto w-full">
-            <table class="min-w-full divide-y divide-slate-100 dark:divide-dp-700 text-left text-sm text-slate-700">
-                <thead class="bg-slate-50 dark:bg-dp-900 font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider text-xs">
-                    <tr class="border-b border-slate-100 dark:border-dp-700">
-                        <th class="px-4 py-3 sticky left-0 bg-white dark:bg-dp-800 z-10 border-r border-slate-100 dark:border-dp-700">Produk</th>
-                        <th class="px-3 py-3 w-20">Satuan</th>
-                        @foreach($locations as $loc)
-                        <th class="text-center px-3 py-3 w-28 whitespace-nowrap {{ $loc->type === 'gudang' ? 'text-blue-600 dark:text-blue-400' : '' }}">
-                            {{ $loc->type === 'gudang' ? '🏭' : ($loc->type === 'online' ? '🌐' : '🏪') }}
-                            <br>{{ Str::limit($loc->name, 12) }}
-                        </th>
-                        @endforeach
-                        <th class="text-center px-3 py-3 w-24">TOTAL</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-dp-700 font-semibold text-slate-800 dark:text-purple-100">
-                    @foreach($products as $product)
-                    @php
-                        $stockByLoc = $product->productStocks->keyBy('location_id');
-                        $rowTotal   = $product->productStocks->sum('stock');
-                    @endphp
-                    <tr class="hover:bg-slate-50/50 dark:hover:bg-dp-700/30 transition duration-150 group" id="row-product-{{ $product->id }}">
-                        <td class="px-4 py-3 sticky left-0 bg-white dark:bg-dp-800 border-r border-slate-100 dark:border-dp-700 z-10 group-hover:bg-slate-50 dark:group-hover:bg-dp-700">
-                            <p class="text-slate-900 dark:text-purple-100 font-bold leading-tight">{{ $product->name }}</p>
-                            <p class="text-slate-400 dark:text-purple-400 font-mono text-[10px] mt-0.5">{{ $product->sku }}</p>
-                        </td>
-                        <td class="px-3 py-3 text-slate-500 dark:text-purple-400 text-xs font-semibold uppercase tracking-wider">{{ $product->price_unit }}</td>
-                        @foreach($locations as $loc)
-                        @php
-                            $s = isset($stockByLoc[$loc->id]) ? (float) $stockByLoc[$loc->id]->stock : 0;
-                            $cellClass = $s <= 0 ? 'text-slate-400 dark:text-purple-505 bg-slate-50/50 dark:bg-dp-900/10' :
-                                        ($s <= 5  ? 'text-rose-700 dark:text-rose-400 font-extrabold bg-rose-50 dark:bg-rose-950/20' :
-                                        ($s <= 10 ? 'text-amber-700 dark:text-amber-400 font-extrabold bg-amber-50 dark:bg-amber-950/20' :
-                                                    'text-emerald-700 dark:text-emerald-400 font-bold'));
-                            $displayVal = number_format($s, 2, ',', '.');
-                            if ($product->price_unit === 'gram' && $s >= 1000) {
-                                $displayVal = number_format($s / 1000, 2, ',', '.') . ' kg';
-                            }
-                        @endphp
-                        <td class="px-1 py-2 text-center {{ $cellClass }} relative stock-cell"
-                            id="cell-{{ $product->id }}-{{ $loc->id }}"
-                            data-product-id="{{ $product->id }}"
-                            data-location-id="{{ $loc->id }}"
-                            data-product-name="{{ $product->name }}"
-                            data-location-name="{{ $loc->name }}"
-                            data-stock="{{ $s }}"
-                            data-unit="{{ $product->price_unit }}">
-                            {{-- Mode tampil --}}
-                            <div class="stock-display flex items-center justify-center gap-1 py-1 @if(Auth::user()->isAdmin()) cursor-pointer hover:bg-purple-500/10 rounded-lg @endif"
-                                 @if(Auth::user()->isAdmin()) onclick="startEdit({{ $product->id }}, {{ $loc->id }})" @endif>
-                                <span class="stock-value">{{ $s > 0 ? $displayVal : '—' }}</span>
-                                @if(Auth::user()->isAdmin())
-                                <button
-                                    class="edit-btn opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-purple-400 hover:text-purple-600 dark:text-purple-500 dark:hover:text-purple-300 ml-0.5 flex-shrink-0"
-                                    title="Edit stok">
-                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/>
-                                    </svg>
-                                </button>
-                                @endif
-                            </div>
-                            {{-- Mode edit (hanya admin) --}}
-                            @if(Auth::user()->isAdmin())
-                            <div class="stock-edit hidden">
-                                <div class="flex flex-col items-center gap-1 py-0.5">
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        class="stock-input w-20 text-center bg-white dark:bg-dp-900 border-2 border-purple-400 dark:border-purple-500 text-slate-800 dark:text-purple-100 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:border-purple-600 shadow-md"
-                                        onkeydown="handleEditKey(event, {{ $product->id }}, {{ $loc->id }})"
-                                    />
-                                    <div class="flex gap-1">
-                                        <button onclick="saveEdit({{ $product->id }}, {{ $loc->id }})"
-                                            class="save-btn bg-emerald-600 hover:bg-emerald-700 text-white rounded-md px-2 py-0.5 text-[10px] font-bold transition-colors">✓</button>
-                                        <button onclick="cancelEdit({{ $product->id }}, {{ $loc->id }})"
-                                            class="bg-slate-200 hover:bg-slate-300 dark:bg-dp-700 dark:hover:bg-dp-600 text-slate-600 dark:text-purple-300 rounded-md px-2 py-0.5 text-[10px] font-bold transition-colors">✕</button>
-                                    </div>
-                                </div>
-                            </div>
-                            @endif
-                        </td>
-                        @endforeach
-                        @php
-                            $displayTotal = number_format($rowTotal, 2, ',', '.');
-                            if ($product->price_unit === 'gram' && $rowTotal >= 1000) {
-                                $displayTotal = number_format($rowTotal / 1000, 2, ',', '.') . ' kg';
-                            }
-                        @endphp
-                        <td class="px-3 py-3 text-center text-slate-800 dark:text-purple-100 font-black" id="row-total-{{ $product->id }}">
-                            {{ $displayTotal }}
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        {{-- Pagination --}}
-        @if($products->hasPages())
-        <div class="bg-slate-50/50 dark:bg-dp-900/50 border-t border-slate-100 dark:border-dp-700 px-5 py-4">
-            {{ $products->links() }}
-        </div>
-        @endif
+    {{-- Matrix Stok (Dapat di-refresh secara realtime via Live Search) --}}
+    <div id="stock-matrix-container" class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl shadow-md overflow-hidden transition-opacity duration-200 relative">
+        @include('owner.partials.stock-matrix-table')
     </div>
 
     {{-- Link ke log mutasi --}}
@@ -390,5 +292,158 @@ function showStockToast(msg, type) {
 }
 </script>
 @endif
+
+{{-- ── LIVE SEARCH & AJAX FILTER SCRIPT ── --}}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('live-search-input');
+    const categorySelect = document.getElementById('category-filter');
+    const clearBtn = document.getElementById('clear-search-btn');
+    const spinner = document.getElementById('search-spinner');
+    const resetBtn = document.getElementById('reset-filter-btn');
+    const container = document.getElementById('stock-matrix-container');
+    const resultCount = document.getElementById('search-result-count');
+
+    let debounceTimer = null;
+    let abortController = null;
+
+    function toggleClearBtn() {
+        if (!clearBtn || !searchInput) return;
+        if (searchInput.value.trim().length > 0) {
+            clearBtn.classList.remove('hidden');
+        } else {
+            clearBtn.classList.add('hidden');
+        }
+    }
+
+    toggleClearBtn();
+
+    async function fetchFilteredStock(url = null) {
+        if (abortController) {
+            abortController.abort();
+        }
+        abortController = new AbortController();
+
+        const search = searchInput ? searchInput.value.trim() : '';
+        const category = categorySelect ? categorySelect.value : '';
+
+        let targetUrl;
+        if (url) {
+            try {
+                const parsed = new URL(url, window.location.origin);
+                targetUrl = new URL(parsed.pathname + parsed.search, window.location.origin);
+            } catch (e) {
+                targetUrl = new URL(url, window.location.origin);
+            }
+        } else {
+            targetUrl = new URL(window.location.pathname, window.location.origin);
+            if (search) targetUrl.searchParams.set('search', search);
+            if (category) targetUrl.searchParams.set('category', category);
+        }
+
+        // Show spinner & dim container slightly
+        if (spinner) spinner.classList.remove('hidden');
+        if (container) container.classList.add('opacity-60');
+
+        try {
+            const response = await fetch(targetUrl.toString(), {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                signal: abortController.signal,
+            });
+
+            if (!response.ok) throw new Error('Network response not ok');
+            const data = await response.json();
+
+            if (container && data.html) {
+                container.innerHTML = data.html;
+            }
+
+            if (resultCount && typeof data.total !== 'undefined') {
+                resultCount.textContent = `Total: ${new Intl.NumberFormat('id-ID').format(data.total)} Produk`;
+            }
+
+            // Update browser URL without reloading
+            window.history.replaceState({}, '', targetUrl.toString());
+
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                console.error('Error fetching live stock data:', err);
+                if (window.showToast) {
+                    window.showToast('Gagal memuat data live search: ' + err.message, 'error');
+                }
+            }
+        } finally {
+            if (spinner) spinner.classList.add('hidden');
+            if (container) container.classList.remove('opacity-60');
+        }
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            toggleClearBtn();
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                fetchFilteredStock();
+            }, 250);
+        });
+
+        // Android soft keyboard autocomplete / composition trigger
+        searchInput.addEventListener('change', function () {
+            toggleClearBtn();
+            clearTimeout(debounceTimer);
+            fetchFilteredStock();
+        });
+
+        searchInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.keyCode === 13) {
+                e.preventDefault();
+                clearTimeout(debounceTimer);
+                searchInput.blur(); // Tutup virtual keyboard di Android
+                fetchFilteredStock();
+            }
+        });
+    }
+
+    if (categorySelect) {
+        categorySelect.addEventListener('change', function () {
+            fetchFilteredStock();
+        });
+    }
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function () {
+            searchInput.value = '';
+            toggleClearBtn();
+            searchInput.focus();
+            fetchFilteredStock();
+        });
+    }
+
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function () {
+            if (searchInput) searchInput.value = '';
+            if (categorySelect) categorySelect.value = '';
+            toggleClearBtn();
+            fetchFilteredStock();
+        });
+    }
+
+    // Intercept pagination clicks inside container
+    if (container) {
+        container.addEventListener('click', function (e) {
+            const link = e.target.closest('.stock-pagination a');
+            if (link && link.href) {
+                e.preventDefault();
+                fetchFilteredStock(link.href);
+                container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    }
+});
+</script>
 
 @endsection

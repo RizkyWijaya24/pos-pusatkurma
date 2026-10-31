@@ -26,6 +26,12 @@
         max-width: 100% !important;
     }
 
+    /* Pastikan baris yang di-hide saat live search selalu tersembunyi baik di desktop maupun mobile */
+    .responsive-request-table tbody tr.hidden,
+    .responsive-request-table tbody tr[style*="display: none"] {
+        display: none !important;
+    }
+
     @media (max-width: 640px) {
         .responsive-request-table thead {
             display: none !important;
@@ -38,10 +44,18 @@
             padding: 14px 16px !important;
             margin-bottom: 12px !important;
             box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+            content-visibility: auto; /* Hanya render elemen saat mendekati layar viewport HP (sangat hemat RAM) */
+            contain-intrinsic-size: 0 120px;
+        }
+        .responsive-request-table tbody tr.hidden {
+            display: none !important;
         }
         .dark .responsive-request-table tbody tr {
             background: rgba(30, 41, 59, 0.4) !important;
             border-color: rgba(51, 65, 85, 0.5) !important;
+        }
+        .dark .responsive-request-table tbody tr.hidden {
+            display: none !important;
         }
         .responsive-request-table tbody td {
             display: block !important;
@@ -88,8 +102,15 @@
                         <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                             🔍
                         </span>
-                        <input type="text" id="searchInput" oninput="filterProducts()" placeholder="Cari nama produk atau kategori..."
-                            class="w-full bg-slate-50 dark:bg-dp-800 border border-slate-300 dark:border-dp-700 text-slate-900 dark:text-white rounded-xl pl-10 pr-4 py-2.5 text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:outline-none transition-all shadow-inner">
+                        <input type="text" id="searchInput" 
+                            oninput="filterProducts()" 
+                            onkeyup="filterProducts()" 
+                            onchange="filterProducts()" 
+                            onkeydown="if(event.key === 'Enter' || event.keyCode === 13) { event.preventDefault(); this.blur(); filterProducts(); }"
+                            placeholder="Cari nama produk, kategori, atau SKU..."
+                            autocomplete="off"
+                            class="w-full bg-slate-50 dark:bg-dp-800 border border-slate-300 dark:border-dp-700 text-slate-900 dark:text-white rounded-xl pl-10 pr-10 py-2.5 text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:outline-none transition-all shadow-inner">
+                        <button type="button" id="clearKasirSearchBtn" onclick="clearSearch()" class="absolute right-3 inset-y-0 my-auto h-6 w-6 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white hidden text-xs font-bold" title="Hapus pencarian">✕</button>
                     </div>
                     
                     {{-- Row 2: Filter Tabs (Baris Mandiri) --}}
@@ -135,7 +156,8 @@
                                 $statusLabel = $stock <= 0 ? 'Habis' : 
                                                ($isCritical ? 'Kritis' : 
                                                ($isWarning ? 'Hampir Habis' : 'Aman'));
-                                                <tr id="row-{{ $p->id }}" data-id="{{ $p->id }}" data-name="{{ strtolower($p->name) }}" data-category="{{ strtolower($p->category) }}" data-stock="{{ $stock }}" class="hover:bg-slate-50 dark:hover:bg-dp-800/40 transition-colors">
+                            @endphp
+                            <tr id="row-{{ $p->id }}" data-id="{{ $p->id }}" data-name="{{ strtolower($p->name) }}" data-category="{{ strtolower($p->category ?? '') }}" data-sku="{{ strtolower($p->sku ?? '') }}" data-stock="{{ $stock }}" class="hover:bg-slate-50 dark:hover:bg-dp-800/40 transition-colors">
                                 <td class="px-4 py-3">
                                     <div class="font-bold text-slate-900 dark:text-white text-sm sm:text-base leading-tight">{{ $p->name }}</div>
                                     <div class="flex flex-wrap items-center gap-1.5 mt-1">
@@ -224,18 +246,10 @@
                                 class="w-full bg-slate-50 dark:bg-dp-850 border border-slate-300 dark:border-dp-700 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-teal-500 focus:outline-none resize-none shadow-inner"></textarea>
                         </div>
 
-                        <div class="flex gap-2 pt-1.5">
+                        <div class="pt-2">
                             <button onclick="submitRequest()" id="submitRequestBtn" disabled
-                                class="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:hover:bg-emerald-600 disabled:scale-100 text-white py-2.5 rounded-xl font-bold transition-all hover:scale-[1.02] shadow-sm flex items-center justify-center gap-1.5 focus:outline-none cursor-pointer disabled:cursor-not-allowed text-xs">
+                                class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:hover:bg-emerald-600 disabled:scale-100 text-white py-2.5 rounded-xl font-bold transition-all hover:scale-[1.01] shadow-sm flex items-center justify-center gap-1.5 focus:outline-none cursor-pointer disabled:cursor-not-allowed text-xs">
                                 <span>📬</span> Kirim Admin
-                            </button>
-
-                            <button onclick="sendWaReport()" id="waReportBtn" disabled style="background-color: #25D366;"
-                                class="flex-1 text-white py-2.5 rounded-xl font-bold transition-all hover:scale-[1.02] hover:opacity-90 disabled:opacity-30 disabled:hover:scale-100 shadow-sm flex items-center justify-center gap-1.5 focus:outline-none cursor-pointer disabled:cursor-not-allowed text-xs">
-                                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.504-5.714-1.465L0 24zm6.59-4.846c1.6.95 3.197 1.451 4.793 1.453 5.485.002 9.948-4.41 9.95-9.825.001-2.624-1.013-5.09-2.861-6.942-1.848-1.853-4.309-2.873-6.932-2.874-5.49 0-9.953 4.411-9.956 9.827-.001 1.714.471 3.391 1.364 4.882l-.999 3.65 3.743-.971zm11.367-6.425c-.279-.14-1.651-.814-1.906-.907-.255-.094-.441-.14-.627.14-.186.28-.718.907-.88 1.092-.162.186-.325.21-.604.07-.279-.14-1.18-.435-2.247-1.387-.83-.74-1.39-1.653-1.553-1.932-.162-.28-.017-.43.122-.569.124-.125.279-.325.418-.488.14-.162.186-.28.279-.465.093-.186.046-.349-.023-.488-.069-.14-.627-1.511-.86-2.07-.227-.546-.477-.473-.651-.482-.167-.008-.36-.01-.553-.01-.193 0-.507.073-.772.36-.265.287-1.011.987-1.011 2.406s1.025 2.793 1.168 2.98c.143.19 2.017 3.08 4.886 4.318.682.295 1.214.471 1.629.603.686.218 1.31.187 1.803.114.549-.08 1.651-.676 1.883-1.328.232-.653.232-1.213.162-1.328-.069-.115-.255-.187-.534-.327z"/>
-                                </svg>
-                                Laporan WA
                             </button>
                         </div>
                     </div>
@@ -274,10 +288,35 @@
                             </div>
                             <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-150 dark:border-slate-800">
                                 <span class="text-slate-400 dark:text-slate-500 text-[10px]">{{ $req->created_at->diffForHumans() }}</span>
-                                @if(in_array($req->status, ['requested']))
-                                <button onclick="cancelRequest({{ $req->id }}, '{{ $req->transfer_code }}')"
-                                        class="text-rose-600 hover:text-rose-500 dark:text-red-400 dark:hover:text-red-300 text-xs font-semibold">Batalkan</button>
-                                @endif
+                                <div class="flex items-center gap-2">
+                                    <button type="button"
+                                            onclick="sendWaFromTransfer({{ json_encode([
+                                                'code'       => $req->transfer_code,
+                                                'branch'     => $myLocation?->name ?? $kasir->branch,
+                                                'status'     => $req->statusLabel,
+                                                'created_at' => $req->created_at->format('d-m-Y H:i') . ' WIB',
+                                                'notes'      => $req->notes ?? '-',
+                                                'items'      => $req->items->map(fn($it) => [
+                                                    'name' => $it->product->name ?? 'Produk',
+                                                    'qty'  => number_format($it->quantity, 2, ',', '.'),
+                                                    'unit' => $it->unit ?? 'pcs',
+                                                ])->values()->all(),
+                                            ]) }})"
+                                            title="Kirim Laporan WA"
+                                            style="background-color: #25D366;"
+                                            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-white font-bold text-[11px] shadow-xs hover:opacity-90 active:scale-95 transition">
+                                        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.504-5.714-1.465L0 24zm6.59-4.846c1.6.95 3.197 1.451 4.793 1.453 5.485.002 9.948-4.41 9.95-9.825.001-2.624-1.013-5.09-2.861-6.942-1.848-1.853-4.309-2.873-6.932-2.874-5.49 0-9.953 4.411-9.956 9.827-.001 1.714.471 3.391 1.364 4.882l-.999 3.65 3.743-.971zm11.367-6.425c-.279-.14-1.651-.814-1.906-.907-.255-.094-.441-.14-.627.14-.186.28-.718.907-.88 1.092-.162.186-.325.21-.604.07-.279-.14-1.18-.435-2.247-1.387-.83-.74-1.39-1.653-1.553-1.932-.162-.28-.017-.43.122-.569.124-.125.279-.325.418-.488.14-.162.186-.28.279-.465.093-.186.046-.349-.023-.488-.069-.14-.627-1.511-.86-2.07-.227-.546-.477-.473-.651-.482-.167-.008-.36-.01-.553-.01-.193 0-.507.073-.772.36-.265.287-1.011.987-1.011 2.406s1.025 2.793 1.168 2.98c.143.19 2.017 3.08 4.886 4.318.682.295 1.214.471 1.629.603.686.218 1.31.187 1.803.114.549-.08 1.651-.676 1.883-1.328.232-.653.232-1.213.162-1.328-.069-.115-.255-.187-.534-.327z"/>
+                                        </svg>
+                                        Laporan WA
+                                    </button>
+                                    @if(in_array($req->status, ['requested']))
+                                    <button onclick="cancelRequest({{ $req->id }}, '{{ $req->transfer_code }}')"
+                                            class="text-rose-600 hover:text-rose-500 dark:text-red-400 dark:hover:text-red-300 text-xs font-semibold px-1 py-1">
+                                        Batalkan
+                                    </button>
+                                    @endif
+                                </div>
                             </div>
                             @if($req->rejection_reason)
                             <div class="mt-2 bg-rose-50 dark:bg-red-500/10 rounded-lg px-2.5 py-1.5 text-rose-700 dark:text-red-400 text-xs border border-rose-100 dark:border-red-950/20">
@@ -303,14 +342,24 @@
 
 {{-- Success Modal --}}
 <div id="successModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-    <div class="bg-white dark:bg-dp-800 border border-slate-200 dark:border-emerald-500/30 rounded-2xl shadow-2xl w-full max-w-sm text-center p-8">
-        <div class="text-5xl mb-4">✅</div>
-        <h3 class="text-xl font-extrabold text-slate-900 dark:text-white mb-2">Request Terkirim!</h3>
-        <p class="text-slate-600 dark:text-slate-350 text-sm mb-2" id="successCode"></p>
-        <p class="text-slate-500 dark:text-slate-400 text-sm">Admin akan segera memproses permintaan Anda.</p>
-        <button onclick="location.reload()" class="mt-6 w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl font-bold transition-colors focus:outline-none">
-            OK
-        </button>
+    <div class="bg-white dark:bg-dp-800 border border-slate-200 dark:border-emerald-500/30 rounded-2xl shadow-2xl w-full max-w-sm text-center p-6">
+        <div class="text-5xl mb-3">✅</div>
+        <h3 class="text-xl font-extrabold text-slate-900 dark:text-white mb-1">Request Terkirim!</h3>
+        <p class="text-slate-600 dark:text-slate-350 text-xs font-mono font-bold py-1.5 px-3 bg-slate-100 dark:bg-dp-900 rounded-lg inline-block my-2" id="successCode"></p>
+        <p class="text-slate-500 dark:text-slate-400 text-xs mb-4">Request Anda telah tersimpan di sistem. Lanjutkan kirim laporan WhatsApp ke Admin.</p>
+        
+        <div class="space-y-2">
+            <button id="successWaBtn" onclick="sendWaFromModal()" style="background-color: #25D366;"
+                class="w-full text-white py-2.5 rounded-xl font-bold transition-all hover:opacity-90 shadow-md flex items-center justify-center gap-2 text-xs">
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.504-5.714-1.465L0 24zm6.59-4.846c1.6.95 3.197 1.451 4.793 1.453 5.485.002 9.948-4.41 9.95-9.825.001-2.624-1.013-5.09-2.861-6.942-1.848-1.853-4.309-2.873-6.932-2.874-5.49 0-9.953 4.411-9.956 9.827-.001 1.714.471 3.391 1.364 4.882l-.999 3.65 3.743-.971zm11.367-6.425c-.279-.14-1.651-.814-1.906-.907-.255-.094-.441-.14-.627.14-.186.28-.718.907-.88 1.092-.162.186-.325.21-.604.07-.279-.14-1.18-.435-2.247-1.387-.83-.74-1.39-1.653-1.553-1.932-.162-.28-.017-.43.122-.569.124-.125.279-.325.418-.488.14-.162.186-.28.279-.465.093-.186.046-.349-.023-.488-.069-.14-.627-1.511-.86-2.07-.227-.546-.477-.473-.651-.482-.167-.008-.36-.01-.553-.01-.193 0-.507.073-.772.36-.265.287-1.011.987-1.011 2.406s1.025 2.793 1.168 2.98c.143.19 2.017 3.08 4.886 4.318.682.295 1.214.471 1.629.603.686.218 1.31.187 1.803.114.549-.08 1.651-.676 1.883-1.328.232-.653.232-1.213.162-1.328-.069-.115-.255-.187-.534-.327z"/>
+                </svg>
+                Lanjut Laporan WA
+            </button>
+            <button onclick="location.reload()" class="w-full bg-slate-100 hover:bg-slate-200 dark:bg-dp-700 dark:hover:bg-dp-600 text-slate-700 dark:text-purple-200 py-2.5 rounded-xl font-bold transition-colors text-xs">
+                Selesai / Tutup
+            </button>
+        </div>
     </div>
 </div>
 
@@ -489,20 +538,45 @@ function setFilterTab(tabName) {
     filterProducts();
 }
 
+// Fungsi membersihkan kolom pencarian
+function clearSearch() {
+    const input = document.getElementById('searchInput');
+    if (input) {
+        input.value = '';
+        input.focus();
+        filterProducts();
+    }
+}
+
 // Filter Pencarian & Tab Status secara gabungan
 function filterProducts() {
-    const query = document.getElementById('searchInput').value.toLowerCase().trim();
+    const searchInput = document.getElementById('searchInput');
+    const clearBtn = document.getElementById('clearKasirSearchBtn');
+    const rawQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    
+    if (clearBtn) {
+        if (rawQuery.length > 0) {
+            clearBtn.classList.remove('hidden');
+        } else {
+            clearBtn.classList.add('hidden');
+        }
+    }
+
+    const words = rawQuery.split(/\s+/).filter(w => w.length > 0);
     const rows = document.querySelectorAll('#productTableBody tr');
     let visibleCount = 0;
 
     rows.forEach(row => {
-        const name = row.dataset.name;
-        const category = row.dataset.category;
+        const name = (row.dataset.name || '').toLowerCase();
+        const category = (row.dataset.category || '').toLowerCase();
+        const sku = (row.dataset.sku || '').toLowerCase();
         const stock = parseFloat(row.dataset.stock) || 0;
         const id = parseInt(row.dataset.id);
         
-        // Cek filter pencarian teks
-        const matchesSearch = name.includes(query) || category.includes(query);
+        // Multi-word matching: Setiap kata yang diketik harus cocok di nama, kategori, atau SKU
+        const matchesSearch = words.length === 0 || words.every(word => 
+            name.includes(word) || category.includes(word) || sku.includes(word)
+        );
         
         // Cek filter tab status
         let matchesTab = true;
@@ -512,19 +586,26 @@ function filterProducts() {
             matchesTab = requestItems[id] !== undefined && requestItems[id].quantity > 0;
         }
 
-        if (matchesSearch && matchesTab) {
+        const isVisible = matchesSearch && matchesTab;
+        if (isVisible) {
             row.classList.remove('hidden');
+            row.style.removeProperty('display');
             visibleCount++;
         } else {
             row.classList.add('hidden');
+            row.style.setProperty('display', 'none', 'important');
         }
     });
 
     const emptyMsg = document.getElementById('emptySearch');
-    if (visibleCount === 0) {
-        emptyMsg.classList.remove('hidden');
-    } else {
-        emptyMsg.classList.add('hidden');
+    if (emptyMsg) {
+        if (visibleCount === 0) {
+            emptyMsg.classList.remove('hidden');
+            emptyMsg.style.removeProperty('display');
+        } else {
+            emptyMsg.classList.add('hidden');
+            emptyMsg.style.setProperty('display', 'none', 'important');
+        }
     }
 }
 
@@ -540,6 +621,8 @@ function submitRequest() {
     btn.disabled = true;
     btn.textContent = '⏳ Mengirim...';
 
+    const notesVal = document.getElementById('requestNotes').value.trim();
+
     fetch('/kasir/stock-request', {
         method: 'POST',
         headers: { 
@@ -548,27 +631,52 @@ function submitRequest() {
             'Accept': 'application/json' 
         },
         body: JSON.stringify({ 
-            notes: document.getElementById('requestNotes').value, 
+            notes: notesVal, 
             items: items.map(i => ({ product_id: i.product_id, quantity: i.quantity }))
         })
     })
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            document.getElementById('successCode').textContent = `Kode Transfer: ${data.transfer.code}`;
-            document.getElementById('successModal').classList.remove('hidden');
+            const transferCode = data.transfer.code;
+            document.getElementById('successCode').textContent = `No. Tiket: ${transferCode}`;
+            
+            // Simpan transfer yang baru dibuat untuk tombol WA di modal
+            const branchName = @json($myLocation?->name ?? $kasir->branch);
+            const today = new Date();
+            const dateStr = String(today.getDate()).padStart(2, '0') + '-' + 
+                            String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                            today.getFullYear();
+
+            lastCreatedTransfer = {
+                code: transferCode,
+                branch: branchName,
+                status: 'Menunggu Proses',
+                created_at: dateStr,
+                notes: notesVal || '-',
+                items: items.map(it => ({
+                    name: it.name,
+                    qty: Number(it.quantity).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 }),
+                    unit: it.unit
+                }))
+            };
+
+            const modal = document.getElementById('successModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
             requestItems = {};
             renderSummary();
         } else {
             showToast('Gagal: ' + data.message, 'error');
             btn.disabled = false;
-            btn.textContent = '📬 Kirim Permintaan ke Admin';
+            btn.textContent = '📬 Kirim Admin';
         }
     })
     .catch(err => {
         showToast('Terjadi kesalahan koneksi!', 'error');
         btn.disabled = false;
-        btn.textContent = '📬 Kirim Permintaan ke Admin';
+        btn.textContent = '📬 Kirim Admin';
     });
 }
 
@@ -654,30 +762,23 @@ function confirmCancel() {
     });
 }
 
-function sendWaReport() {
-    const items = Object.values(requestItems).filter(i => i.quantity > 0);
-    if (items.length === 0) {
-        showToast('Kuantitas request belum diisi!', 'warning');
-        return;
-    }
+let lastCreatedTransfer = null;
 
-    const branchName = @json($myLocation?->name ?? $kasir->branch);
-    const today = new Date();
-    const dateStr = String(today.getDate()).padStart(2, '0') + '-' + 
-                    String(today.getMonth() + 1).padStart(2, '0') + '-' + 
-                    today.getFullYear();
+function sendWaFromTransfer(t) {
+    if (!t) return;
 
-    let msg = `*LAPORAN REQUEST STOK*\n`;
-    msg += `*Cabang:* ${branchName}\n`;
-    msg += `*Tanggal:* ${dateStr}\n\n`;
+    let msg = `*LAPORAN PERMINTAAN STOK (REQUEST CABANG)*\n`;
+    msg += `*No. Tiket:* ${t.code}\n`;
+    msg += `*Cabang:* ${t.branch}\n`;
+    msg += `*Status:* ${t.status}\n`;
+    msg += `*Waktu:* ${t.created_at}\n\n`;
+
     msg += `*Daftar Barang:*\n`;
-    items.forEach((item, idx) => {
-        const qtyStr = Number(item.quantity).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-        msg += `${idx + 1}. *${item.name}* - ${qtyStr} ${item.unit}\n`;
+    t.items.forEach((item, idx) => {
+        msg += `${idx + 1}. *${item.name}* - ${item.qty} ${item.unit}\n`;
     });
 
-    const notes = document.getElementById('requestNotes').value.trim();
-    msg += `\n*Catatan:* ${notes ? notes : '-'}\n\n`;
+    msg += `\n*Catatan:* ${t.notes ? t.notes : '-'}\n\n`;
     msg += `_Laporan ini dibuat otomatis melalui sistem POS Pusat Kurma._`;
 
     const waNumber = @json(config('app.whatsapp_report_number', ''));
@@ -692,6 +793,15 @@ function sendWaReport() {
         url = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
     }
     window.open(url, '_blank');
+}
+
+function sendWaFromModal() {
+    if (lastCreatedTransfer) {
+        sendWaFromTransfer(lastCreatedTransfer);
+    }
+    setTimeout(() => {
+        location.reload();
+    }, 800);
 }
 </script>
 @endsection
