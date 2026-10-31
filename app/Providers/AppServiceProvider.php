@@ -34,6 +34,12 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
+        // Ensure dompdf fonts directory exists
+        $dompdfFontDir = storage_path('fonts');
+        if (!is_dir($dompdfFontDir)) {
+            @mkdir($dompdfFontDir, 0775, true);
+        }
+
         // Share shop settings globally to all views if table exists
         try {
             if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {

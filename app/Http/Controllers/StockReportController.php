@@ -234,13 +234,20 @@ class StockReportController extends Controller
         };
 
         if ($isPdf) {
-            ob_start();
-            $renderTemplate();
-            $html = ob_get_clean();
+            @ini_set('memory_limit', '512M');
+            @set_time_limit(180);
+            try {
+                ob_start();
+                $renderTemplate();
+                $html = ob_get_clean();
 
-            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
-            $pdf->setPaper('a4', 'landscape');
-            return $pdf->download('Laporan_Stok_Cabang_' . $now->format('Y-m-d') . '.pdf');
+                $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
+                $pdf->setPaper('a4', 'landscape');
+                return $pdf->download('Laporan_Stok_Cabang_' . $now->format('Y-m-d') . '.pdf');
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Stock Report PDF export failed: ' . $e->getMessage());
+                return response('Gagal mengekspor PDF Laporan Stok: ' . $e->getMessage(), 500);
+            }
         }
 
         $filename = 'Laporan_Stok_Cabang_' . $now->format('Y-m-d') . '.xls';

@@ -181,13 +181,20 @@ class TransactionController extends Controller
             };
 
             if ($isPdf) {
-                ob_start();
-                $renderTemplate();
-                $html = ob_get_clean();
+                @ini_set('memory_limit', '512M');
+                @set_time_limit(180);
+                try {
+                    ob_start();
+                    $renderTemplate();
+                    $html = ob_get_clean();
 
-                $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
-                $pdf->setPaper('a4', 'portrait');
-                return $pdf->download(str_replace('.xls', '.pdf', $filename));
+                    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
+                    $pdf->setPaper('a4', 'portrait');
+                    return $pdf->download(str_replace('.xls', '.pdf', $filename));
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('Kasir Weekly PDF export failed: ' . $e->getMessage());
+                    return response('Gagal mengekspor PDF Mingguan: ' . $e->getMessage(), 500);
+                }
             }
 
             return response()->streamDownload($renderTemplate, $filename, [
@@ -235,13 +242,20 @@ class TransactionController extends Controller
             };
 
             if ($isPdf) {
-                ob_start();
-                $renderTemplate();
-                $html = ob_get_clean();
+                @ini_set('memory_limit', '512M');
+                @set_time_limit(180);
+                try {
+                    ob_start();
+                    $renderTemplate();
+                    $html = ob_get_clean();
 
-                $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
-                $pdf->setPaper('a4', 'portrait');
-                return $pdf->download(str_replace('.xls', '.pdf', $filename));
+                    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
+                    $pdf->setPaper('a4', 'portrait');
+                    return $pdf->download(str_replace('.xls', '.pdf', $filename));
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('Kasir Weekly PDF export failed: ' . $e->getMessage());
+                    return response('Gagal mengekspor PDF Mingguan: ' . $e->getMessage(), 500);
+                }
             }
 
             return response()->streamDownload($renderTemplate, $filename, [
@@ -1140,13 +1154,20 @@ class TransactionController extends Controller
         };
 
         if ($isPdf) {
-            ob_start();
-            $renderTemplate();
-            $html = ob_get_clean();
+            @ini_set('memory_limit', '512M');
+            @set_time_limit(180);
+            try {
+                ob_start();
+                $renderTemplate();
+                $html = ob_get_clean();
 
-            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
-            $pdf->setPaper('a4', 'landscape');
-            return $pdf->download(str_replace('.xls', '.pdf', $filename));
+                $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
+                $pdf->setPaper('a4', 'landscape');
+                return $pdf->download(str_replace('.xls', '.pdf', $filename));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Admin/Owner Transaction PDF export failed: ' . $e->getMessage());
+                return response('Gagal mengekspor PDF Transaksi: ' . $e->getMessage(), 500);
+            }
         }
 
         return response()->streamDownload($renderTemplate, $filename, [

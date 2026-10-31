@@ -510,7 +510,7 @@ class DashboardController extends Controller
 
         try {
             $dateObj = \Carbon\Carbon::parse($selectedDate)->startOfDay();
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $selectedDate = \Carbon\Carbon::today()->format('Y-m-d');
             $dateObj = \Carbon\Carbon::today()->startOfDay();
         }
@@ -733,6 +733,11 @@ class DashboardController extends Controller
         $printedBy = auth()->user()->name . ' (' . ucfirst(auth()->user()->role) . ')';
         $isPdf = $request->query('format') === 'pdf';
 
+        if ($isPdf) {
+            @ini_set('memory_limit', '512M');
+            @set_time_limit(180);
+        }
+
         // Pre-calculate stats for cards
         $totalItems = count($bestSellers);
         $totalQty = 0;
@@ -816,13 +821,20 @@ class DashboardController extends Controller
         };
 
         if ($isPdf) {
-            ob_start();
-            $renderTemplate();
-            $html = ob_get_clean();
+            @ini_set('memory_limit', '512M');
+            @set_time_limit(180);
+            try {
+                ob_start();
+                $renderTemplate();
+                $html = ob_get_clean();
 
-            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
-            $pdf->setPaper('a4', 'portrait');
-            return $pdf->download($filePrefix . $branchSuffix . '_' . $now->format('Y-m-d') . '.pdf');
+                $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
+                $pdf->setPaper('a4', 'portrait');
+                return $pdf->download($filePrefix . $branchSuffix . '_' . $now->format('Y-m-d') . '.pdf');
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Best Seller PDF export failed: ' . $e->getMessage());
+                return response('Gagal mengekspor PDF Produk Terlaris: ' . $e->getMessage(), 500);
+            }
         }
 
         $filename = $filePrefix . $branchSuffix . '_' . $now->format('Y-m-d') . '.xls';
@@ -846,6 +858,11 @@ class DashboardController extends Controller
         $printDate = $now->translatedFormat('d F Y - H:i');
         $printedBy = auth()->user()->name . ' (' . ucfirst(auth()->user()->role) . ')';
         $isPdf = $request->query('format') === 'pdf';
+
+        if ($isPdf) {
+            @ini_set('memory_limit', '512M');
+            @set_time_limit(180);
+        }
 
         $dateRanges = $this->resolveDateRanges($request);
         $filterType = $dateRanges['filterType'];
@@ -978,13 +995,18 @@ class DashboardController extends Controller
             };
 
             if ($isPdf) {
-                ob_start();
-                $renderTemplate();
-                $html = ob_get_clean();
+                try {
+                    ob_start();
+                    $renderTemplate();
+                    $html = ob_get_clean();
 
-                $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
-                $pdf->setPaper('a4', 'landscape');
-                return $pdf->download(str_replace('.xls', '.pdf', $filename));
+                    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
+                    $pdf->setPaper('a4', 'landscape');
+                    return $pdf->download(str_replace('.xls', '.pdf', $filename));
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('Owner Report PDF (Harian) failed: ' . $e->getMessage());
+                    return response('Gagal mengekspor PDF Harian: ' . $e->getMessage(), 500);
+                }
             }
 
             return response()->streamDownload($renderTemplate, $filename, [
@@ -1132,13 +1154,18 @@ class DashboardController extends Controller
             };
 
             if ($isPdf) {
-                ob_start();
-                $renderTemplate();
-                $html = ob_get_clean();
+                try {
+                    ob_start();
+                    $renderTemplate();
+                    $html = ob_get_clean();
 
-                $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
-                $pdf->setPaper('a4', 'portrait');
-                return $pdf->download(str_replace('.xls', '.pdf', $filename));
+                    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
+                    $pdf->setPaper('a4', 'portrait');
+                    return $pdf->download(str_replace('.xls', '.pdf', $filename));
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('Owner Report PDF (Mingguan) failed: ' . $e->getMessage());
+                    return response('Gagal mengekspor PDF Mingguan: ' . $e->getMessage(), 500);
+                }
             }
 
             return response()->streamDownload($renderTemplate, $filename, [
@@ -1290,13 +1317,18 @@ class DashboardController extends Controller
             };
 
             if ($isPdf) {
-                ob_start();
-                $renderTemplate();
-                $html = ob_get_clean();
+                try {
+                    ob_start();
+                    $renderTemplate();
+                    $html = ob_get_clean();
 
-                $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
-                $pdf->setPaper('a4', 'portrait');
-                return $pdf->download(str_replace('.xls', '.pdf', $filename));
+                    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
+                    $pdf->setPaper('a4', 'portrait');
+                    return $pdf->download(str_replace('.xls', '.pdf', $filename));
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('Owner Report PDF (Bulanan) failed: ' . $e->getMessage());
+                    return response('Gagal mengekspor PDF Bulanan: ' . $e->getMessage(), 500);
+                }
             }
 
             return response()->streamDownload($renderTemplate, $filename, [
@@ -1319,7 +1351,7 @@ class DashboardController extends Controller
             try {
                 $logoData = base64_encode(file_get_contents($logoPath));
                 $logoHtml = '<img src="data:image/png;base64,' . $logoData . '" style="height: 50px; max-width: 100px; display: block;">';
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 $logoHtml = '<div style="width:50px;height:50px;background-color:#059669;border-radius:8px;text-align:center;line-height:50px;font-size:16pt;font-weight:bold;color:#ffffff;display:inline-block;">PK</div>';
             }
         } else {
@@ -1983,7 +2015,7 @@ class DashboardController extends Controller
                 'analysis' => $analysis,
                 'cached'   => !$forceRefresh,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('AI Performance Analysis failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
@@ -2095,7 +2127,7 @@ class DashboardController extends Controller
                 'success' => true,
                 'reply'   => $reply,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('AI Performance Chat failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
@@ -2109,6 +2141,8 @@ class DashboardController extends Controller
      */
     public function exportAiAnalysisPdf(Request $request)
     {
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(180);
         try {
             $dateRanges = $this->resolveDateRanges($request);
             $filterType = $dateRanges['filterType'];
@@ -2168,7 +2202,7 @@ class DashboardController extends Controller
                 try {
                     $logoData = base64_encode(file_get_contents($logoPath));
                     $logoHtml = '<img src="data:image/png;base64,' . $logoData . '" style="height: 50px; max-width: 100px; display: block;">';
-                } catch (\Exception $e) {
+                } catch (\Throwable $e) {
                     $logoHtml = '<div style="width:50px;height:50px;background-color:#059669;border-radius:8px;text-align:center;line-height:50px;font-size:16pt;font-weight:bold;color:#ffffff;display:inline-block;">PK</div>';
                 }
             } else {
@@ -2260,7 +2294,7 @@ class DashboardController extends Controller
             $pdf->setPaper('a4', 'portrait');
             $filename = 'Laporan_Analisis_AI_' . ucfirst($skill) . '_' . $now->format('YmdHis') . '.pdf';
             return $pdf->download($filename);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('AI Analysis PDF export failed: ' . $e->getMessage());
             return response('Gagal mengekspor PDF: ' . $e->getMessage(), 500);
         }
