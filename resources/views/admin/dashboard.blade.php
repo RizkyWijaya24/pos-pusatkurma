@@ -1898,39 +1898,40 @@
             <div x-show="activeTab === 'inventory'" class="flex flex-col gap-6">
             
             <!-- Tab Controls -->
-            <div class="flex justify-between items-center gap-4">
-                <!-- <div>
-                    <h3 class="font-extrabold text-slate-800 dark:text-purple-100 text-lg leading-tight">Daftar Stok Produk Kurma</h3>
-                    <p class="text-sm text-slate-400 dark:text-purple-400 font-medium mt-1">Kelola stok, harga, dan SKU semua produk kurma</p>
-                </div> -->
-                <div class="flex items-center gap-2 flex-shrink-0">
+            <div class="flex justify-between items-center w-full">
+                <div class="grid grid-cols-2 sm:flex sm:items-center gap-2.5 w-full sm:w-auto">
+                    <!-- Tambah Produk (Full width on mobile, rightmost on desktop) -->
+                    <button type="button"
+                            @click="resetProductForm(); showProductModal = true"
+                            class="col-span-2 sm:col-span-1 order-1 sm:order-3 px-4 sm:px-5 py-2.5 sm:py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-xs sm:text-sm transition duration-150 flex items-center justify-center gap-2 shadow-md shadow-emerald-700/10 active:scale-95 text-center">
+                        <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        <span>Tambah Produk</span>
+                    </button>
+
+                    <!-- Diagnosa Harga (Left 50% on mobile) -->
                     <button type="button"
                             @click="showDiagnoseModal = true"
                             :class="anomalyProducts.length > 0 ? 'bg-rose-50 border-2 border-rose-400 text-rose-700 hover:bg-rose-100 shadow-rose-600/10' : 'bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100'"
-                            class="px-4 py-3 rounded-xl font-bold text-sm transition duration-150 flex items-center gap-2 shadow-md whitespace-nowrap">
-                        <svg class="h-4 w-4" :class="anomalyProducts.length > 0 ? 'text-rose-600' : 'text-slate-500'" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            class="col-span-1 order-2 sm:order-1 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition duration-150 flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm active:scale-95 text-center">
+                        <svg class="h-4 w-4 shrink-0" :class="anomalyProducts.length > 0 ? 'text-rose-600' : 'text-slate-500'" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                         <span>Diagnosa Harga</span>
                         <template x-if="anomalyProducts.length > 0">
-                            <span class="px-2 py-0.5 rounded-full text-xs font-black bg-rose-600 text-white" x-text="anomalyProducts.length"></span>
+                            <span class="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shrink-0" x-text="anomalyProducts.length"></span>
                         </template>
                     </button>
+
+                    <!-- Upload Foto AI (Right 50% on mobile) -->
                     <a href="{{ route('admin.products.fast-upload') }}"
-                       class="px-5 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold text-sm transition duration-150 flex items-center gap-2 shadow-md shadow-violet-600/20 whitespace-nowrap">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                       class="col-span-1 order-3 sm:order-2 px-3 sm:px-5 py-2.5 sm:py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold text-xs sm:text-sm transition duration-150 flex items-center justify-center gap-1.5 sm:gap-2 shadow-md shadow-violet-600/20 active:scale-95 text-center">
+                        <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                         </svg>
-                        Upload Foto AI
+                        <span>Upload Foto AI</span>
                     </a>
-                    <button type="button"
-                            @click="resetProductForm(); showProductModal = true"
-                            class="px-5 py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-sm transition duration-150 flex items-center gap-2 shadow-md shadow-emerald-700/10 whitespace-nowrap">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
-                        Tambah Produk
-                    </button>
                 </div>
             </div>
 
