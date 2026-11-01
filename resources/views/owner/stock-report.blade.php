@@ -20,19 +20,19 @@
                 @endif
             </p>
         </div>
-        <div class="flex gap-3 flex-wrap">
+        <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
             @if($pendingRequests > 0)
             <a href="{{ route('admin.stock-transfers.index') }}?status=requested"
-               class="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-amber-500/20 transition-colors animate-pulse shadow-sm">
+               class="w-full sm:w-auto flex items-center justify-center gap-2 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-amber-500/20 transition-colors animate-pulse shadow-sm text-center">
                 ⏳ {{ $pendingRequests }} Request Kasir
             </a>
             @endif
             <a href="{{ route('owner.stock-report.export', request()->query()) }}"
-               class="bg-emerald-700 hover:bg-emerald-800 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-sm transition duration-150">
+               class="flex-1 sm:flex-initial bg-emerald-700 hover:bg-emerald-800 text-white px-4 sm:px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm transition duration-150 text-center">
                 📤 Export Excel
             </a>
             <a href="{{ route('owner.stock-report.export', array_merge(request()->query(), ['format' => 'pdf'])) }}"
-               class="bg-rose-700 hover:bg-rose-800 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-sm transition duration-150">
+               class="flex-1 sm:flex-initial bg-rose-700 hover:bg-rose-800 text-white px-4 sm:px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm transition duration-150 text-center">
                 📄 Export PDF
             </a>
         </div>
