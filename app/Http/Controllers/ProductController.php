@@ -452,7 +452,11 @@ class ProductController extends Controller
     private function geminiRebuildAndStore($file, Product $product): string
     {
         $geminiKey   = config('services.gemini.key');
-        $geminiModel = config('services.gemini.model', 'gemini-2.0-flash');
+        $geminiModel = config('services.gemini.model', 'gemini-2.5-flash');
+
+        if (empty($geminiKey)) {
+            throw new \Exception('GEMINI_API_KEY belum dikonfigurasi. Silakan isi GEMINI_API_KEY pada file .env Anda.');
+        }
 
         // ---------------------------------------------------------------
         // Step 1: Send image to Gemini to get an AI-optimized photo prompt
@@ -486,22 +490,53 @@ class ProductController extends Controller
             ],
         ];
 
-        $geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$geminiModel}:generateContent?key={$geminiKey}";
+        $candidateModels = array_values(array_unique(array_filter([
+            $geminiModel,
+            'gemini-2.5-flash',
+            'gemini-3.8-flash',
+        ])));
 
-        $ch = curl_init($geminiUrl);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => json_encode($geminiPayload),
-            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-            CURLOPT_TIMEOUT        => 30,
-        ]);
-        $geminiResponse = curl_exec($ch);
-        $geminiHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        $geminiResponse = null;
+        $geminiHttpCode = 0;
+        $lastErrMsg     = '';
+
+        foreach ($candidateModels as $currentModel) {
+            $geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$currentModel}:generateContent?key={$geminiKey}";
+
+            $ch = curl_init($geminiUrl);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST           => true,
+                CURLOPT_POSTFIELDS     => json_encode($geminiPayload),
+                CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+                CURLOPT_TIMEOUT        => 30,
+                CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false,
+            ]);
+            $geminiResponse = curl_exec($ch);
+            $geminiHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlErr        = curl_error($ch);
+            curl_close($ch);
+
+            if ($geminiHttpCode === 200 && $geminiResponse) {
+                break;
+            }
+
+            $lastErrMsg = $geminiResponse
+                ? (json_decode($geminiResponse, true)['error']['message'] ?? $geminiResponse)
+                : ($curlErr ?: "Koneksi ke model {$currentModel} gagal.");
+
+            if ($geminiHttpCode === 404 || $geminiHttpCode === 0) {
+                \Illuminate\Support\Facades\Log::warning("[GeminiAI Image Prompt] Model {$currentModel} HTTP {$geminiHttpCode} ({$lastErrMsg}). Mencoba fallback...");
+                continue;
+            }
+
+            break;
+        }
 
         if ($geminiHttpCode !== 200 || !$geminiResponse) {
-            throw new \Exception("Gemini API error (HTTP {$geminiHttpCode}): " . $geminiResponse);
+            throw new \Exception("Gemini API error (HTTP {$geminiHttpCode}): " . $lastErrMsg);
         }
 
         $geminiData  = json_decode($geminiResponse, true);

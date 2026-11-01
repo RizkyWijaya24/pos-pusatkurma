@@ -266,24 +266,39 @@
                             <div class="flex justify-between items-start gap-2 mb-2">
                                 <span class="text-slate-800 dark:text-white font-mono text-xs font-bold">{{ $req->transfer_code }}</span>
                                 @php
-                                    $badgeClasses = match($req->status) {
-                                        'requested' => 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-750 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-500/30',
-                                        'pending'   => 'bg-blue-100 dark:bg-blue-500/20 text-blue-750 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30',
-                                        'approved'  => 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-750 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30',
-                                        'rejected'  => 'bg-rose-100 dark:bg-red-500/20 text-rose-750 dark:text-red-400 border border-rose-200 dark:border-red-500/30',
-                                        default     => 'bg-slate-100 dark:bg-gray-500/20 text-slate-600 dark:text-gray-400 border border-slate-200 dark:border-gray-500/30',
+                                    $isPartial = $req->status === 'approved' && $req->hasAdjustment();
+                                    $badgeClasses = match(true) {
+                                        $isPartial  => 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30',
+                                        $req->status === 'requested' => 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-750 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-500/30',
+                                        $req->status === 'pending'   => 'bg-blue-100 dark:bg-blue-500/20 text-blue-750 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30',
+                                        $req->status === 'approved'  => 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-750 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30',
+                                        $req->status === 'rejected'  => 'bg-rose-100 dark:bg-red-500/20 text-rose-750 dark:text-red-400 border border-rose-200 dark:border-red-500/30',
+                                        default                      => 'bg-slate-100 dark:bg-gray-500/20 text-slate-600 dark:text-gray-400 border border-slate-200 dark:border-gray-500/30',
                                     };
                                 @endphp
                                 <span class="text-[10px] px-2 py-0.5 rounded-full font-bold {{ $badgeClasses }}">
                                     {{ $req->statusLabel }}
                                 </span>
                             </div>
-                            <div class="text-slate-600 dark:text-slate-400 text-xs space-y-1 my-2">
-                                @foreach($req->items->take(2) as $item)
-                                <div>• {{ $item->product->name }} ({{ number_format($item->quantity, 2, ',', '.') }} {{ $item->unit }})</div>
+                            <div class="text-slate-600 dark:text-slate-400 text-xs space-y-1.5 my-2">
+                                @foreach($req->items->take(3) as $item)
+                                    @php
+                                        $hasAdj = $req->status === 'approved' && $item->approved_quantity !== null && (float)$item->approved_quantity !== (float)$item->quantity;
+                                    @endphp
+                                    @if($hasAdj)
+                                    <div class="flex items-center justify-between gap-1 text-xs bg-amber-50/70 dark:bg-amber-950/20 px-2 py-1 rounded border border-amber-200/60 dark:border-amber-900/40">
+                                        <span class="font-medium text-slate-800 dark:text-slate-200">• {{ $item->product->name }}</span>
+                                        <span class="font-bold text-amber-700 dark:text-amber-400 text-[11px]">
+                                            <span class="line-through text-slate-400 font-normal mr-1">{{ number_format($item->quantity, 0, ',', '.') }}</span>
+                                            → {{ number_format($item->approved_quantity, 0, ',', '.') }} {{ $item->unit }}
+                                        </span>
+                                    </div>
+                                    @else
+                                    <div class="text-xs">• {{ $item->product->name }} ({{ number_format($item->approved_quantity ?? $item->quantity, 0, ',', '.') }} {{ $item->unit }})</div>
+                                    @endif
                                 @endforeach
-                                @if($req->items->count() > 2)
-                                <div class="text-[10px] text-slate-400 dark:text-slate-500 italic">+{{ $req->items->count() - 2 }} produk lainnya</div>
+                                @if($req->items->count() > 3)
+                                <div class="text-[10px] text-slate-400 dark:text-slate-500 italic">+{{ $req->items->count() - 3 }} produk lainnya</div>
                                 @endif
                             </div>
                             <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-150 dark:border-slate-800">
@@ -296,11 +311,17 @@
                                                 'status'     => $req->statusLabel,
                                                 'created_at' => $req->created_at->format('d-m-Y H:i') . ' WIB',
                                                 'notes'      => $req->notes ?? '-',
-                                                'items'      => $req->items->map(fn($it) => [
-                                                    'name' => $it->product->name ?? 'Produk',
-                                                    'qty'  => number_format($it->quantity, 2, ',', '.'),
-                                                    'unit' => $it->unit ?? 'pcs',
-                                                ])->values()->all(),
+                                                'items'      => $req->items->map(function($it) use ($req) {
+                                                    $isAdj = $req->status === 'approved' && $it->approved_quantity !== null && (float)$it->approved_quantity !== (float)$it->quantity;
+                                                    $qtyStr = $isAdj
+                                                        ? number_format($it->approved_quantity, 0, ',', '.') . ' (disetujui, minta: ' . number_format($it->quantity, 0, ',', '.') . ')'
+                                                        : number_format($it->quantity, 0, ',', '.');
+                                                    return [
+                                                        'name' => $it->product->name ?? 'Produk',
+                                                        'qty'  => $qtyStr,
+                                                        'unit' => $it->unit ?? 'pcs',
+                                                    ];
+                                                })->values()->all(),
                                             ]) }})"
                                             title="Kirim Laporan WA"
                                             style="background-color: #25D366;"

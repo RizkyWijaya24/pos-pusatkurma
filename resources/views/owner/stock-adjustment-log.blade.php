@@ -18,9 +18,34 @@
         </a>
     </div>
 
-    {{-- Filter --}}
+    {{-- Filter & Mode Selector --}}
     <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl p-5 shadow-md">
+        
+        {{-- Mode Selector Tabs --}}
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 border-b border-slate-100 dark:border-dp-700 pb-4">
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider">Mode Tampilan:</span>
+                <div class="inline-flex rounded-xl bg-slate-100 dark:bg-dp-900 p-1 border border-slate-200 dark:border-dp-700">
+                    <a href="{{ route('owner.stock-adjustment-log', array_merge(request()->query(), ['mode' => 'accumulated'])) }}" 
+                       class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 {{ ($mode ?? 'accumulated') === 'accumulated' ? 'bg-white dark:bg-dp-800 text-indigo-700 dark:text-indigo-400 shadow-sm' : 'text-slate-600 dark:text-purple-300 hover:text-slate-900 dark:hover:text-white' }}">
+                        <span>📊</span> Akumulasi Harian (Rekomendasi)
+                    </a>
+                    <a href="{{ route('owner.stock-adjustment-log', array_merge(request()->query(), ['mode' => 'detail'])) }}" 
+                       class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 {{ ($mode ?? 'accumulated') === 'detail' ? 'bg-white dark:bg-dp-800 text-indigo-700 dark:text-indigo-400 shadow-sm' : 'text-slate-600 dark:text-purple-300 hover:text-slate-900 dark:hover:text-white' }}">
+                        <span>📑</span> Detail Per Transaksi
+                    </a>
+                </div>
+            </div>
+            @if(($mode ?? 'accumulated') === 'accumulated')
+            <div class="text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-1.5 rounded-xl border border-amber-200/50 flex items-center gap-1.5">
+                <span>💡</span> <span>Stok keluar untuk produk & lokasi yang sama <strong>diakumulasi per hari</strong> agar ringkas dan rapi.</span>
+            </div>
+            @endif
+        </div>
+
         <form method="GET" class="flex flex-wrap gap-4 items-end">
+            <input type="hidden" name="mode" value="{{ $mode ?? 'accumulated' }}">
+
             <div>
                 <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2">Produk</label>
                 <select name="product_id" class="bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-700 dark:text-purple-200 rounded-xl px-3.5 py-2.5 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-inner">
@@ -55,7 +80,7 @@
             </div>
             <button type="submit" class="bg-indigo-700 hover:bg-indigo-800 text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider shadow transition duration-150">🔍 Filter</button>
             @if(request()->hasAny(['product_id','location_id','type','date']))
-            <a href="{{ route('owner.stock-adjustment-log') }}" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 dark:text-purple-300 text-xs font-bold rounded-xl transition duration-150">✕ Reset</a>
+            <a href="{{ route('owner.stock-adjustment-log', ['mode' => $mode ?? 'accumulated']) }}" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 dark:text-purple-300 text-xs font-bold rounded-xl transition duration-150">✕ Reset</a>
             @endif
         </form>
     </div>
@@ -79,7 +104,7 @@
                         <th class="text-center px-4 py-3">Sebelum</th>
                         <th class="text-center px-4 py-3">Perubahan</th>
                         <th class="text-center px-4 py-3">Sesudah</th>
-                        <th class="px-4 py-3">Oleh</th>
+                        <th class="px-4 py-3">Oleh / Keterangan</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-dp-700 font-semibold text-slate-800 dark:text-purple-100">
@@ -95,27 +120,40 @@
                         ];
                         $typeInfo = $typeIcons[$log->type] ?? ['icon' => '📋', 'color' => 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900/40 dark:text-slate-400 dark:border-slate-800/30'];
                         $changePositive = $log->quantity_change >= 0;
+                        $isAccumulated = !empty($log->is_accumulated);
+                        $dateObj = \Carbon\Carbon::parse($log->log_date ?? $log->created_at);
                     @endphp
                     <tr class="hover:bg-slate-50/50 dark:hover:bg-dp-700/30 transition duration-150">
                         <td class="px-4 py-3 text-slate-500 dark:text-purple-400 text-xs whitespace-nowrap">
-                            <div>{{ $log->created_at->translatedFormat('d M Y') }}</div>
-                            <div class="text-slate-400 dark:text-purple-505 text-[10px] font-semibold mt-0.5">{{ $log->created_at->format('H:i:s') }}</div>
+                            <div class="font-bold text-slate-800 dark:text-slate-200">{{ $dateObj->translatedFormat('d M Y') }}</div>
+                            @if($isAccumulated)
+                            <div class="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 px-1.5 py-0.5 rounded border border-indigo-200/50 mt-1">
+                                <span>📅</span> Akumulasi 1 Hari
+                            </div>
+                            @else
+                            <div class="text-slate-400 dark:text-purple-500 text-[10px] font-semibold mt-0.5">{{ $log->created_at->format('H:i:s') }} WIB</div>
+                            @endif
                         </td>
-                        <td class="px-4 py-3">
+                        <td class="px-4 py-3 whitespace-nowrap">
                             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border {{ $typeInfo['color'] }}">
                                 {{ $typeInfo['icon'] }} {{ $log->typeLabel }}
                             </span>
+                            @if($isAccumulated)
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 ml-1">
+                                {{ $log->transaction_count }}x Transaksi
+                            </span>
+                            @endif
                         </td>
                         <td class="px-4 py-3">
-                            <p class="text-slate-900 dark:text-purple-100 font-bold">{{ $log->product->name }}</p>
-                            <p class="text-slate-400 dark:text-purple-400 font-mono text-[10px] mt-0.5">{{ $log->product->sku }}</p>
+                            <p class="text-slate-900 dark:text-purple-100 font-bold">{{ $log->product?->name ?? 'Produk Dihapus' }}</p>
+                            <p class="text-slate-400 dark:text-purple-400 font-mono text-[10px] mt-0.5">{{ $log->product?->sku ?? '-' }}</p>
                         </td>
                         <td class="px-4 py-3">
-                            <p class="text-slate-800 dark:text-purple-100 font-bold text-sm">{{ $log->location->name }}</p>
-                            <p class="text-slate-400 dark:text-purple-400 text-[10px] uppercase font-bold tracking-wider mt-0.5">{{ $log->location->type }}</p>
+                            <p class="text-slate-800 dark:text-purple-100 font-bold text-sm">{{ $log->location?->name ?? '-' }}</p>
+                            <p class="text-slate-400 dark:text-purple-400 text-[10px] uppercase font-bold tracking-wider mt-0.5">{{ $log->location?->type ?? '-' }}</p>
                         </td>
                         @php
-                            $unit = $log->product->price_unit;
+                            $unit = $log->product?->price_unit ?? 'pcs';
                             
                             $beforeVal = number_format($log->quantity_before, 2, ',', '.');
                             if ($unit === 'gram' && abs($log->quantity_before) >= 1000) {
@@ -142,10 +180,19 @@
                             {{ $afterVal }}
                         </td>
                         <td class="px-4 py-3">
-                            <p class="text-slate-800 dark:text-purple-100 font-bold text-xs">{{ $log->creator->name }}</p>
-                            <p class="text-slate-400 dark:text-purple-400 text-[9px] uppercase font-bold tracking-wider mt-0.5">{{ $log->creator->role }}</p>
-                            @if($log->notes)
-                            <p class="text-slate-400 dark:text-purple-500 text-[10px] italic mt-1.5 leading-normal max-w-[200px] break-words" title="{{ $log->notes }}">{{ Str::limit($log->notes, 40) }}</p>
+                            @if($isAccumulated)
+                                <p class="text-slate-800 dark:text-purple-100 font-bold text-xs">{{ $log->transaction_count }}x Transaksi {{ $log->typeLabel }}</p>
+                                <p class="text-slate-400 dark:text-purple-400 text-[9px] uppercase font-bold tracking-wider mt-0.5">Total Hari Ini</p>
+                                <a href="{{ route('owner.stock-adjustment-log', array_merge(request()->query(), ['mode' => 'detail', 'product_id' => $log->product_id, 'location_id' => $log->location_id, 'date' => $dateObj->format('Y-m-d')])) }}" 
+                                   class="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 hover:underline mt-1.5">
+                                    <span>🔍</span> Lihat rincian per transaksi →
+                                </a>
+                            @else
+                                <p class="text-slate-800 dark:text-purple-100 font-bold text-xs">{{ $log->creator?->name ?? 'Sistem' }}</p>
+                                <p class="text-slate-400 dark:text-purple-400 text-[9px] uppercase font-bold tracking-wider mt-0.5">{{ $log->creator?->role ?? '-' }}</p>
+                                @if($log->notes)
+                                <p class="text-slate-400 dark:text-purple-500 text-[10px] italic mt-1.5 leading-normal max-w-[200px] break-words" title="{{ $log->notes }}">{{ Str::limit($log->notes, 40) }}</p>
+                                @endif
                             @endif
                         </td>
                     </tr>

@@ -97,10 +97,27 @@ class StockTransfer extends Model
     }
 
     /**
+     * Cek apakah transfer disetujui dengan penyesuaian kuantitas.
+     */
+    public function hasAdjustment(): bool
+    {
+        if ($this->relationLoaded('items')) {
+            return $this->items->contains(function ($item) {
+                return $item->approved_quantity !== null && $item->approved_quantity != $item->quantity;
+            });
+        }
+        return false;
+    }
+
+    /**
      * Label status dalam Bahasa Indonesia.
      */
     public function getStatusLabelAttribute(): string
     {
+        if ($this->status === 'approved' && $this->hasAdjustment()) {
+            return 'Disetujui Sebagian';
+        }
+
         return match ($this->status) {
             'requested' => 'Menunggu Proses',
             'pending'   => 'Diproses Admin',

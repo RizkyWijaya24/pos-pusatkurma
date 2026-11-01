@@ -1574,7 +1574,11 @@ class DashboardController extends Controller
                 // ── Build prompt & gather data based on selected skill ─────
                 $branchText  = $selectedBranch ? "Cabang: {$selectedBranch}" : "Semua Cabang";
                 $geminiKey   = config('services.gemini.key');
-                $geminiModel = config('services.gemini.model', 'gemini-3.5-flash');
+                $geminiModel = config('services.gemini.model', 'gemini-2.5-flash');
+
+                if (empty($geminiKey)) {
+                    throw new \Exception('GEMINI_API_KEY belum dikonfigurasi. Silakan isi GEMINI_API_KEY pada file .env Anda (dapat diperoleh gratis di https://aistudio.google.com/app/apikey).');
+                }
 
                 // ────────────────────────────────────────────────────────────
                 // SKILL: general — Analisis Umum (default)
@@ -1983,7 +1987,7 @@ class DashboardController extends Controller
                         . "Bersikap seperti CFO yang kritis dan detail-oriented. Mulai langsung dengan judul Markdown.";
                 }
 
-                // ── Call Gemini API ──────────────────────────────────────────
+                // ── Call Gemini API with Model Fallback ─────────────────────
                 $geminiPayload = [
                     'contents' => [[
                         'parts' => [['text' => $geminiPrompt]],
@@ -1994,25 +1998,53 @@ class DashboardController extends Controller
                     ],
                 ];
 
-                $geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$geminiModel}:generateContent?key={$geminiKey}";
+                $candidateModels = array_values(array_unique(array_filter([
+                    $geminiModel,
+                    'gemini-2.5-flash',
+                    'gemini-3.8-flash',
+                ])));
 
-                $ch = curl_init($geminiUrl);
-                curl_setopt_array($ch, [
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_POST           => true,
-                    CURLOPT_POSTFIELDS     => json_encode($geminiPayload),
-                    CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-                    CURLOPT_TIMEOUT        => 30,
-                ]);
-                $geminiResponse = curl_exec($ch);
-                $geminiHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close($ch);
+                $geminiResponse = null;
+                $geminiHttpCode = 0;
+                $lastErrMsg     = '';
+
+                foreach ($candidateModels as $currentModel) {
+                    $geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$currentModel}:generateContent?key={$geminiKey}";
+
+                    $ch = curl_init($geminiUrl);
+                    curl_setopt_array($ch, [
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_POST           => true,
+                        CURLOPT_POSTFIELDS     => json_encode($geminiPayload),
+                        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+                        CURLOPT_TIMEOUT        => 30,
+                        CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4,
+                        CURLOPT_SSL_VERIFYPEER => false,
+                        CURLOPT_SSL_VERIFYHOST => false,
+                    ]);
+                    $geminiResponse = curl_exec($ch);
+                    $geminiHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    $curlErr        = curl_error($ch);
+                    curl_close($ch);
+
+                    if ($geminiHttpCode === 200 && $geminiResponse) {
+                        break;
+                    }
+
+                    $lastErrMsg = $geminiResponse
+                        ? (json_decode($geminiResponse, true)['error']['message'] ?? $geminiResponse)
+                        : ($curlErr ?: "Koneksi ke model {$currentModel} gagal.");
+
+                    if ($geminiHttpCode === 404 || $geminiHttpCode === 0) {
+                        \Illuminate\Support\Facades\Log::warning("[GeminiAI] Model {$currentModel} HTTP {$geminiHttpCode} ({$lastErrMsg}). Mencoba fallback...");
+                        continue;
+                    }
+
+                    break;
+                }
 
                 if ($geminiHttpCode !== 200 || !$geminiResponse) {
-                    $errMsg = $geminiResponse
-                        ? (json_decode($geminiResponse, true)['error']['message'] ?? $geminiResponse)
-                        : 'Koneksi ke Gemini API gagal.';
-                    throw new \Exception("Gemini API error (HTTP {$geminiHttpCode}): " . $errMsg);
+                    throw new \Exception("Gemini API error (HTTP {$geminiHttpCode}): " . $lastErrMsg);
                 }
 
                 $geminiData = json_decode($geminiResponse, true);
@@ -2061,7 +2093,11 @@ class DashboardController extends Controller
             $history = array_slice($history, -10);
 
             $geminiKey   = config('services.gemini.key');
-            $geminiModel = config('services.gemini.model', 'gemini-3.5-flash');
+            $geminiModel = config('services.gemini.model', 'gemini-2.5-flash');
+
+            if (empty($geminiKey)) {
+                throw new \Exception('GEMINI_API_KEY belum dikonfigurasi. Silakan isi GEMINI_API_KEY pada file .env Anda.');
+            }
 
             // System context: the initial analysis report is the first user turn,
             // followed by any existing conversation history, then the new message.
@@ -2110,25 +2146,53 @@ class DashboardController extends Controller
                 ],
             ];
 
-            $geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$geminiModel}:generateContent?key={$geminiKey}";
+            $candidateModels = array_values(array_unique(array_filter([
+                $geminiModel,
+                'gemini-2.5-flash',
+                'gemini-3.8-flash',
+            ])));
 
-            $ch = curl_init($geminiUrl);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_POST           => true,
-                CURLOPT_POSTFIELDS     => json_encode($geminiPayload),
-                CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-                CURLOPT_TIMEOUT        => 30,
-            ]);
-            $geminiResponse = curl_exec($ch);
-            $geminiHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+            $geminiResponse = null;
+            $geminiHttpCode = 0;
+            $lastErrMsg     = '';
+
+            foreach ($candidateModels as $currentModel) {
+                $geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$currentModel}:generateContent?key={$geminiKey}";
+
+                $ch = curl_init($geminiUrl);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_POST           => true,
+                    CURLOPT_POSTFIELDS     => json_encode($geminiPayload),
+                    CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+                    CURLOPT_TIMEOUT        => 30,
+                    CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => false,
+                ]);
+                $geminiResponse = curl_exec($ch);
+                $geminiHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $curlErr        = curl_error($ch);
+                curl_close($ch);
+
+                if ($geminiHttpCode === 200 && $geminiResponse) {
+                    break;
+                }
+
+                $lastErrMsg = $geminiResponse
+                    ? (json_decode($geminiResponse, true)['error']['message'] ?? $geminiResponse)
+                    : ($curlErr ?: "Koneksi ke model {$currentModel} gagal.");
+
+                if ($geminiHttpCode === 404 || $geminiHttpCode === 0) {
+                    \Illuminate\Support\Facades\Log::warning("[GeminiAI Chat] Model {$currentModel} HTTP {$geminiHttpCode} ({$lastErrMsg}). Mencoba fallback...");
+                    continue;
+                }
+
+                break;
+            }
 
             if ($geminiHttpCode !== 200 || !$geminiResponse) {
-                $errMsg = $geminiResponse
-                    ? (json_decode($geminiResponse, true)['error']['message'] ?? $geminiResponse)
-                    : 'Koneksi ke Gemini API gagal.';
-                throw new \Exception("Gemini API error (HTTP {$geminiHttpCode}): " . $errMsg);
+                throw new \Exception("Gemini API error (HTTP {$geminiHttpCode}): " . $lastErrMsg);
             }
 
             $geminiData = json_decode($geminiResponse, true);

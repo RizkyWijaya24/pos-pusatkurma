@@ -105,9 +105,27 @@ class StockTransferController extends Controller
     /**
      * Detail transfer stok.
      */
-    public function show(StockTransfer $stockTransfer)
+    public function show(Request $request, StockTransfer $stockTransfer)
     {
         $stockTransfer->load(['fromLocation', 'toLocation', 'requester', 'approver', 'items.product']);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            $warehouseStocks = [];
+            if ($stockTransfer->from_location_id) {
+                $productIds = $stockTransfer->items->pluck('product_id')->toArray();
+                $warehouseStocks = \App\Models\ProductStock::where('location_id', $stockTransfer->from_location_id)
+                    ->whereIn('product_id', $productIds)
+                    ->pluck('stock', 'product_id')
+                    ->toArray();
+            }
+
+            return response()->json([
+                'success' => true,
+                'transfer' => $stockTransfer,
+                'warehouse_stocks' => $warehouseStocks,
+            ]);
+        }
+
         return view('admin.stock-transfers.show', compact('stockTransfer'));
     }
 

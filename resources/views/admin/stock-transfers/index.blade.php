@@ -218,27 +218,69 @@
     </div>
 </div>
 
-{{-- Approve Modal --}}
+{{-- Approve Modal with Stock Adjustment --}}
 <div id="approveModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all duration-300 scale-95 opacity-0 active-modal-approve">
-        <div class="p-6 text-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-emerald-100 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-3xl mb-4 animate-bounce">
-                ✅
+    <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all duration-300 scale-95 opacity-0 active-modal-approve max-h-[90vh] flex flex-col">
+        {{-- Modal Header --}}
+        <div class="px-6 py-5 border-b border-slate-100 dark:border-dp-700 flex justify-between items-center bg-slate-50/50 dark:bg-dp-900/50 shrink-0">
+            <div>
+                <h3 class="text-base font-black text-slate-800 dark:text-purple-100 flex items-center gap-2">
+                    <span>⚡</span> Review & Sesuaikan Request Stok
+                </h3>
+                <p class="text-xs text-slate-400 dark:text-purple-400 font-medium mt-0.5">
+                    Tiket: <span id="approveTransferCode" class="font-mono font-bold text-slate-700 dark:text-purple-200"></span> • 
+                    <span id="approveTransferRoute" class="text-emerald-700 dark:text-emerald-400 font-bold"></span>
+                </p>
             </div>
-            <h3 class="text-xl font-black text-slate-800 dark:text-purple-100 mb-2">Konfirmasi Approve</h3>
-            <p class="text-slate-500 dark:text-purple-300 text-xs font-semibold leading-relaxed px-2">
-                Apakah Anda yakin ingin menyetujui transfer stok <span id="approveTransferCode" class="font-mono font-bold text-slate-800 dark:text-purple-100"></span>? <br>Stok produk akan segera dipindahkan antar lokasi secara otomatis.
+            <button onclick="closeApproveModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-purple-200 text-lg font-bold p-1 cursor-pointer">&times;</button>
+        </div>
+
+        {{-- Loading State --}}
+        <div id="approveModalLoading" class="p-8 text-center">
+            <svg class="w-8 h-8 mx-auto text-emerald-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-xs font-bold text-slate-500 mt-2">Memeriksa stok gudang...</p>
+        </div>
+
+        {{-- Modal Body (Items Table) --}}
+        <div id="approveModalContent" class="p-6 overflow-y-auto space-y-4 flex-1 hidden">
+            <div id="approveWarningBanner" class="hidden bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-2xl p-3.5 text-xs text-amber-800 dark:text-amber-300 font-medium flex items-center gap-2.5">
+                <span class="text-lg shrink-0">⚠️</span>
+                <span>Stok di gudang tidak mencukupi permintaan kasir. Kolom kuantitas telah disesuaikan otomatis dengan sisa stok maksimal yang tersedia.</span>
+            </div>
+
+            <div class="overflow-x-auto rounded-2xl border border-slate-100 dark:border-dp-700">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-50 dark:bg-dp-900 text-slate-500 dark:text-purple-300 font-bold uppercase tracking-wider text-[10px]">
+                        <tr>
+                            <th class="px-4 py-3">Produk</th>
+                            <th class="px-3 py-3 text-right">Stok Gudang</th>
+                            <th class="px-3 py-3 text-right">Diminta Kasir</th>
+                            <th class="px-4 py-3 text-right w-36">Disetujui (Adjust)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="approveItemsBody" class="divide-y divide-slate-100 dark:divide-dp-700/60 font-semibold text-slate-700 dark:text-purple-200">
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="text-[11px] text-slate-400 font-medium italic">
+                * Anda dapat mengubah angka di kolom <b>Disetujui (Adjust)</b> sesuai ketersediaan fisik stok di gudang. Kasir akan otomatis menerima notifikasi mengenai jumlah penyesuaian.
             </p>
-            <div class="flex gap-3 mt-6">
-                <button onclick="closeApproveModal()" 
-                        class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-dp-700 dark:text-purple-200 hover:dark:bg-dp-600 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors">
-                    Batal
-                </button>
-                <button id="confirmApproveBtn" onclick="confirmApprove()" 
-                        class="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors shadow-md shadow-emerald-700/10">
-                    Setujui
-                </button>
-            </div>
+        </div>
+
+        {{-- Modal Footer --}}
+        <div class="px-6 py-4 border-t border-slate-100 dark:border-dp-700 bg-slate-50/50 dark:bg-dp-900/50 flex gap-3 shrink-0">
+            <button onclick="closeApproveModal()" 
+                    class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-dp-700 dark:text-purple-200 hover:dark:bg-dp-600 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer">
+                Batal
+            </button>
+            <button id="confirmApproveBtn" onclick="confirmApproveAdjusted()" 
+                    class="flex-2 bg-emerald-700 hover:bg-emerald-800 text-white py-3 px-5 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors shadow-md shadow-emerald-700/10 flex items-center justify-center gap-2 cursor-pointer">
+                <span>✓ Setujui Transfer (Sesuai Jumlah Ini)</span>
+            </button>
         </div>
     </div>
 </div>
@@ -288,12 +330,118 @@ function closeModal(modalId, cardClass) {
     }, 150);
 }
 
-// Approve functions
+function formatNum(n) {
+    if (n === null || n === undefined) return '—';
+    return parseFloat(n).toLocaleString('id-ID', { maximumFractionDigits: 2 });
+}
+
+// Approve & Adjust functions
 function approveTransfer(id, code) {
     currentTransferId = id;
     currentTransferCode = code;
     document.getElementById('approveTransferCode').textContent = code;
+    document.getElementById('approveTransferRoute').textContent = 'Memuat rute...';
+    
+    document.getElementById('approveModalLoading').classList.remove('hidden');
+    document.getElementById('approveModalContent').classList.add('hidden');
+    document.getElementById('approveWarningBanner').classList.add('hidden');
+    
     showModal('approveModal', 'active-modal-approve');
+
+    fetch(`/${rolePrefix}/stock-transfers/${id}`, {
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) {
+            showToast('Gagal memuat detail transfer', 'error');
+            closeApproveModal();
+            return;
+        }
+
+        const transfer = data.transfer;
+        const warehouseStocks = data.warehouse_stocks || {};
+
+        const fromName = transfer.from_location?.name || 'Gudang Utama';
+        const toName = transfer.to_location?.name || 'Cabang';
+        document.getElementById('approveTransferRoute').textContent = `${fromName} → ${toName}`;
+
+        const tbody = document.getElementById('approveItemsBody');
+        tbody.innerHTML = '';
+
+        let hasShortage = false;
+
+        (transfer.items || []).forEach(item => {
+            const warehouseQty = warehouseStocks[item.product_id] !== undefined ? parseFloat(warehouseStocks[item.product_id]) : 9999999;
+            const requestedQty = parseFloat(item.quantity);
+            const isShort = warehouseQty < requestedQty;
+            if (isShort) hasShortage = true;
+
+            const suggested = Math.min(requestedQty, Math.max(0, warehouseQty));
+
+            const warehouseDisplay = warehouseQty !== 9999999
+                ? `<span class="font-bold ${isShort ? 'text-rose-600' : 'text-emerald-700 dark:text-emerald-400'}">${formatNum(warehouseQty)}</span>`
+                : `<span class="text-slate-400">—</span>`;
+
+            const warningText = isShort
+                ? `<div class="text-rose-500 text-[10px] font-bold">⚠️ Sisa: ${formatNum(warehouseQty)}</div>`
+                : '';
+
+            tbody.insertAdjacentHTML('beforeend', `
+                <tr>
+                    <td class="py-3 px-4">
+                        <p class="font-bold text-slate-800 dark:text-purple-100">${item.product?.name || 'Produk'}</p>
+                        <p class="text-slate-400 font-mono text-[10px]">${item.product?.sku || '-'}</p>
+                    </td>
+                    <td class="py-3 px-3 text-right">
+                        ${warehouseDisplay}
+                        <div class="text-slate-400 text-[10px] uppercase font-bold">${item.unit}</div>
+                        ${warningText}
+                    </td>
+                    <td class="py-3 px-3 text-right">
+                        <span class="font-extrabold text-slate-700 dark:text-purple-200">${formatNum(requestedQty)}</span>
+                        <div class="text-slate-400 text-[10px] uppercase font-bold">${item.unit}</div>
+                    </td>
+                    <td class="py-3 px-4 text-right">
+                        <input
+                            type="number"
+                            data-item-id="${item.id}"
+                            data-warehouse-qty="${warehouseQty}"
+                            value="${suggested}"
+                            min="0"
+                            step="0.01"
+                            class="w-24 text-right bg-white dark:bg-dp-900 border ${isShort ? 'border-amber-400 bg-amber-50/50' : 'border-slate-200 dark:border-dp-600'} text-slate-800 dark:text-purple-100 rounded-xl px-3 py-1.5 text-xs font-bold focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none transition-colors approve-qty-input"
+                            oninput="validateIndexQtyInput(this)"
+                        />
+                        <div class="text-slate-400 text-[10px] uppercase font-bold mt-0.5">${item.unit}</div>
+                    </td>
+                </tr>
+            `);
+        });
+
+        if (hasShortage) {
+            document.getElementById('approveWarningBanner').classList.remove('hidden');
+        }
+
+        document.getElementById('approveModalLoading').classList.add('hidden');
+        document.getElementById('approveModalContent').classList.remove('hidden');
+    })
+    .catch(() => {
+        showToast('Gagal terhubung ke server', 'error');
+        closeApproveModal();
+    });
+}
+
+function validateIndexQtyInput(input) {
+    const warehouseQty = parseFloat(input.dataset.warehouseQty);
+    const val = parseFloat(input.value);
+    if (val > warehouseQty && warehouseQty < 9999999) {
+        input.classList.add('border-rose-500', 'bg-rose-50');
+        input.classList.remove('border-slate-200', 'border-emerald-500', 'border-amber-400');
+    } else {
+        input.classList.remove('border-rose-500', 'bg-rose-50');
+        input.classList.add('border-emerald-500');
+    }
 }
 
 function closeApproveModal() {
@@ -302,17 +450,45 @@ function closeApproveModal() {
     currentTransferCode = null;
 }
 
-function confirmApprove() {
+function confirmApproveAdjusted() {
     if (!currentTransferId) return;
+
+    const inputs = document.querySelectorAll('.approve-qty-input');
+    let hasError = false;
+    let items = [];
+
+    inputs.forEach(input => {
+        const val = parseFloat(input.value);
+        const warehouseQty = parseFloat(input.dataset.warehouseQty);
+        if (isNaN(val) || val < 0) {
+            showToast(`Jumlah tidak valid untuk salah satu item!`, 'error');
+            hasError = true;
+            return;
+        }
+        if (val > warehouseQty && warehouseQty < 9999999) {
+            showToast(`Jumlah yang disetujui melebihi stok gudang yang tersedia!`, 'error');
+            hasError = true;
+            return;
+        }
+        items.push({ item_id: parseInt(input.dataset.itemId), approved_qty: val });
+    });
+
+    if (hasError) return;
+
     const btn = document.getElementById('confirmApproveBtn');
     if (btn) {
         btn.disabled = true;
-        btn.textContent = '⏳ MEMPROSES...';
+        btn.innerHTML = '<span>⏳ Memproses...</span>';
     }
 
-    fetch(`/${rolePrefix}/stock-transfers/${currentTransferId}/approve`, {
+    fetch(`/${rolePrefix}/stock-transfers/${currentTransferId}/approve-adjusted`, {
         method: 'POST',
-        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' }
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({ items })
     })
     .then(r => r.json())
     .then(data => {
@@ -324,16 +500,16 @@ function confirmApprove() {
             showToast(data.message, 'error');
             if (btn) {
                 btn.disabled = false;
-                btn.textContent = 'SETUJUI';
+                btn.innerHTML = '<span>✓ Setujui Transfer (Sesuai Jumlah Ini)</span>';
             }
         }
     })
-    .catch(err => {
+    .catch(() => {
         closeApproveModal();
         showToast('Terjadi kesalahan koneksi!', 'error');
         if (btn) {
             btn.disabled = false;
-            btn.textContent = 'SETUJUI';
+            btn.innerHTML = '<span>✓ Setujui Transfer (Sesuai Jumlah Ini)</span>';
         }
     });
 }

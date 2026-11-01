@@ -261,10 +261,50 @@ class StockReportController extends Controller
 
     /**
      * Log mutasi stok (histori pergerakan stok).
+     * Mendukung mode akumulasi harian (default) untuk barang keluar/transaksi yang sama di lokasi yang sama.
      */
     public function adjustmentLog(Request $request)
     {
-        $query = StockAdjustmentLog::with(['product', 'location', 'creator'])->latest('created_at');
+        $mode      = $request->get('mode', 'accumulated'); // Default mode: akumulasi harian
+        $products  = Product::orderBy('name')->get();
+        $locations = StockLocation::active()->orderBy('name')->get();
+
+        if ($mode === 'detail') {
+            // Mode Detail: Tampilkan setiap baris transaksi secara individual
+            $query = StockAdjustmentLog::with(['product', 'location', 'creator'])->latest('created_at');
+
+            if ($request->filled('product_id')) {
+                $query->where('product_id', $request->product_id);
+            }
+            if ($request->filled('location_id')) {
+                $query->where('location_id', $request->location_id);
+            }
+            if ($request->filled('type')) {
+                $query->where('type', $request->type);
+            }
+            if ($request->filled('date')) {
+                $query->whereDate('created_at', $request->date);
+            }
+
+            $logs = $query->paginate(25)->withQueryString();
+
+            return view('owner.stock-adjustment-log', compact('logs', 'products', 'locations', 'mode'));
+        }
+
+        // Mode Akumulasi Harian (Default):
+        // Jika barang yang sama keluar/berubah di tempat yang sama pada hari yang sama, akumulasi per hari
+        $query = \Illuminate\Support\Facades\DB::table('stock_adjustment_logs')
+            ->selectRaw("
+                DATE(created_at) as log_date,
+                product_id,
+                location_id,
+                type,
+                MIN(id) as first_log_id,
+                MAX(id) as last_log_id,
+                SUM(quantity_change) as total_change,
+                COUNT(*) as transaction_count,
+                MAX(created_at) as latest_created_at
+            ");
 
         if ($request->filled('product_id')) {
             $query->where('product_id', $request->product_id);
@@ -279,11 +319,42 @@ class StockReportController extends Controller
             $query->whereDate('created_at', $request->date);
         }
 
-        $logs      = $query->paginate(25)->withQueryString();
-        $products  = Product::orderBy('name')->get();
-        $locations = StockLocation::active()->orderBy('name')->get();
+        $query->groupBy(\Illuminate\Support\Facades\DB::raw("DATE(created_at)"), 'product_id', 'location_id', 'type')
+              ->orderByDesc('latest_created_at');
 
-        return view('owner.stock-adjustment-log', compact('logs', 'products', 'locations'));
+        $paginated = $query->paginate(25)->withQueryString();
+
+        $firstLogIds = $paginated->pluck('first_log_id')->filter()->unique();
+        $lastLogIds  = $paginated->pluck('last_log_id')->filter()->unique();
+        $allLogIds   = $firstLogIds->merge($lastLogIds)->unique();
+
+        $logsById = StockAdjustmentLog::with(['product', 'location', 'creator'])
+            ->whereIn('id', $allLogIds)
+            ->get()
+            ->keyBy('id');
+
+        $transformed = $paginated->getCollection()->map(function ($row) use ($logsById) {
+            $firstLog = $logsById[$row->first_log_id] ?? null;
+            $lastLog  = $logsById[$row->last_log_id] ?? $firstLog;
+
+            if (!$firstLog) return null;
+
+            $item = clone $lastLog;
+            $item->quantity_before   = (float)$firstLog->quantity_before;
+            $item->quantity_change   = (float)$row->total_change;
+            $item->quantity_after    = (float)$lastLog->quantity_after;
+            $item->transaction_count = (int)$row->transaction_count;
+            $item->is_accumulated    = ($row->transaction_count > 1);
+            $item->log_date          = $row->log_date;
+            $item->created_at        = $lastLog->created_at;
+
+            return $item;
+        })->filter();
+
+        $paginated->setCollection($transformed);
+        $logs = $paginated;
+
+        return view('owner.stock-adjustment-log', compact('logs', 'products', 'locations', 'mode'));
     }
 
     /**
