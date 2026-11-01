@@ -170,6 +170,16 @@
                                    class="text-slate-600 dark:text-purple-300 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-dp-700 hover:bg-slate-200 dark:hover:bg-dp-600 shadow-sm border border-slate-200/50 dark:border-dp-600/30">
                                     Detail
                                 </a>
+                                <button type="button"
+                                        onclick="printTransferResiBluetooth({{ json_encode($transfer->toBluetoothReceiptData()) }})"
+                                        class="text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-200 transition-colors text-xs font-bold px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-900/30 shadow-sm flex items-center gap-1 active:scale-95 cursor-pointer"
+                                        title="Cetak Resi Pengiriman via Bluetooth">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 3.75v16.5l6-4.5-6-4.5 6-4.5-6-4.5z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 15.75l-6-4.5m6-4.5l-6 4.5"/>
+                                    </svg>
+                                    <span>Resi BT</span>
+                                </button>
                                 @if(in_array($transfer->status, ['requested', 'pending']))
                                 <button onclick="approveTransfer({{ $transfer->id }}, '{{ $transfer->transfer_code }}')"
                                         class="text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-emerald-200 transition-colors text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-100 dark:border-emerald-900/30 shadow-sm">
@@ -568,4 +578,6 @@ function confirmReject() {
     });
 }
 </script>
+
+<x-bluetooth-resi-script />
 @endsection

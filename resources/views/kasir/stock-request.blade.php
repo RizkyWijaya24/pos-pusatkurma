@@ -331,6 +331,16 @@
                                         </svg>
                                         Laporan WA
                                     </button>
+                                    <button type="button"
+                                            onclick="printTransferResiBluetooth({{ json_encode($req->toBluetoothReceiptData()) }})"
+                                            title="Cetak Resi Pengiriman via Bluetooth Thermal"
+                                            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] shadow-xs active:scale-95 transition cursor-pointer">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 3.75v16.5l6-4.5-6-4.5 6-4.5-6-4.5z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 15.75l-6-4.5m6-4.5l-6 4.5"/>
+                                        </svg>
+                                        Resi BT
+                                    </button>
                                     @if(in_array($req->status, ['requested']))
                                     <button onclick="cancelRequest({{ $req->id }}, '{{ $req->transfer_code }}')"
                                             class="text-rose-600 hover:text-rose-500 dark:text-red-400 dark:hover:text-red-300 text-xs font-semibold px-1 py-1">
@@ -370,6 +380,14 @@
         <p class="text-slate-500 dark:text-slate-400 text-xs mb-4">Request Anda telah tersimpan di sistem. Lanjutkan kirim laporan WhatsApp ke Admin.</p>
         
         <div class="space-y-2">
+            <button type="button" onclick="printFromModal()"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-bold transition-all shadow-md flex items-center justify-center gap-2 text-xs active:scale-95 cursor-pointer">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 3.75v16.5l6-4.5-6-4.5 6-4.5-6-4.5z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 15.75l-6-4.5m6-4.5l-6 4.5"/>
+                </svg>
+                🖨️ Cetak Resi Bluetooth
+            </button>
             <button id="successWaBtn" onclick="sendWaFromModal()" style="background-color: #25D366;"
                 class="w-full text-white py-2.5 rounded-xl font-bold transition-all hover:opacity-90 shadow-md flex items-center justify-center gap-2 text-xs">
                 <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -824,5 +842,13 @@ function sendWaFromModal() {
         location.reload();
     }, 800);
 }
+
+function printFromModal() {
+    if (lastCreatedTransfer) {
+        printTransferResiBluetooth(lastCreatedTransfer);
+    }
+}
 </script>
+
+<x-bluetooth-resi-script />
 @endsection

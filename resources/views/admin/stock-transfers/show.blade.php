@@ -30,16 +30,26 @@
                 <p class="text-slate-400 dark:text-purple-400 text-sm font-medium">Detail Transfer Stok</p>
             </div>
         </div>
-        @if(in_array($stockTransfer->status, ['requested', 'pending']))
-        <div class="flex gap-3">
+        <div class="flex items-center gap-3 flex-wrap">
+            <button type="button"
+                    onclick="printTransferResiBluetooth({{ json_encode($stockTransfer->toBluetoothReceiptData()) }})"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all hover:scale-105 flex items-center gap-2 shadow-md shadow-blue-500/20 active:scale-95 cursor-pointer">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 3.75v16.5l6-4.5-6-4.5 6-4.5-6-4.5z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 15.75l-6-4.5m6-4.5l-6 4.5"/>
+                </svg>
+                <span>🖨️ Cetak Resi Bluetooth</span>
+            </button>
+
+            @if(in_array($stockTransfer->status, ['requested', 'pending']))
             <button onclick="approveTransfer()" class="bg-emerald-700 hover:bg-emerald-800 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all hover:scale-105 flex items-center gap-2 shadow-sm">
                 ✓ Approve Transfer
             </button>
             <button onclick="showRejectModal()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/20 dark:text-rose-400 border border-rose-200 dark:border-rose-900/30 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors shadow-sm">
                 ✗ Tolak
             </button>
+            @endif
         </div>
-        @endif
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -505,4 +515,6 @@ function confirmReject() {
     });
 }
 </script>
+
+<x-bluetooth-resi-script />
 @endsection

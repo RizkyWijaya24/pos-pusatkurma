@@ -144,6 +144,44 @@ class StockTransfer extends Model
     }
 
     /**
+     * Payload terformat untuk cetak resi pengiriman antar cabang via Bluetooth ESC/POS.
+     */
+    public function toBluetoothReceiptData(): array
+    {
+        $this->loadMissing(['items.product', 'fromLocation', 'toLocation', 'requester', 'approver']);
+
+        $items = $this->items->map(function ($it) {
+            $isAdjusted = $this->status === 'approved' && $it->approved_quantity !== null && (float)$it->approved_quantity !== (float)$it->quantity;
+            $finalQty = ($this->status === 'approved' && $it->approved_quantity !== null)
+                ? (float)$it->approved_quantity
+                : (float)$it->quantity;
+
+            return [
+                'name'          => $it->product?->name ?? 'Produk',
+                'sku'           => $it->product?->sku ?? '-',
+                'qty'           => number_format($finalQty, 2, ',', '.'),
+                'requested_qty' => number_format((float)$it->quantity, 2, ',', '.'),
+                'unit'          => $it->unit ?? 'pcs',
+                'is_adjusted'   => $isAdjusted,
+            ];
+        })->values()->all();
+
+        return [
+            'id'            => $this->id,
+            'code'          => $this->transfer_code,
+            'status'        => $this->statusLabel,
+            'created_at'    => $this->created_at->format('d/m/Y H:i') . ' WIB',
+            'approved_at'   => $this->approved_at ? $this->approved_at->format('d/m/Y H:i') . ' WIB' : null,
+            'from_location' => $this->fromLocation?->name ?? 'Gudang Pusat',
+            'to_location'   => $this->toLocation?->name ?? '-',
+            'sender_name'   => $this->requester?->name ?? '-',
+            'approver_name' => $this->approver?->name,
+            'notes'         => $this->notes ?? '-',
+            'items'         => $items,
+        ];
+    }
+
+    /**
      * Generate kode transfer unik.
      */
     public static function generateCode(): string
