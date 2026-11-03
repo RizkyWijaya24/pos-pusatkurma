@@ -44,8 +44,30 @@ class ShopSettingController extends Controller
         if (!isset($settings['payment_fee_enabled'])) {
             Setting::set('payment_fee_enabled', '0');
         }
+        if (!isset($settings['shop_enabled'])) {
+            Setting::set('shop_enabled', '0');
+        }
 
         return redirect()->back()->with('success', 'Pengaturan shop berhasil diperbarui!');
+    }
+
+    /**
+     * Saklar cepat toko online publik (AJAX).
+     */
+    public function toggleShop(Request $request)
+    {
+        $current = Setting::get('shop_enabled', '1');
+        $newStatus = ($current === '1' || $current === 'true' || $current === true) ? '0' : '1';
+        Setting::set('shop_enabled', $newStatus);
+
+        return response()->json([
+            'success' => true,
+            'shop_enabled' => $newStatus === '1',
+            'status_label' => $newStatus === '1' ? 'Toko Buka' : 'Tutup Sementara',
+            'message' => $newStatus === '1'
+                ? 'Toko online publik BERHASIL DIAKTIFKAN! Pengunjung dapat mengakses katalog dan berbelanja normal.'
+                : 'Toko online publik BERHASIL DITUTUP SEMENTARA! Pengunjung dialihkan ke halaman pemeliharaan & beban hosting aman.'
+        ]);
     }
 
     /**

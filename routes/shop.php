@@ -7,7 +7,7 @@ use App\Http\Controllers\Shop\CatalogController;
 use App\Http\Controllers\Shop\ShippingController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('shop')->name('shop.')->group(function () {
+Route::middleware('shop.enabled')->prefix('shop')->name('shop.')->group(function () {
     // Halaman katalog produk
     Route::get('/', [CatalogController::class, 'index'])->name('index');
 
@@ -65,5 +65,20 @@ Route::prefix('shop')->name('shop.')->group(function () {
         ->name('chatbot.query');
 });
 
-// Redirect /shop root langsung
-Route::redirect('/', '/shop')->name('home');
+// Root redirect / handling status toko online
+Route::get('/', function () {
+    $shopEnabled = \App\Models\Setting::get('shop_enabled', '1');
+    $envEnabled = env('ENABLE_SHOP', true);
+    $isClosed = ($shopEnabled === '0' || $shopEnabled === 'false' || $shopEnabled === false || $envEnabled === false);
+
+    if ($isClosed) {
+        $notice = \App\Models\Setting::get('shop_maintenance_notice', 'Kami sedang melakukan pemeliharaan sistem & pembaruan stok berkala. Untuk pemesanan produk dan informasi kurma, silakan hubungi layanan WhatsApp kami.');
+        $whatsapp = \App\Models\Setting::get('shop_whatsapp', '6281234567890');
+        $shopName = \App\Models\Setting::get('shop_name', 'Pusat Kurma');
+        $shopPhone = \App\Models\Setting::get('shop_phone', $whatsapp);
+
+        return response()->view('shop.maintenance', compact('notice', 'whatsapp', 'shopName', 'shopPhone'), 503);
+    }
+
+    return redirect('/shop');
+})->name('home');

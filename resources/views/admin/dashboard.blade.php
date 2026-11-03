@@ -3378,8 +3378,143 @@
                     </button>
                 </form>
             </div>
-            <form action="{{ route('admin.settings.update') }}" method="POST" class="w-full">
+            <form action="{{ route('admin.settings.update') }}" method="POST" class="w-full flex flex-col gap-6">
                 @csrf
+
+                <!-- SAKLAR STATUS TOKO ONLINE (SHOP PUBLIK) -->
+                <div x-data="{
+                        shopEnabled: {{ ($settings['shop_enabled'] ?? '1') !== '0' ? 'true' : 'false' }},
+                        isToggling: false,
+                        async toggleShop() {
+                            if (this.isToggling) return;
+                            this.isToggling = true;
+                            try {
+                                const res = await fetch('{{ route('admin.settings.toggle_shop') }}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                        'Accept': 'application/json'
+                                    }
+                                });
+                                const data = await res.json();
+                                if (data.success) {
+                                    this.shopEnabled = data.shop_enabled;
+                                    if (window.showToast) {
+                                        window.showToast(data.message, data.shop_enabled ? 'success' : 'warning');
+                                    } else {
+                                        alert(data.message);
+                                    }
+                                }
+                            } catch (err) {
+                                alert('Gagal memperbarui status: ' + err.message);
+                            } finally {
+                                this.isToggling = false;
+                            }
+                        }
+                    }"
+                    class="p-6 rounded-3xl border transition-all duration-300 shadow-md"
+                    :class="shopEnabled 
+                        ? 'bg-gradient-to-br from-emerald-50 via-white to-teal-50/50 border-emerald-200 dark:bg-dp-800 dark:border-emerald-800/40' 
+                        : 'bg-gradient-to-br from-rose-50 via-white to-amber-50/50 border-rose-200 dark:bg-dp-800 dark:border-rose-900/40'">
+
+                    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+                        <div class="flex items-start gap-4">
+                            <div class="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-colors duration-300"
+                                 :class="shopEnabled ? 'bg-emerald-600 text-white shadow-emerald-500/20 shadow-lg' : 'bg-rose-600 text-white shadow-rose-500/20 shadow-lg'">
+                                <template x-if="shopEnabled">
+                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                </template>
+                                <template x-if="!shopEnabled">
+                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                    </svg>
+                                </template>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2.5 flex-wrap">
+                                    <h3 class="font-extrabold text-slate-800 dark:text-purple-100 text-lg tracking-tight">Status Toko Online (Shop Publik)</h3>
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider transition-colors duration-300"
+                                          :class="shopEnabled 
+                                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40' 
+                                              : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-900/40'">
+                                        <span class="w-2 h-2 rounded-full" :class="shopEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'"></span>
+                                        <span x-text="shopEnabled ? 'TOKO BUKA (ONLINE)' : 'DITUTUP SEMENTARA'"></span>
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+                                    <span x-show="shopEnabled">
+                                        Website publik <strong class="text-emerald-700 dark:text-emerald-400">/shop</strong> sedang <strong>AKTIF</strong> dan dapat diakses pelanggan untuk melihat katalog dan checkout belanja.
+                                    </span>
+                                    <span x-show="!shopEnabled">
+                                        Website publik <strong class="text-rose-700 dark:text-rose-400">/shop</strong> sedang <strong>DITUTUP SEMENTARA</strong> (mode pemeliharaan). Pengunjung dialihkan ke halaman maintenance & kontak WA. <strong>Menghemat 100% CPU/RAM hosting dari bot & mencegah error 500/502/503.</strong> Transaksi POS Kasir tetap normal.
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Saklar Switch Button -->
+                        <div class="flex items-center gap-3 self-end md:self-center shrink-0">
+                            <span class="text-xs font-bold text-slate-600 dark:text-slate-300 hidden sm:inline" x-text="shopEnabled ? 'Toko Buka' : 'Tutup Sementara'"></span>
+                            <button type="button" 
+                                    @click="toggleShop()"
+                                    :disabled="isToggling"
+                                    :class="shopEnabled ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'"
+                                    class="relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50"
+                                    role="switch" 
+                                    :aria-checked="shopEnabled">
+                                <span class="sr-only">Toggle Status Shop</span>
+                                <span :class="shopEnabled ? 'translate-x-6' : 'translate-x-0'"
+                                      class="pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out flex items-center justify-center">
+                                    <template x-if="isToggling">
+                                        <svg class="animate-spin h-3.5 w-3.5 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </template>
+                                    <template x-if="!isToggling && shopEnabled">
+                                        <svg class="h-3.5 w-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </template>
+                                    <template x-if="!isToggling && !shopEnabled">
+                                        <svg class="h-3.5 w-3.5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </template>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Hidden input to guarantee form submission sync -->
+                    <input type="hidden" name="settings[shop_enabled]" :value="shopEnabled ? '1' : '0'">
+
+                    <!-- Sub-section: Pesan Pemeliharaan saat Toko Ditutup -->
+                    <div class="mt-4 pt-4 border-t border-slate-200/60 dark:border-dp-700/60" x-show="!shopEnabled" x-transition>
+                        <div class="flex flex-col gap-2">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                Pesan Halaman Pemeliharaan (Maintenance Notice)
+                            </label>
+                            <textarea name="settings[shop_maintenance_notice]" 
+                                      rows="2" 
+                                      placeholder="Masukkan pesan yang akan dibaca pengunjung saat toko ditutup sementara..."
+                                      class="w-full border-slate-200 dark:border-dp-700 rounded-xl focus:border-rose-500 focus:ring-rose-500 font-semibold shadow-inner text-xs py-2 px-3 text-slate-700 dark:text-purple-100 bg-white dark:bg-dp-900">{{ $settings['shop_maintenance_notice'] ?? 'Kami sedang melakukan pemeliharaan sistem & pembaruan stok berkala. Untuk pemesanan produk dan informasi kurma, silakan hubungi layanan WhatsApp kami.' }}</textarea>
+                            <div class="flex items-center justify-between text-[11px] text-slate-400 flex-wrap gap-2">
+                                <span>Pesan ini akan tampil di halaman depan ketika toko online dinonaktifkan.</span>
+                                <div class="flex items-center gap-3">
+                                    <a href="{{ route('shop.index') }}?preview=1" target="_blank" class="text-emerald-600 dark:text-emerald-400 hover:underline font-bold flex items-center gap-1">
+                                        <span>Pratinjau Toko (Mode Admin)</span>
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                     
                     <!-- LEFT COLUMN: Configurations Form (8 cols) -->

@@ -124,6 +124,7 @@ Route::middleware('auth')->group(function () {
 
         // Shop Settings Management
         Route::post('/settings', [\App\Http\Controllers\ShopSettingController::class, 'update'])->name('settings.update');
+        Route::post('/settings/toggle-shop', [\App\Http\Controllers\ShopSettingController::class, 'toggleShop'])->name('settings.toggle_shop');
         Route::post('/settings/sync-profile', [\App\Http\Controllers\ShopSettingController::class, 'syncFromApi'])->name('settings.sync_profile');
 
         // ── Online Orders Management (Pesanan dari toko online) ──────
