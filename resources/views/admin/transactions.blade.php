@@ -9,53 +9,11 @@
         activeTab: '{{ request()->has('expense_page') ? 'expenses' : 'sales' }}',
         showEditModal: false,
         showDeleteModal: false,
-        showCancelModal: false,
         showDeleteExpenseModal: false,
         editForm: { id: null, items_summary: '', total_price: 0, payment_method: 'Cash', payment_status: 'paid' },
         deleteId: null,
-        cancelId: null,
-        cancelCode: '',
         deleteExpenseId: null,
         successMsg: '',
-
-        confirmCancel(id, code) {
-            this.cancelId = id;
-            this.cancelCode = code;
-            this.showCancelModal = true;
-        },
-
-        executeCancel() {
-            const csrfToken = document.querySelector('meta[name=csrf-token]').getAttribute('content');
-            fetch('/admin/transactions/' + this.cancelId + '/cancel', {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    this.showCancelModal = false;
-                    if (window.showToast) {
-                        window.showToast(data.message, 'success');
-                    } else {
-                        this.successMsg = data.message;
-                    }
-                    setTimeout(() => location.reload(), 1400);
-                } else {
-                    if (window.showToast) {
-                        window.showToast(data.message || 'Gagal membatalkan transaksi.', 'error');
-                    } else {
-                        alert(data.message || 'Gagal membatalkan transaksi.');
-                    }
-                }
-            })
-            .catch(e => {
-                if (window.showToast) {
-                    window.showToast('Gagal membatalkan: ' + e, 'error');
-                } else {
-                    alert('Gagal membatalkan: ' + e);
-                }
-            });
-        },
 
         openEdit(trx) {
             this.editForm = {
@@ -626,28 +584,11 @@
                                                 </svg>
                                             </button>
 
-                                            <!-- Cancel Button (Kembalikan Stok) -->
-                                            @if(($trx->payment_status ?? 'paid') !== 'cancelled')
-                                                <button type="button"
-                                                    @click="confirmCancel({{ $trx->id }}, '{{ $trx->transaction_code }}')"
-                                                    class="p-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 transition duration-150 inline-flex items-center"
-                                                    title="Batalkan Transaksi (Kembalikan Stok)">
-                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                </button>
-                                            @endif
-
                                             <!-- Delete Button -->
                                             <button type="button"
                                                 @click="confirmDelete({{ $trx->id }})"
                                                 class="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 transition duration-150"
                                                 title="Hapus Transaksi (Kembalikan Stok)">
-                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                                                </svg>
-                                            </button>
-                                        </div>
                                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                                                 </svg>
@@ -818,41 +759,6 @@
                 <div class="grid grid-cols-2 gap-3 pt-2">
                     <button type="button" @click="showEditModal = false" class="py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold transition duration-150">Batal</button>
                     <button type="button" @click="submitEdit()" class="py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl font-bold shadow-md shadow-emerald-700/10 transition duration-150">Simpan</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- CANCEL TRANSACTION CONFIRMATION MODAL -->
-        <div x-show="showCancelModal"
-             x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="opacity-0"
-             x-transition:enter-end="opacity-100"
-             x-transition:leave="transition ease-in duration-150"
-             x-transition:leave-start="opacity-100"
-             x-transition:leave-end="opacity-0"
-             class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm"
-             style="display: none;"
-             @keydown.escape.window="showCancelModal = false">
-
-            <div class="bg-white rounded-3xl p-6 w-full max-w-sm border border-slate-100 shadow-2xl flex flex-col items-center gap-5 text-center"
-                 @click.away="showCancelModal = false">
-
-                <div class="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center">
-                    <svg class="h-7 w-7 text-orange-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </div>
-
-                <div>
-                    <h3 class="font-extrabold text-slate-800 text-lg">Batalkan Transaksi?</h3>
-                    <p class="text-sm text-slate-500 font-medium mt-1">
-                        Transaksi <span class="font-bold text-slate-700 font-mono" x-text="cancelCode"></span> akan dibatalkan dan seluruh stok produk di dalamnya akan <span class="text-emerald-700 font-bold">otomatis dikembalikan ke inventori</span>.
-                    </p>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3 w-full pt-2">
-                    <button type="button" @click="showCancelModal = false" class="py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold transition duration-150">Tutup</button>
-                    <button type="button" @click="executeCancel()" class="py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-bold shadow-md transition duration-150">Ya, Batalkan</button>
                 </div>
             </div>
         </div>

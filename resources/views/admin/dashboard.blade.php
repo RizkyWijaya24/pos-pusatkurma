@@ -1887,42 +1887,6 @@
                 'danger',
                 'Ya, Hapus & Kembalikan Stok'
             );
-        },
-
-        cancelWholesaleTransaction(trxId) {
-            this.showConfirm(
-                'Batalkan Transaksi Partai?',
-                'Apakah Anda yakin ingin membatalkan transaksi partai ini? Seluruh stok produk di dalamnya akan otomatis dikembalikan ke inventori.',
-                () => {
-                    const csrfToken = document.querySelector('meta[name=csrf-token]').getAttribute('content');
-                    fetch(`/admin/transactions/${trxId}/cancel`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                            'Accept': 'application/json'
-                        }
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Gagal membatalkan transaksi.');
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        if (data.success) {
-                            this.showToast(data.message, 'success');
-                            setTimeout(() => location.reload(), 1000);
-                        }
-                    })
-                    .catch(err => {
-                        console.error(err);
-                        this.showToast(err.message || 'Gagal membatalkan transaksi.', 'error');
-                    });
-                },
-                'warning',
-                'Ya, Batalkan Transaksi'
-            );
         }
             };
         }
@@ -2772,15 +2736,6 @@
                                                title="Unduh PDF" style="text-decoration: none;">
                                                 <svg class="w-3.5 h-3.5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                             </a>
-                                            <!-- Cancel Transaction (Kembalikan Stok) -->
-                                            @if(($wTrx->payment_status ?? '') !== 'cancelled')
-                                                <button type="button"
-                                                        @click="cancelWholesaleTransaction({{ $wTrx->id }})"
-                                                        class="p-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 transition duration-150 text-xs text-center inline-flex items-center justify-center"
-                                                        title="Batalkan Transaksi (Kembalikan Stok)">
-                                                    <svg class="w-3.5 h-3.5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
-                                                </button>
-                                            @endif
                                             <!-- Delete Transaction -->
                                             <button type="button"
                                                     @click="deleteWholesaleTransaction({{ $wTrx->id }})"
