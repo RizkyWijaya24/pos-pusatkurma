@@ -28,6 +28,47 @@ class Transaction extends Model
     ];
 
     /**
+     * The "booted" method of the model.
+     */
+    protected static function booted()
+    {
+        // Otomatis kembalikan stok saat transaksi dihapus
+        static::deleting(function (Transaction $transaction) {
+            app(\App\Services\StockService::class)->restoreTransactionStock(
+                $transaction,
+                "Pengembalian stok: Transaksi #{$transaction->transaction_code} dihapus"
+            );
+
+            // Batalkan komisi afiliasi jika ada
+            if ($transaction->komisiLedger) {
+                $transaction->komisiLedger->delete();
+            }
+        });
+
+        // Otomatis tangani perubahan status payment_status (misal dibatalkan)
+        static::updated(function (Transaction $transaction) {
+            if ($transaction->wasChanged('payment_status')) {
+                if ($transaction->payment_status === 'cancelled') {
+                    app(\App\Services\StockService::class)->restoreTransactionStock(
+                        $transaction,
+                        "Pengembalian stok: Transaksi #{$transaction->transaction_code} dibatalkan"
+                    );
+
+                    if ($transaction->komisiLedger) {
+                        $transaction->komisiLedger->delete();
+                    }
+                } elseif ($transaction->getOriginal('payment_status') === 'cancelled' && in_array($transaction->payment_status, ['paid', 'unpaid'])) {
+                    // Jika diaktifkan kembali dari cancelled, potong ulang stoknya
+                    app(\App\Services\StockService::class)->reDeductTransactionStock(
+                        $transaction,
+                        "Potong ulang stok: Transaksi #{$transaction->transaction_code} diaktifkan kembali"
+                    );
+                }
+            }
+        });
+    }
+
+    /**
      * Get the cashier that owns the transaction.
      */
     public function cashier()

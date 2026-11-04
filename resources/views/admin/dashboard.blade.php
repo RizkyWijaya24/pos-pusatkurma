@@ -1855,8 +1855,8 @@
 
         deleteWholesaleTransaction(trxId) {
             this.showConfirm(
-                'Hapus Transaksi?',
-                'Apakah Anda yakin ingin menghapus transaksi partai ini secara permanen?',
+                'Hapus Transaksi Partai?',
+                'Apakah Anda yakin ingin menghapus transaksi partai ini secara permanen? Stok produk akan otomatis dikembalikan ke inventori.',
                 () => {
                     const csrfToken = document.querySelector('meta[name=csrf-token]').getAttribute('content');
                     fetch(`/admin/transactions/${trxId}`, {
@@ -1885,7 +1885,43 @@
                     });
                 },
                 'danger',
-                'Ya, Hapus'
+                'Ya, Hapus & Kembalikan Stok'
+            );
+        },
+
+        cancelWholesaleTransaction(trxId) {
+            this.showConfirm(
+                'Batalkan Transaksi Partai?',
+                'Apakah Anda yakin ingin membatalkan transaksi partai ini? Seluruh stok produk di dalamnya akan otomatis dikembalikan ke inventori.',
+                () => {
+                    const csrfToken = document.querySelector('meta[name=csrf-token]').getAttribute('content');
+                    fetch(`/admin/transactions/${trxId}/cancel`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Gagal membatalkan transaksi.');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            this.showToast(data.message, 'success');
+                            setTimeout(() => location.reload(), 1000);
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        this.showToast(err.message || 'Gagal membatalkan transaksi.', 'error');
+                    });
+                },
+                'warning',
+                'Ya, Batalkan Transaksi'
             );
         }
             };
@@ -2712,7 +2748,9 @@
                                         Rp {{ number_format($wTrx->total_price, 0, ',', '.') }}
                                     </td>
                                     <td id="wholesale-status-{{ $wTrx->id }}" class="px-5 py-4 text-center whitespace-nowrap">
-                                        @if($wTrx->is_paid)
+                                        @if(($wTrx->payment_status ?? '') === 'cancelled')
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-slate-100 text-slate-700 border border-slate-300">Dibatalkan</span>
+                                        @elseif($wTrx->is_paid)
                                             <span class="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">Lunas</span>
                                         @else
                                             <span class="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-rose-100 text-rose-800 border border-rose-200">Tempo</span>
@@ -2734,16 +2772,25 @@
                                                title="Unduh PDF" style="text-decoration: none;">
                                                 <svg class="w-3.5 h-3.5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                             </a>
+                                            <!-- Cancel Transaction (Kembalikan Stok) -->
+                                            @if(($wTrx->payment_status ?? '') !== 'cancelled')
+                                                <button type="button"
+                                                        @click="cancelWholesaleTransaction({{ $wTrx->id }})"
+                                                        class="p-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 transition duration-150 text-xs text-center inline-flex items-center justify-center"
+                                                        title="Batalkan Transaksi (Kembalikan Stok)">
+                                                    <svg class="w-3.5 h-3.5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                                                </button>
+                                            @endif
                                             <!-- Delete Transaction -->
                                             <button type="button"
                                                     @click="deleteWholesaleTransaction({{ $wTrx->id }})"
                                                     class="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 transition duration-150 text-xs text-center inline-flex items-center justify-center"
-                                                    title="Hapus Transaksi">
+                                                    title="Hapus Transaksi (Kembalikan Stok)">
                                                 <svg class="w-3.5 h-3.5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                             </button>
                                             <!-- Quick Mark As Paid -->
                                             <span id="wholesale-action-btn-{{ $wTrx->id }}">
-                                                @if(!$wTrx->is_paid)
+                                                @if(!$wTrx->is_paid && ($wTrx->payment_status ?? '') !== 'cancelled')
                                                     <button type="button"
                                                             @click="markWholesalePaid({{ $wTrx->id }})"
                                                             class="px-2.5 py-1.5 text-[10px] font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg transition duration-150 shadow-sm"

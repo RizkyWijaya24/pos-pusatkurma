@@ -526,6 +526,325 @@ class StockService
     }
 
     // ═══════════════════════════════════════════════════════
+    // PENGEMBALIAN STOK DARI TRANSAKSI HAPUS / BATAL
+    // ═══════════════════════════════════════════════════════
+
+    /**
+     * Kembalikan stok produk saat transaksi dibatalkan atau dihapus.
+     *
+     * @param Transaction $transaction
+     * @param string|null $reason
+     * @return int Jumlah item produk yang dikembalikan stoknya
+     */
+    public function restoreTransactionStock(Transaction $transaction, ?string $reason = null): int
+    {
+        return DB::transaction(function () use ($transaction, $reason) {
+            // 1. Cek apakah stok transaksi ini sudah pernah dikembalikan sebelumnya (mencegah dobel kembalikan)
+            $alreadyReturned = StockAdjustmentLog::where('reference_type', Transaction::class)
+                ->where('reference_id', $transaction->id)
+                ->where('type', 'return')
+                ->exists();
+
+            if ($alreadyReturned) {
+                return 0;
+            }
+
+            $restoredCount = 0;
+            $defaultReason = $reason ?? "Pengembalian stok: Transaksi #{$transaction->transaction_code} dibatalkan / dihapus";
+            $userId = auth()->id() ?? $transaction->cashier_id ?? User::first()?->id ?? 1;
+
+            // 2. Cek apakah ada catatan mutasi penjualan (StockAdjustmentLog) terkait transaksi ini
+            $saleLogs = StockAdjustmentLog::where('reference_type', Transaction::class)
+                ->where('reference_id', $transaction->id)
+                ->where('type', 'sale')
+                ->get();
+
+            if ($saleLogs->isNotEmpty()) {
+                foreach ($saleLogs as $log) {
+                    $qtyToReturn = abs((float) $log->quantity_change);
+                    if ($qtyToReturn <= 0) continue;
+
+                    $product = Product::find($log->product_id);
+                    if (!$product) continue;
+
+                    $locationId = $log->location_id;
+                    $ps = ProductStock::getOrCreate($product->id, $locationId);
+                    $before = (float) $ps->stock;
+                    $after = $before + $qtyToReturn;
+                    $ps->update(['stock' => $after]);
+
+                    StockAdjustmentLog::create([
+                        'product_id'      => $product->id,
+                        'location_id'     => $locationId,
+                        'type'            => 'return',
+                        'quantity_before' => $before,
+                        'quantity_change' => $qtyToReturn,
+                        'quantity_after'  => $after,
+                        'reference_type'  => Transaction::class,
+                        'reference_id'    => $transaction->id,
+                        'created_by'      => $userId,
+                        'notes'           => $defaultReason,
+                        'created_at'      => now(),
+                    ]);
+
+                    $this->syncGlobalStock($product);
+                    $restoredCount++;
+                }
+            } else {
+                // Fallback: Jika tidak ada log mutasi (misal transaksi partai/wholesale lama atau manual),
+                // parse items dari items_summary dan kembalikan ke cabang transaksi
+                $location = StockLocation::findByBranchName($transaction->branch);
+                if (!$location) {
+                    $location = StockLocation::where('name', 'Cabang Rumah')->first() 
+                        ?? StockLocation::gudang()->first() 
+                        ?? StockLocation::first();
+                }
+
+                $items = $transaction->parsed_items;
+                foreach ($items as $item) {
+                    $product = Product::where('name', $item['name'])->first();
+                    if (!$product) continue;
+
+                    $qtyToReturn = (float) $item['qty'];
+                    if ($qtyToReturn <= 0) continue;
+
+                    if ($product->is_bundle) {
+                        $product->loadMissing('bundleItems.product');
+                        foreach ($product->bundleItems as $bItem) {
+                            $subQty = $bItem->quantity * $qtyToReturn;
+                            if ($location) {
+                                $ps = ProductStock::getOrCreate($bItem->product->id, $location->id);
+                                $before = (float) $ps->stock;
+                                $after = $before + $subQty;
+                                $ps->update(['stock' => $after]);
+
+                                StockAdjustmentLog::create([
+                                    'product_id'      => $bItem->product->id,
+                                    'location_id'     => $location->id,
+                                    'type'            => 'return',
+                                    'quantity_before' => $before,
+                                    'quantity_change' => $subQty,
+                                    'quantity_after'  => $after,
+                                    'reference_type'  => Transaction::class,
+                                    'reference_id'    => $transaction->id,
+                                    'created_by'      => $userId,
+                                    'notes'           => $defaultReason . " (Paket Bundling: {$product->name})",
+                                    'created_at'      => now(),
+                                ]);
+
+                                $this->syncGlobalStock($bItem->product);
+                            }
+                        }
+                        $this->syncGlobalStock($product);
+                        $restoredCount++;
+                    } else {
+                        if ($location) {
+                            $ps = ProductStock::getOrCreate($product->id, $location->id);
+                            $before = (float) $ps->stock;
+                            $after = $before + $qtyToReturn;
+                            $ps->update(['stock' => $after]);
+
+                            StockAdjustmentLog::create([
+                                'product_id'      => $product->id,
+                                'location_id'     => $location->id,
+                                'type'            => 'return',
+                                'quantity_before' => $before,
+                                'quantity_change' => $qtyToReturn,
+                                'quantity_after'  => $after,
+                                'reference_type'  => Transaction::class,
+                                'reference_id'    => $transaction->id,
+                                'created_by'      => $userId,
+                                'notes'           => $defaultReason,
+                                'created_at'      => now(),
+                            ]);
+
+                            $this->syncGlobalStock($product);
+                        } else {
+                            $product->increment('stock', $qtyToReturn);
+                        }
+                        $restoredCount++;
+                    }
+                }
+            }
+
+            return $restoredCount;
+        });
+    }
+
+    /**
+     * Potong kembali stok jika transaksi yang sebelumnya berstatus batal diubah menjadi lunas/tempo.
+     *
+     * @param Transaction $transaction
+     * @param string|null $reason
+     * @return int
+     */
+    public function reDeductTransactionStock(Transaction $transaction, ?string $reason = null): int
+    {
+        return DB::transaction(function () use ($transaction, $reason) {
+            // Cek apakah memang pernah dikembalikan stoknya
+            $returnLogs = StockAdjustmentLog::where('reference_type', Transaction::class)
+                ->where('reference_id', $transaction->id)
+                ->where('type', 'return')
+                ->get();
+
+            if ($returnLogs->isEmpty()) {
+                return 0;
+            }
+
+            $deductedCount = 0;
+            $defaultReason = $reason ?? "Potong ulang stok: Transaksi #{$transaction->transaction_code} diaktifkan kembali";
+            $userId = auth()->id() ?? $transaction->cashier_id ?? User::first()?->id ?? 1;
+
+            foreach ($returnLogs as $retLog) {
+                $qtyToDeduct = (float) $retLog->quantity_change;
+                if ($qtyToDeduct <= 0) continue;
+
+                $product = Product::find($retLog->product_id);
+                if (!$product) continue;
+
+                $ps = ProductStock::getOrCreate($product->id, $retLog->location_id);
+                $before = (float) $ps->stock;
+                $after = max(0.0, $before - $qtyToDeduct);
+                $ps->update(['stock' => $after]);
+
+                StockAdjustmentLog::create([
+                    'product_id'      => $product->id,
+                    'location_id'     => $retLog->location_id,
+                    'type'            => 'sale',
+                    'quantity_before' => $before,
+                    'quantity_change' => -$qtyToDeduct,
+                    'quantity_after'  => $after,
+                    'reference_type'  => Transaction::class,
+                    'reference_id'    => $transaction->id,
+                    'created_by'      => $userId,
+                    'notes'           => $defaultReason,
+                    'created_at'      => now(),
+                ]);
+
+                $this->syncGlobalStock($product);
+                $deductedCount++;
+            }
+
+            // Hapus log return agar siklus bisa berulang jika dibatalkan lagi di masa depan
+            StockAdjustmentLog::where('reference_type', Transaction::class)
+                ->where('reference_id', $transaction->id)
+                ->where('type', 'return')
+                ->delete();
+
+            return $deductedCount;
+        });
+    }
+
+    /**
+     * Kembalikan stok pesanan online yang dibatalkan / gagal / dihapus.
+     *
+     * @param Order $order
+     * @param string|null $reason
+     * @return int
+     */
+    public function restoreOrderStock(Order $order, ?string $reason = null): int
+    {
+        return DB::transaction(function () use ($order, $reason) {
+            $alreadyReturned = StockAdjustmentLog::where('reference_type', Order::class)
+                ->where('reference_id', $order->id)
+                ->where('type', 'return')
+                ->exists();
+
+            if ($alreadyReturned) {
+                return 0;
+            }
+
+            $restoredCount = 0;
+            $defaultReason = $reason ?? "Pengembalian stok: Pesanan Online #{$order->order_code} dibatalkan / dihapus";
+            $userId = auth()->id() ?? User::where('role', 'admin')->first()?->id ?? User::first()?->id ?? 1;
+
+            $saleLogs = StockAdjustmentLog::where('reference_type', Order::class)
+                ->where('reference_id', $order->id)
+                ->where('type', 'sale')
+                ->get();
+
+            if ($saleLogs->isNotEmpty()) {
+                foreach ($saleLogs as $log) {
+                    $qtyToReturn = abs((float) $log->quantity_change);
+                    if ($qtyToReturn <= 0) continue;
+
+                    $product = Product::find($log->product_id);
+                    if (!$product) continue;
+
+                    $ps = ProductStock::getOrCreate($product->id, $log->location_id);
+                    $before = (float) $ps->stock;
+                    $after = $before + $qtyToReturn;
+                    $ps->update(['stock' => $after]);
+
+                    StockAdjustmentLog::create([
+                        'product_id'      => $product->id,
+                        'location_id'     => $log->location_id,
+                        'type'            => 'return',
+                        'quantity_before' => $before,
+                        'quantity_change' => $qtyToReturn,
+                        'quantity_after'  => $after,
+                        'reference_type'  => Order::class,
+                        'reference_id'    => $order->id,
+                        'created_by'      => $userId,
+                        'notes'           => $defaultReason,
+                        'created_at'      => now(),
+                    ]);
+
+                    $this->syncGlobalStock($product);
+                    $restoredCount++;
+                }
+            } else {
+                // Jika order pernah lunas namun tidak ada log mutasi terpisah
+                if ($order->payment_status === 'paid' || $order->status === 'paid') {
+                    $onlineLocation = StockLocation::where('name', 'Cabang Rumah')->first() 
+                        ?? StockLocation::gudang()->first() 
+                        ?? StockLocation::first();
+
+                    $order->loadMissing('orderItems.product');
+                    foreach ($order->orderItems as $item) {
+                        $product = $item->product;
+                        if (!$product) continue;
+
+                        $qtyToReturn = (float) $item->qty;
+                        if ($onlineLocation) {
+                            $ps = ProductStock::getOrCreate($product->id, $onlineLocation->id);
+                            $before = (float) $ps->stock;
+                            $after = $before + $qtyToReturn;
+                            $ps->update(['stock' => $after]);
+
+                            StockAdjustmentLog::create([
+                                'product_id'      => $product->id,
+                                'location_id'     => $onlineLocation->id,
+                                'type'            => 'return',
+                                'quantity_before' => $before,
+                                'quantity_change' => $qtyToReturn,
+                                'quantity_after'  => $after,
+                                'reference_type'  => Order::class,
+                                'reference_id'    => $order->id,
+                                'created_by'      => $userId,
+                                'notes'           => $defaultReason,
+                                'created_at'      => now(),
+                            ]);
+
+                            $this->syncGlobalStock($product);
+                            $restoredCount++;
+                        }
+                    }
+                }
+            }
+
+            // Juga batalkan transaksi mirroring jika ada
+            $trxCode = 'TRX-ONL-' . $order->order_code;
+            $trx = Transaction::where('transaction_code', $trxCode)->first();
+            if ($trx) {
+                $trx->update(['payment_status' => 'cancelled']);
+            }
+
+            return $restoredCount;
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════
     // KOREKSI STOK MANUAL
     // ═══════════════════════════════════════════════════════
 

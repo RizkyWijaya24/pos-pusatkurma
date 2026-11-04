@@ -85,9 +85,33 @@ class Order extends Model
     protected static function booted()
     {
         static::updated(function ($order) {
+            // Potong stok saat pesanan lunas
             if ($order->wasChanged('payment_status') && $order->payment_status === 'paid') {
                 app(\App\Services\StockService::class)->deductOrderStock($order);
             }
+
+            // Kembalikan stok jika pesanan dibatalkan atau gagal
+            if ($order->wasChanged('status') && in_array($order->status, ['cancelled', 'failed'])) {
+                app(\App\Services\StockService::class)->restoreOrderStock(
+                    $order,
+                    "Pengembalian stok: Pesanan online #{$order->order_code} berstatus " . $order->status
+                );
+            }
+
+            if ($order->wasChanged('payment_status') && $order->payment_status === 'failed' && $order->getOriginal('payment_status') === 'paid') {
+                app(\App\Services\StockService::class)->restoreOrderStock(
+                    $order,
+                    "Pengembalian stok: Pembayaran pesanan online #{$order->order_code} gagal/batal"
+                );
+            }
+        });
+
+        // Kembalikan stok saat pesanan dihapus
+        static::deleting(function ($order) {
+            app(\App\Services\StockService::class)->restoreOrderStock(
+                $order,
+                "Pengembalian stok: Pesanan online #{$order->order_code} dihapus"
+            );
         });
     }
 }

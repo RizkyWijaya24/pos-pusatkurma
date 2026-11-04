@@ -947,10 +947,30 @@ class TransactionController extends Controller
             'items_summary'  => 'required|string|max:1000',
             'total_price'    => 'required|integer|min:0',
             'payment_method' => 'required|string',
-            'payment_status' => 'nullable|string|in:paid,unpaid',
+            'payment_status' => 'nullable|string|in:paid,unpaid,cancelled',
         ]);
 
+        $oldStatus = $transaction->payment_status ?? 'paid';
+        $newStatus = $validated['payment_status'] ?? $oldStatus;
+
         $transaction->update($validated);
+
+        // Jika status diubah menjadi cancelled, kembalikan stok
+        if ($newStatus === 'cancelled' && $oldStatus !== 'cancelled') {
+            app(\App\Services\StockService::class)->restoreTransactionStock(
+                $transaction,
+                "Pengembalian stok: Status transaksi #{$transaction->transaction_code} diubah menjadi dibatalkan"
+            );
+            if ($transaction->komisiLedger) {
+                $transaction->komisiLedger->delete();
+            }
+        } elseif ($oldStatus === 'cancelled' && in_array($newStatus, ['paid', 'unpaid'])) {
+            // Jika diaktifkan kembali dari cancelled, potong ulang stok
+            app(\App\Services\StockService::class)->reDeductTransactionStock(
+                $transaction,
+                "Potong ulang stok: Transaksi #{$transaction->transaction_code} diaktifkan kembali"
+            );
+        }
 
         return response()->json([
             'success' => true,
@@ -959,15 +979,63 @@ class TransactionController extends Controller
     }
 
     /**
+     * Cancel a transaction and return stock (Admin only).
+     */
+    public function cancel(Transaction $transaction)
+    {
+        if ($transaction->payment_status === 'cancelled') {
+            return response()->json([
+                'success' => false,
+                'message' => "Transaksi #{$transaction->transaction_code} sudah berstatus dibatalkan sebelumnya.",
+            ], 422);
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($transaction) {
+            // 1. Kembalikan stok produk ke cabang terkait
+            app(\App\Services\StockService::class)->restoreTransactionStock(
+                $transaction,
+                "Pengembalian stok: Transaksi #{$transaction->transaction_code} dibatalkan oleh admin"
+            );
+
+            // 2. Batalkan komisi afiliasi jika ada
+            if ($transaction->komisiLedger) {
+                $transaction->komisiLedger->delete();
+            }
+
+            // 3. Update status pembayaran menjadi cancelled
+            $transaction->update(['payment_status' => 'cancelled']);
+        });
+
+        return response()->json([
+            'success'        => true,
+            'message'        => "Transaksi #{$transaction->transaction_code} berhasil dibatalkan dan stok produk telah dikembalikan!",
+            'payment_status' => 'cancelled',
+        ]);
+    }
+
+    /**
      * Delete a transaction (Admin only).
+     * Stok dikembalikan secara otomatis.
      */
     public function destroy(Transaction $transaction)
     {
+        $code = $transaction->transaction_code;
+
+        // Kembalikan stok produk jika belum dibatalkan/dikembalikan sebelumnya
+        app(\App\Services\StockService::class)->restoreTransactionStock(
+            $transaction,
+            "Pengembalian stok: Transaksi #{$code} dihapus oleh admin"
+        );
+
+        if ($transaction->komisiLedger) {
+            $transaction->komisiLedger->delete();
+        }
+
         $transaction->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'Transaksi berhasil dihapus!',
+            'message' => "Transaksi #{$code} berhasil dihapus dan stok barang telah dikembalikan ke inventori!",
         ]);
     }
 
@@ -1349,14 +1417,6 @@ class TransactionController extends Controller
         $shippingCost = intval($request->input('shipping_cost', 0));
         $grandTotal = max(0, $totalPrice - $discount + $shippingCost);
 
-        // Deduct stock if the product exists in DB
-        foreach ($request->items as $item) {
-            $product = \App\Models\Product::where('name', $item['name'])->first();
-            if ($product) {
-                $product->decrement('stock', floatval($item['qty']));
-            }
-        }
-
         $received = $request->payment_method === 'Piutang / Tempo' 
             ? intval($request->input('payment_received', 0)) 
             : $grandTotal;
@@ -1383,6 +1443,34 @@ class TransactionController extends Controller
             'branch'           => 'Cabang Rumah', // Defaults to Pusat
             'payment_status'   => $paymentStatus,
         ]);
+
+        // Kurangi stok cabang & catat log mutasi via StockService
+        $stockService = app(\App\Services\StockService::class);
+        $wholesaleLocation = \App\Models\StockLocation::where('name', 'Cabang Rumah')->first()
+            ?? \App\Models\StockLocation::gudang()->first()
+            ?? \App\Models\StockLocation::first();
+
+        foreach ($request->items as $item) {
+            $product = \App\Models\Product::where('name', $item['name'])->first();
+            if ($product) {
+                if ($wholesaleLocation) {
+                    try {
+                        $stockService->deductSaleStock(
+                            $product,
+                            $wholesaleLocation,
+                            floatval($item['qty']),
+                            $transaction->id,
+                            auth()->user() ?? \App\Models\User::first(),
+                            "Penjualan Nota Partai #{$transaction->transaction_code}"
+                        );
+                    } catch (\Exception $e) {
+                        $product->decrement('stock', floatval($item['qty']));
+                    }
+                } else {
+                    $product->decrement('stock', floatval($item['qty']));
+                }
+            }
+        }
 
         if ($request->filled('affiliate_id')) {
             app(\App\Services\AffiliateService::class)->recordCommission(

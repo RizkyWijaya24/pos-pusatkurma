@@ -566,8 +566,8 @@
                             <div>
                                 <span class="text-slate-400 font-semibold block text-[10px] uppercase">Status</span>
                                 <span class="inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase"
-                                      :class="(selectedTrx?.payment_status === 'paid' || !selectedTrx?.payment_status) ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'"
-                                      x-text="(selectedTrx?.payment_status === 'paid' || !selectedTrx?.payment_status) ? 'LUNAS' : 'TEMPO'"></span>
+                                      :class="selectedTrx?.payment_status === 'cancelled' ? 'bg-slate-100 text-slate-700 border border-slate-300' : ((selectedTrx?.payment_status === 'paid' || !selectedTrx?.payment_status) ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800')"
+                                      x-text="selectedTrx?.payment_status === 'cancelled' ? 'BATAL' : ((selectedTrx?.payment_status === 'paid' || !selectedTrx?.payment_status) ? 'LUNAS' : 'TEMPO')"></span>
                             </div>
                             <div x-show="selectedTrx?.customer_name && selectedTrx?.customer_name !== '-'">
                                 <span class="text-slate-400 font-semibold block text-[10px] uppercase">Pelanggan</span>

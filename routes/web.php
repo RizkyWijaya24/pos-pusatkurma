@@ -97,10 +97,11 @@ Route::middleware('auth')->group(function () {
         Route::delete('/cashiers/{user}', [\App\Http\Controllers\CashierController::class, 'destroy'])->name('cashiers.destroy');
         Route::post('/impersonate/{user}', [\App\Http\Controllers\CashierController::class, 'impersonate'])->name('impersonate');
 
-        // Transaction Management (Admin can view all, edit, delete)
+        // Transaction Management (Admin can view all, edit, delete, cancel)
         Route::get('/transactions/export', [\App\Http\Controllers\TransactionController::class, 'export'])->name('transactions.export');
         Route::get('/transactions', [\App\Http\Controllers\TransactionController::class, 'adminIndex'])->name('transactions.index');
         Route::put('/transactions/{transaction}', [\App\Http\Controllers\TransactionController::class, 'update'])->name('transactions.update');
+        Route::post('/transactions/{transaction}/cancel', [\App\Http\Controllers\TransactionController::class, 'cancel'])->name('transactions.cancel');
         Route::delete('/transactions/{transaction}', [\App\Http\Controllers\TransactionController::class, 'destroy'])->name('transactions.destroy');
 
         // ── Admin: Manajemen Transfer Stok ──────────────────────
