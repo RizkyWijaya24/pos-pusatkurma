@@ -109,6 +109,7 @@
             printMethod: 'iframe',
 
             checkoutStage: 0, // 0 = closed, 1 = details entry, 2 = loading/processing, 3 = success/receipt
+            isSubmitting: false,
             statusMessage: '',
             cardDigits: '',
             latestTransaction: null,
@@ -228,6 +229,12 @@
                     return 40000 - (sku.indexOf(q) * 50);
                 }
 
+                // FAST-PATH: Jika query adalah angka murni (barcode scanner atau kode SKU),
+                // jangan buang CPU di loop Levenshtein distance
+                if (/^\d+$/.test(q)) {
+                    return 0; // Karena sudah dicek exact/prefix/substring SKU di atas dan tidak cocok
+                }
+
                 // 4. Multi-kata & Pencarian Fuzzy per kata dengan toleransi typo
                 const qWords = q.split(/\s+/).filter(Boolean);
                 if (qWords.length === 0) return 0;
@@ -295,17 +302,19 @@
                             continue;
                         }
 
-                        // Toleransi typo / salah ketik via Levenshtein distance
-                        const maxAllowedTypo = qWord.length <= 4 ? 1 : 2;
-                        if (Math.abs(tWord.length - qWord.length) <= maxAllowedTypo) {
-                            const dist = this.levenshteinDistance(qWord, tWord);
-                            if (dist <= maxAllowedTypo) {
-                                const similarity = 1 - (dist / Math.max(qWord.length, tWord.length));
-                                const score = Math.round(3000 * similarity) - (dist * 600) - (i * 100);
-                                if (score > bestScore) {
-                                    bestScore = score;
-                                    bestType = 'name';
-                                    bestIdx = i;
+                        // Toleransi typo / salah ketik via Levenshtein distance (hanya untuk kata >= 3 karakter)
+                        if (qWord.length >= 3) {
+                            const maxAllowedTypo = qWord.length <= 4 ? 1 : 2;
+                            if (Math.abs(tWord.length - qWord.length) <= maxAllowedTypo) {
+                                const dist = this.levenshteinDistance(qWord, tWord);
+                                if (dist <= maxAllowedTypo) {
+                                    const similarity = 1 - (dist / Math.max(qWord.length, tWord.length));
+                                    const score = Math.round(3000 * similarity) - (dist * 600) - (i * 100);
+                                    if (score > bestScore) {
+                                        bestScore = score;
+                                        bestType = 'name';
+                                        bestIdx = i;
+                                    }
                                 }
                             }
                         }
@@ -560,7 +569,7 @@
             },
 
             finishTransaction() {
-                if (this.cart.length === 0) return;
+                if (this.cart.length === 0 || this.isSubmitting) return;
 
                 let finalPaymentMethod = this.paymentMethod;
                 if (this.paymentMethod === 'SPLIT') {
@@ -569,70 +578,83 @@
                     finalPaymentMethod = `SPLIT: Cash Rp ${this.formatNumberOnly(cashPart)} + ${this.splitNonCashMethod} Rp ${this.formatNumberOnly(nonCashPart)}`;
                 }
 
+                this.isSubmitting = true;
                 this.checkoutStage = 2; // Transition to Stage 2: Processing
-                this.statusMessage = 'Menghubungkan ke gateway pembayaran...';
+                this.statusMessage = 'Memverifikasi transaksi & mengurangi stok...';
 
-                setTimeout(() => {
-                    this.statusMessage = 'Memverifikasi transaksi & mengurangi stok...';
-                }, 700);
+                const csrfToken = document.querySelector('meta[name=csrf-token]').getAttribute('content');
 
-                setTimeout(() => {
-                    const csrfToken = document.querySelector('meta[name=csrf-token]').getAttribute('content');
-
-                    fetch('/kasir/transactions', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            total_price: this.total,
-                            discount: this.discountAmount,
-                            payment_method: finalPaymentMethod,
-                            affiliate_id: this.selectedAffiliateId || null,
-                            pax_count: this.paxCount ? parseInt(this.paxCount) : 0,
-                            items: this.cart.map(item => ({
-                                id: item.id,
-                                name: item.name,
-                                qty: item.qty,
-                                price_unit: item.price_unit,
-                                price: this.getItemPrice(item)
-                            }))
-                        })
+                fetch('/kasir/transactions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        total_price: this.total,
+                        discount: this.discountAmount,
+                        payment_method: finalPaymentMethod,
+                        affiliate_id: this.selectedAffiliateId || null,
+                        pax_count: this.paxCount ? parseInt(this.paxCount) : 0,
+                        items: this.cart.map(item => ({
+                            id: item.id,
+                            name: item.name,
+                            qty: item.qty,
+                            price_unit: item.price_unit,
+                            price: this.getItemPrice(item)
+                        }))
                     })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) {
-                            // Prepend new transaction to Alpine list
-                            this.todayTransactions.unshift({
-                                id: data.transaction.id,
-                                time: data.transaction.time,
-                                transaction_code: data.transaction.transaction_code,
-                                items_summary: data.transaction.items_summary,
-                                payment_method: data.transaction.payment_method,
-                                total_price: data.transaction.total_price,
-                                discount: data.transaction.discount
-                            });
-                            
-                            // Save latest transaction details for receipt screen
-                            this.latestTransaction = data.transaction;
-                            
-                            // Reset cart, keep staging info
-                            this.cart = [];
-                            this.checkoutStage = 3; // Transition to Stage 3: Success view
-                            this.showToast('Transaksi ' + data.transaction.transaction_code + ' berhasil!', 'success');
-                        } else {
-                            this.showToast('Gagal mencatat transaksi!', 'error');
-                            this.checkoutStage = 1;
+                })
+                .then(async res => {
+                    let data = {};
+                    try {
+                        data = await res.json();
+                    } catch(e) {
+                        data = { success: false, message: 'Respon server tidak valid (' + res.status + ')' };
+                    }
+                    return { ok: res.ok, status: res.status, data };
+                })
+                .then(({ ok, status, data }) => {
+                    this.isSubmitting = false;
+                    if (ok && data.success) {
+                        // Prepend new transaction to Alpine list
+                        this.todayTransactions.unshift({
+                            id: data.transaction.id,
+                            time: data.transaction.time,
+                            transaction_code: data.transaction.transaction_code,
+                            items_summary: data.transaction.items_summary,
+                            payment_method: data.transaction.payment_method,
+                            total_price: data.transaction.total_price,
+                            discount: data.transaction.discount
+                        });
+                        
+                        // Save latest transaction details for receipt screen
+                        this.latestTransaction = data.transaction;
+                        
+                        // Reset cart, keep staging info
+                        this.cart = [];
+                        this.checkoutStage = 3; // Transition to Stage 3: Success view
+                        this.showToast('Transaksi ' + data.transaction.transaction_code + ' berhasil!', 'success');
+                    } else {
+                        // Ambil pesan error spesifik jika stok tidak cukup atau validasi gagal
+                        let errorMsg = data.message || 'Gagal mencatat transaksi!';
+                        if (data.errors && typeof data.errors === 'object') {
+                            const errValues = Object.values(data.errors).flat();
+                            if (errValues.length > 0) {
+                                errorMsg = errValues[0];
+                            }
                         }
-                    })
-                    .catch(err => {
-                        console.error('Gagal mencatat transaksi:', err);
-                        this.showToast('Terjadi kesalahan jaringan!', 'error');
+                        this.showToast(errorMsg, 'error');
                         this.checkoutStage = 1;
-                    });
-                }, 1400);
+                    }
+                })
+                .catch(err => {
+                    this.isSubmitting = false;
+                    console.error('Gagal mencatat transaksi:', err);
+                    this.showToast('Terjadi kesalahan jaringan atau koneksi!', 'error');
+                    this.checkoutStage = 1;
+                });
             },
 
             selectDenomination(amount) {
@@ -1007,7 +1029,7 @@
                             </svg>
                         </span>
                         <input type="text" 
-                            x-model="search"
+                            x-model.debounce.150ms="search"
                             placeholder="Cari kurma atau SKU..." 
                             class="w-full pl-9 pr-8 py-2 text-sm border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner">
                         <button type="button" 
@@ -1416,15 +1438,16 @@
                                 <button type="button" @click="cancelCheckout()" class="py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold transition duration-150">Batal</button>
                                 <button type="button" 
                                     @click="finishTransaction()" 
-                                    :disabled="(paymentMethod === 'Cash' && (!cashReceived || parseFloat(cashReceived) < total)) || 
+                                    :disabled="isSubmitting || (paymentMethod === 'Cash' && (!cashReceived || parseFloat(cashReceived) < total)) || 
                                                (paymentMethod === 'Debit' && cardDigits.length !== 4) ||
                                                (paymentMethod === 'SPLIT' && ((parseFloat(splitCashAmount) || 0) <= 0 || (parseFloat(splitCashAmount) || 0) >= total || (splitNonCashMethod === 'Debit' && cardDigits.length !== 4)))"
-                                    :class="(paymentMethod === 'Cash' && (!cashReceived || parseFloat(cashReceived) < total)) || 
+                                    :class="(isSubmitting || (paymentMethod === 'Cash' && (!cashReceived || parseFloat(cashReceived) < total)) || 
                                             (paymentMethod === 'Debit' && cardDigits.length !== 4) ||
-                                            (paymentMethod === 'SPLIT' && ((parseFloat(splitCashAmount) || 0) <= 0 || (parseFloat(splitCashAmount) || 0) >= total || (splitNonCashMethod === 'Debit' && cardDigits.length !== 4))) 
+                                            (paymentMethod === 'SPLIT' && ((parseFloat(splitCashAmount) || 0) <= 0 || (parseFloat(splitCashAmount) || 0) >= total || (splitNonCashMethod === 'Debit' && cardDigits.length !== 4)))) 
                                             ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-md shadow-emerald-700/10'"
-                                    class="py-3 rounded-2xl font-bold transition duration-150">
-                                    Proses Transaksi
+                                    class="py-3 rounded-2xl font-bold transition duration-150 flex items-center justify-center gap-2">
+                                    <span x-show="!isSubmitting">Proses Transaksi</span>
+                                    <span x-show="isSubmitting">Memproses...</span>
                                 </button>
                             </div>
                         </div>

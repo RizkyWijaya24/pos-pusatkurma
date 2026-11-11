@@ -926,21 +926,26 @@ class StockService
             return;
         }
 
+        // Hitung total stok dari product_stocks
+        $totalStock = (float) ProductStock::where('product_id', $product->id)->sum('stock');
+
         // Jalankan migrasi stock dari kolom legacy ke tabel product_stocks
-        // jika data product_stocks untuk produk ini masih benar-benar kosong.
-        $hasAnyStockRecord = ProductStock::where('product_id', $product->id)->exists();
-        if (!$hasAnyStockRecord) {
-            $mainLocation = StockLocation::gudang()->first() ?? StockLocation::first();
-            if ($mainLocation) {
-                ProductStock::create([
-                    'product_id'  => $product->id,
-                    'location_id' => $mainLocation->id,
-                    'stock'       => (float) $product->getRawOriginal('stock'),
-                ]);
+        // HANYA jika data product_stocks masih 0 dan legacy stock ada nilainya
+        if ($totalStock == 0 && (float) $product->getRawOriginal('stock') > 0) {
+            $hasAnyStockRecord = ProductStock::where('product_id', $product->id)->exists();
+            if (!$hasAnyStockRecord) {
+                $mainLocation = StockLocation::gudang()->first() ?? StockLocation::first();
+                if ($mainLocation) {
+                    ProductStock::create([
+                        'product_id'  => $product->id,
+                        'location_id' => $mainLocation->id,
+                        'stock'       => (float) $product->getRawOriginal('stock'),
+                    ]);
+                    $totalStock = (float) $product->getRawOriginal('stock');
+                }
             }
         }
 
-        $totalStock = ProductStock::where('product_id', $product->id)->sum('stock');
         $product->update(['stock' => $totalStock]);
     }
 

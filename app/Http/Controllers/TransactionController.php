@@ -20,15 +20,18 @@ class TransactionController extends Controller
         $now       = Carbon::now();
         $activeTab = $request->input('tab', 'daily');
 
+        $todayStart = Carbon::today()->startOfDay();
+        $todayEnd   = Carbon::today()->endOfDay();
+
         // ---- Daily (paginated list) ----
         $transactions = Transaction::where('cashier_id', $cashierId)
-            ->whereDate('created_at', Carbon::today())
-            ->latest()
+            ->whereBetween('created_at', [$todayStart, $todayEnd])
+            ->latest('id')
             ->paginate(15);
 
         // ---- Today totals ----
         $todayTrxList = Transaction::where('cashier_id', $cashierId)
-            ->whereDate('created_at', Carbon::today())
+            ->whereBetween('created_at', [$todayStart, $todayEnd])
             ->get();
 
         $omsetSum = 0;
@@ -1463,8 +1466,12 @@ class TransactionController extends Controller
                 ?? \App\Models\StockLocation::gudang()->first()
                 ?? \App\Models\StockLocation::first();
 
+            // Pre-load seluruh produk terkait dalam 1 query (mencegah N+1 query ke database)
+            $itemNames = collect($request->items)->pluck('name')->values()->toArray();
+            $productsByName = \App\Models\Product::whereIn('name', $itemNames)->get()->keyBy('name');
+
             foreach ($request->items as $item) {
-                $product = \App\Models\Product::where('name', $item['name'])->first();
+                $product = $productsByName->get($item['name']);
                 if ($product) {
                     if ($wholesaleLocation) {
                         try {

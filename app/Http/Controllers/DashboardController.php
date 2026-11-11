@@ -139,10 +139,14 @@ class DashboardController extends Controller
         });
 
 
-        // Fetch transactions created today matching the logged-in cashier's ID
+        $todayStart = \Carbon\Carbon::today()->startOfDay();
+        $todayEnd   = \Carbon\Carbon::today()->endOfDay();
+
+        // Fetch transactions created today matching the logged-in cashier's ID (optimized whereBetween instead of whereDate for index usage)
         $todayTransactions = \App\Models\Transaction::where('cashier_id', auth()->id())
-            ->whereDate('created_at', \Carbon\Carbon::today())
-            ->latest()
+            ->whereBetween('created_at', [$todayStart, $todayEnd])
+            ->latest('id')
+            ->select('id', 'created_at', 'transaction_code', 'items_summary', 'payment_method', 'total_price')
             ->get();
 
         $todayTransactionsMapped = $todayTransactions->map(function($trx) {
@@ -156,10 +160,11 @@ class DashboardController extends Controller
             ];
         });
 
-        // Fetch expenses created today by the logged-in cashier
+        // Fetch expenses created today by the logged-in cashier (optimized whereBetween)
         $todayExpenses = \App\Models\Expense::where('cashier_id', auth()->id())
-            ->whereDate('created_at', \Carbon\Carbon::today())
-            ->latest()
+            ->whereBetween('created_at', [$todayStart, $todayEnd])
+            ->latest('id')
+            ->select('id', 'amount', 'category', 'description', 'created_at')
             ->get();
 
         $todayExpensesMapped = $todayExpenses->map(function($exp) {
