@@ -539,6 +539,22 @@ class StockService
     public function restoreTransactionStock(Transaction $transaction, ?string $reason = null): int
     {
         return DB::transaction(function () use ($transaction, $reason) {
+            // 0. JIKA transaksi dicatat tanpa potong stok (barang sudah didata/dikeluarkan sebelumnya),
+            // JANGAN kembalikan stok agar tidak menghasilkan stok siluman (phantom stock)!
+            if (method_exists($transaction, 'isStockDeductionSkipped') && $transaction->isStockDeductionSkipped()) {
+                return 0;
+            }
+            if ($transaction->items_summary && (
+                str_contains($transaction->items_summary, '[Stok Sudah Didata]') ||
+                str_contains($transaction->items_summary, '[Tanpa Potong Stok]') ||
+                str_contains($transaction->items_summary, '[Piutang Manual]') ||
+                str_starts_with($transaction->transaction_code, 'PTM-') ||
+                str_contains($transaction->transaction_code, 'NOSTK') ||
+                str_contains($transaction->transaction_code, '-NS-')
+            )) {
+                return 0;
+            }
+
             // 1. Cek apakah stok transaksi ini sudah pernah dikembalikan sebelumnya (mencegah dobel kembalikan)
             $alreadyReturned = StockAdjustmentLog::where('reference_type', Transaction::class)
                 ->where('reference_id', $transaction->id)

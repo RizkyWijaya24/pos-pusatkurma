@@ -1354,6 +1354,7 @@ class TransactionController extends Controller
             'discount' => 'nullable|integer|min:0',
             'shipping_cost' => 'nullable|integer|min:0',
             'payment_received' => 'nullable|integer|min:0',
+            'skip_stock_deduction' => 'nullable|boolean',
             'items' => 'required|array|min:1',
             'items.*.name' => 'required|string',
             'items.*.qty' => 'required|numeric|min:0',
@@ -1362,40 +1363,46 @@ class TransactionController extends Controller
             'items.*.cost_price' => 'nullable|integer|min:0',
         ]);
 
+        $skipStock = $request->boolean('skip_stock_deduction');
+
         // Validate stock for each item (aggregated by product name to avoid multi-item bypass)
         $aggregatedItems = [];
         foreach ($request->items as $item) {
             $product = \App\Models\Product::where('name', $item['name'])->first();
-            if (!$product) {
+            if (!$product && !$skipStock) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Produk "' . $item['name'] . '" tidak ditemukan di database.'
                 ], 422);
             }
-            $pName = $product->name;
-            if (!isset($aggregatedItems[$pName])) {
-                $aggregatedItems[$pName] = [
-                    'product' => $product,
-                    'qty' => 0.0,
-                ];
+            if ($product) {
+                $pName = $product->name;
+                if (!isset($aggregatedItems[$pName])) {
+                    $aggregatedItems[$pName] = [
+                        'product' => $product,
+                        'qty' => 0.0,
+                    ];
+                }
+                $aggregatedItems[$pName]['qty'] += floatval($item['qty']);
             }
-            $aggregatedItems[$pName]['qty'] += floatval($item['qty']);
         }
 
-        $branchLocation = \App\Models\StockLocation::findByBranchName('Cabang Rumah');
-        foreach ($aggregatedItems as $agg) {
-            $product = $agg['product'];
-            $qtyRequested = $agg['qty'];
-            
-            $availableStock = $branchLocation 
-                ? $product->getStockAtLocation($branchLocation->id) 
-                : $product->stock;
+        if (!$skipStock) {
+            $branchLocation = \App\Models\StockLocation::findByBranchName('Cabang Rumah');
+            foreach ($aggregatedItems as $agg) {
+                $product = $agg['product'];
+                $qtyRequested = $agg['qty'];
+                
+                $availableStock = $branchLocation 
+                    ? $product->getStockAtLocation($branchLocation->id) 
+                    : $product->stock;
 
-            if ($availableStock < $qtyRequested) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Stok produk "' . $product->name . '" tidak mencukupi! Tersedia: ' . $availableStock . ' ' . $product->price_unit . ', diminta: ' . $qtyRequested . ' ' . $product->price_unit
-                ], 422);
+                if ($availableStock < $qtyRequested) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Stok produk "' . $product->name . '" tidak mencukupi! Tersedia: ' . $availableStock . ' ' . $product->price_unit . ', diminta: ' . $qtyRequested . ' ' . $product->price_unit
+                    ], 422);
+                }
             }
         }
 
@@ -1413,6 +1420,10 @@ class TransactionController extends Controller
             return $item['name'] . ' (' . $qty . ' ' . $item['price_unit'] . ' x ' . $sellPrice . ')';
         })->join(', ');
 
+        if ($skipStock) {
+            $itemsSummary .= ', [Stok Sudah Didata]';
+        }
+
         $discount = intval($request->input('discount', 0));
         $shippingCost = intval($request->input('shipping_cost', 0));
         $grandTotal = max(0, $totalPrice - $discount + $shippingCost);
@@ -1426,11 +1437,12 @@ class TransactionController extends Controller
             $paymentStatus = 'paid';
         }
 
+        $trxCodePrefix = $skipStock ? 'PRT-NS-' : 'PRT-';
         $transaction = Transaction::create([
             'cashier_id'       => auth()->id(),
             'affiliate_id'     => $request->input('affiliate_id'),
             'pax_count'        => $request->input('pax_count', 0),
-            'transaction_code' => 'PRT-' . Carbon::now()->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6)),
+            'transaction_code' => $trxCodePrefix . Carbon::now()->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6)),
             'transaction_type' => 'wholesale',
             'customer_name'    => $request->customer_name,
             'customer_phone'   => $request->customer_phone,
@@ -1444,30 +1456,32 @@ class TransactionController extends Controller
             'payment_status'   => $paymentStatus,
         ]);
 
-        // Kurangi stok cabang & catat log mutasi via StockService
-        $stockService = app(\App\Services\StockService::class);
-        $wholesaleLocation = \App\Models\StockLocation::where('name', 'Cabang Rumah')->first()
-            ?? \App\Models\StockLocation::gudang()->first()
-            ?? \App\Models\StockLocation::first();
+        if (!$skipStock) {
+            // Kurangi stok cabang & catat log mutasi via StockService
+            $stockService = app(\App\Services\StockService::class);
+            $wholesaleLocation = \App\Models\StockLocation::where('name', 'Cabang Rumah')->first()
+                ?? \App\Models\StockLocation::gudang()->first()
+                ?? \App\Models\StockLocation::first();
 
-        foreach ($request->items as $item) {
-            $product = \App\Models\Product::where('name', $item['name'])->first();
-            if ($product) {
-                if ($wholesaleLocation) {
-                    try {
-                        $stockService->deductSaleStock(
-                            $product,
-                            $wholesaleLocation,
-                            floatval($item['qty']),
-                            $transaction->id,
-                            auth()->user() ?? \App\Models\User::first(),
-                            "Penjualan Nota Partai #{$transaction->transaction_code}"
-                        );
-                    } catch (\Exception $e) {
+            foreach ($request->items as $item) {
+                $product = \App\Models\Product::where('name', $item['name'])->first();
+                if ($product) {
+                    if ($wholesaleLocation) {
+                        try {
+                            $stockService->deductSaleStock(
+                                $product,
+                                $wholesaleLocation,
+                                floatval($item['qty']),
+                                $transaction->id,
+                                auth()->user() ?? \App\Models\User::first(),
+                                "Penjualan Nota Partai #{$transaction->transaction_code}"
+                            );
+                        } catch (\Exception $e) {
+                            $product->decrement('stock', floatval($item['qty']));
+                        }
+                    } else {
                         $product->decrement('stock', floatval($item['qty']));
                     }
-                } else {
-                    $product->decrement('stock', floatval($item['qty']));
                 }
             }
         }
@@ -1510,6 +1524,11 @@ class TransactionController extends Controller
         if (!empty($transaction->items_summary)) {
             $parts = explode(', ', $transaction->items_summary);
             foreach ($parts as $part) {
+                $trimmed = trim($part);
+                if (in_array($trimmed, ['[Stok Sudah Didata]', '[Tanpa Potong Stok]', '[Piutang Manual]'])) {
+                    continue;
+                }
+
                 // Format: Name (Qty Unit x Price)
                 if (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z\s]+)\s*x\s*(\d+)\)$/', $part, $matches)) {
                     $name = trim($matches[1]);
@@ -1900,6 +1919,11 @@ class TransactionController extends Controller
 
         $parts = explode(', ', $summary);
         foreach ($parts as $part) {
+            $trimmed = trim($part);
+            if (in_array($trimmed, ['[Stok Sudah Didata]', '[Tanpa Potong Stok]', '[Piutang Manual]'])) {
+                continue;
+            }
+
             if (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z\s]+)\s*x\s*(\d+)\)$/', $part, $matches)) {
                 $name = trim($matches[1]);
                 $qty = floatval($matches[2]);
@@ -1933,5 +1957,70 @@ class TransactionController extends Controller
         }
 
         return $items;
+    }
+
+    /**
+     * Catat piutang manual (saldo awal / barang sudah keluar sebelumnya tanpa potong stok).
+     */
+    public function storeManualReceivable(Request $request)
+    {
+        if (!auth()->user()->isAdmin() && !auth()->user()->isOwner()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk melakukan tindakan ini.'
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'customer_name'    => 'required|string|max:255',
+            'customer_phone'   => 'nullable|string|max:20',
+            'description'      => 'required|string|max:500',
+            'amount'           => 'required|numeric|min:1',
+            'down_payment'     => 'nullable|numeric|min:0',
+            'transaction_date' => 'nullable|date',
+        ]);
+
+        $grandTotal = intval($request->amount);
+        $received = intval($request->input('down_payment', 0));
+        $paymentStatus = $received >= $grandTotal ? 'paid' : 'unpaid';
+
+        $txDate = $request->filled('transaction_date') 
+            ? Carbon::parse($request->transaction_date) 
+            : Carbon::now();
+
+        $itemsSummary = trim($request->description) . ' (1 paket x ' . $grandTotal . '), [Stok Sudah Didata]';
+
+        $transaction = Transaction::create([
+            'cashier_id'       => auth()->id(),
+            'transaction_code' => 'PTM-' . $txDate->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6)),
+            'transaction_type' => 'wholesale',
+            'customer_name'    => trim($request->customer_name),
+            'customer_phone'   => $request->customer_phone,
+            'items_summary'    => $itemsSummary,
+            'total_price'      => $grandTotal,
+            'discount'         => 0,
+            'shipping_cost'    => 0,
+            'total_cost'       => 0,
+            'payment_method'   => 'Piutang / Tempo',
+            'branch'           => 'Cabang Rumah',
+            'payment_status'   => $paymentStatus,
+            'created_at'       => $txDate,
+            'updated_at'       => $txDate,
+        ]);
+
+        if ($received > 0) {
+            $transaction->installments()->create([
+                'amount'         => $received,
+                'payment_method' => 'Tunai',
+                'note'           => 'Uang Muka / DP Awal',
+                'created_at'     => $txDate,
+            ]);
+        }
+
+        return response()->json([
+            'success'     => true,
+            'message'     => 'Data piutang berhasil dicatat tanpa memotong stok!',
+            'transaction' => $transaction
+        ]);
     }
 }

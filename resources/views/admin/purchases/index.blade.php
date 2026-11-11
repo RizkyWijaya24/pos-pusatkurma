@@ -213,6 +213,30 @@
 
                 <hr class="border-slate-100">
 
+                <!-- Opsi Cepat: Catat Utang Manual Saja (Hanya Nominal & Catatan) -->
+                <div class="p-3.5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-800 flex items-center justify-center shrink-0">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <span class="font-extrabold text-amber-950 block">Hanya ingin memasukkan nominal utang & catatan tanpa memilih produk?</span>
+                            <span class="text-amber-800/80 text-[11px]">Gunakan fitur Catat Utang Manual untuk langsung memasukkan nilai tagihan ke Buku Utang Supplier.</span>
+                        </div>
+                    </div>
+                    <button type="button" 
+                            @click="openManualDebtModal()" 
+                            style="background-color: #d97706; color: #ffffff;"
+                            class="px-3.5 py-2 hover:opacity-95 font-extrabold rounded-xl transition duration-150 text-xs shadow-sm flex items-center gap-1.5 self-start sm:self-auto shrink-0 active:scale-95">
+                        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                        </svg>
+                        <span class="text-white">+ Catat Utang Manual Saja</span>
+                    </button>
+                </div>
+
                 <!-- Section 2: Items Builder -->
                 <div>
                     <div class="flex items-center justify-between mb-4">
@@ -504,6 +528,32 @@
                             </div>
                         </div>
 
+                        <!-- Opsi Tanpa Tambah Stok (Barang Sudah Masuk / Didata Sebelumnya) -->
+                        <div class="p-4 rounded-2xl border transition-all duration-200"
+                             :class="form.skip_stock_increment ? 'bg-amber-500/10 border-amber-500/40 shadow-sm' : 'bg-slate-50 border-slate-200/80'">
+                            <label class="flex items-start gap-3 cursor-pointer select-none">
+                                <input type="checkbox" 
+                                       x-model="form.skip_stock_increment" 
+                                       class="mt-0.5 h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer">
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-black" :class="form.skip_stock_increment ? 'text-amber-800' : 'text-slate-700'">
+                                        Barang sudah masuk / didata sebelumnya (Jangan tambah stok lagi)
+                                    </span>
+                                    <span class="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                                        Centang jika fisik barang sudah masuk atau dihitung di stok opname. Sistem <strong>hanya mencatat buku utang/faktur pembelian</strong> dan <strong>tidak akan menambah saldo stok lagi</strong> (mencegah stok dobel bertambah).
+                                    </span>
+                                </div>
+                            </label>
+                            <template x-if="form.skip_stock_increment">
+                                <div class="mt-2.5 text-[10px] font-bold text-amber-800 bg-amber-100/80 border border-amber-300/80 px-2.5 py-1.5 rounded-xl flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 shrink-0 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span>Mode Aman: Saldo utang supplier tercatat di Buku Utang, stok fisik toko tidak bertambah lagi!</span>
+                                </div>
+                            </template>
+                        </div>
+
                         <!-- Catatan Faktur -->
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-1.5">Catatan Tambahan</label>
@@ -582,7 +632,7 @@
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                                 </svg>
-                                <span x-text="isSubmitting ? 'Memproses Data Stok...' : 'Simpan & Tambahkan ke Stok'"></span>
+                                <span x-text="isSubmitting ? 'Memproses Data...' : (form.skip_stock_increment ? 'Simpan Utang (Tanpa Tambah Stok)' : 'Simpan & Tambahkan ke Stok')"></span>
                             </button>
                         </div>
                     </div>
@@ -768,14 +818,25 @@
         <!-- ======================================================= -->
         <div x-show="activeTab === 'payables'" class="space-y-4">
             
-            <div class="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm flex items-center justify-between">
+            <div class="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h3 class="font-extrabold text-slate-800 text-base">Buku Utang Supplier Aktif</h3>
                     <p class="text-xs text-slate-400 font-medium mt-0.5">Daftar seluruh faktur pembelian tempo yang belum lunas dibayarkan ke supplier.</p>
                 </div>
-                <div class="text-right">
-                    <span class="text-xs text-slate-400 font-semibold block">Total Kewajiban</span>
-                    <span class="text-xl font-black text-rose-600">Rp {{ number_format($totalOutstandingDebt, 0, ',', '.') }}</span>
+                <div class="flex items-center gap-4">
+                    <div class="text-right">
+                        <span class="text-xs text-slate-400 font-semibold block">Total Kewajiban</span>
+                        <span class="text-xl font-black text-rose-600">Rp {{ number_format($totalOutstandingDebt, 0, ',', '.') }}</span>
+                    </div>
+                    <button type="button" 
+                            @click="openManualDebtModal()" 
+                            style="background: linear-gradient(135deg, #059669 0%, #0d9488 100%); color: #ffffff; box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);"
+                            class="px-4 py-2.5 hover:opacity-95 font-extrabold text-xs rounded-2xl flex items-center gap-2 transition active:scale-95 shrink-0">
+                        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                        </svg>
+                        <span class="text-white">+ Catat Utang Manual</span>
+                    </button>
                 </div>
             </div>
 
@@ -796,7 +857,8 @@
                         <div>
                             <div class="flex items-start justify-between gap-3">
                                 <div class="flex items-center gap-3 min-w-0">
-                                    <div class="w-11 h-11 rounded-2xl bg-gradient-to-br {{ $pay->is_overdue ? 'from-rose-600 to-rose-800' : 'from-emerald-700 to-teal-800' }} text-white font-black flex items-center justify-center text-sm shadow-md shrink-0">
+                                    <div style="background: {{ $pay->is_overdue ? 'linear-gradient(135deg, #e11d48, #9f1239)' : 'linear-gradient(135deg, #047857, #115e59)' }}; color: #ffffff;"
+                                         class="w-11 h-11 rounded-2xl text-white font-black flex items-center justify-center text-sm shadow-md shrink-0">
                                         {{ strtoupper(substr($pay->supplier_name, 0, 1)) }}
                                     </div>
                                     <div class="min-w-0">
@@ -847,7 +909,7 @@
                                     <span class="text-emerald-700">{{ $pctPaid }}%</span>
                                 </div>
                                 <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200/50">
-                                    <div class="bg-gradient-to-r from-emerald-600 to-teal-500 h-2 rounded-full transition-all duration-500" style="width: {{ $pctPaid }}%"></div>
+                                    <div class="h-2 rounded-full transition-all duration-500" style="width: {{ $pctPaid }}%; background: linear-gradient(90deg, #059669 0%, #14b8a6 100%);"></div>
                                 </div>
                             </div>
 
@@ -875,20 +937,22 @@
                             @if($pay->supplier_phone)
                                 <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $pay->supplier_phone) }}"
                                    target="_blank"
-                                   class="p-2.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 rounded-2xl transition border border-slate-200 hover:border-emerald-200 shrink-0 flex items-center justify-center"
-                                   title="Hubungi Supplier via WhatsApp">
+                                   style="background-color: #22c55e; color: #ffffff;"
+                                   class="p-2.5 rounded-2xl hover:opacity-90 transition shadow-sm shrink-0 flex items-center justify-center"
+                                   title="Hubungi Supplier via WhatsApp ({{ $pay->supplier_phone }})">
                                     <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                                        <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.664-.698c.99.54 1.78.829 2.796.83h.005c3.18 0 5.767-2.586 5.768-5.766 0-3.18-2.587-5.767-5.773-5.773zm0 10.379h-.004c-.886 0-1.636-.25-2.316-.677l-.166-.1-.976.256.26-.951-.109-.174c-.45-.722-.689-1.543-.688-2.387.001-2.535 2.064-4.598 4.601-4.598 1.229 0 2.384.479 3.253 1.348s1.347 2.024 1.347 3.253c0 2.536-2.063 4.599-4.598 4.599z"/>
+                                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                                     </svg>
                                 </a>
                             @endif
                             <button type="button"
                                     @click="openPayModal({{ json_encode($pay) }})"
-                                    class="flex-1 py-2.5 px-3 bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-800 hover:to-teal-800 text-white rounded-2xl font-black text-xs shadow-md shadow-emerald-900/20 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                    style="background: linear-gradient(135deg, #047857 0%, #0f766e 100%); color: #ffffff;"
+                                    class="flex-1 py-2.5 px-3 hover:opacity-95 text-white rounded-2xl font-black text-xs shadow-md shadow-emerald-900/20 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5">
+                                <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
-                                <span>Bayar Cicilan / Lunas</span>
+                                <span class="text-white">Bayar Cicilan / Lunas</span>
                             </button>
                         </div>
                     </div>
@@ -1383,6 +1447,14 @@
                                                 </td>
                                                 <td class="px-4 py-3 text-right text-slate-500" x-text="formatRupiah(item.unit_cost)"></td>
                                                 <td class="px-4 py-3 text-right font-extrabold text-slate-800" x-text="formatRupiah(item.subtotal)"></td>
+                                            </tr>
+                                        </template>
+                                        <template x-if="!selectedPurchase?.items || selectedPurchase?.items.length === 0">
+                                            <tr>
+                                                <td colspan="4" class="px-4 py-4 text-center text-slate-500 font-medium">
+                                                    <span class="block font-bold text-slate-700" x-text="selectedPurchase?.items_summary || 'Pencatatan Utang Manual'"></span>
+                                                    <span class="text-[11px] text-slate-400">Dicatat tanpa rincian SKU produk (Hanya nominal & catatan).</span>
+                                                </td>
                                             </tr>
                                         </template>
                                     </tbody>
@@ -1900,6 +1972,143 @@
             </div>
         </div>
 
+        <!-- ======================================================= -->
+        <!-- MODAL 6: CATAT UTANG SUPPLIER MANUAL (HANYA NOMINAL & CATATAN) -->
+        <!-- ======================================================= -->
+        <div x-show="showManualDebtModal"
+             x-cloak
+             class="fixed inset-0 z-50 overflow-y-auto"
+             style="display: none;">
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showManualDebtModal = false"></div>
+
+            <div class="flex min-h-full items-center justify-center p-4">
+                <div class="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden" @click.stop>
+                    <!-- Header -->
+                    <div class="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/50">
+                        <div>
+                            <h3 class="text-base font-extrabold text-slate-800">Catat Utang Supplier Manual</h3>
+                            <p class="text-xs text-slate-400 font-medium mt-0.5">Cukup masukkan nama supplier, nominal tagihan, dan catatan utang</p>
+                        </div>
+                        <button type="button" @click="showManualDebtModal = false" class="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Informative Banner -->
+                    <div class="px-6 pt-5">
+                        <div class="p-3 bg-amber-50 rounded-2xl border border-amber-200/80 flex items-start gap-2.5 text-xs text-amber-800">
+                            <svg class="w-4 h-4 text-amber-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span><strong>Tanpa Tambah Stok:</strong> Tagihan utang akan langsung tercatat ke <strong>Buku Utang Supplier</strong> tanpa mengubah atau menambah stok inventori toko.</span>
+                        </div>
+                    </div>
+
+                    <form @submit.prevent="submitManualDebt()" class="p-6 space-y-4">
+                        <!-- Nama Supplier -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5">Nama Supplier / Pemasok <span class="text-rose-500">*</span></label>
+                            <input type="text"
+                                   x-model="manualDebtForm.supplier_name"
+                                   required
+                                   placeholder="Contoh: Haji Ali / PT Kurma Raya"
+                                   class="w-full text-xs font-bold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 p-2.5 bg-slate-50">
+                        </div>
+
+                        <!-- No. WA & No. Faktur Fisik -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">No. WhatsApp Supplier (Opsional)</label>
+                                <input type="text"
+                                       x-model="manualDebtForm.supplier_phone"
+                                       placeholder="Contoh: 081234567890"
+                                       class="w-full text-xs font-medium border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 p-2.5 bg-slate-50">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">No. Faktur / Nota Fisik (Opsional)</label>
+                                <input type="text"
+                                       x-model="manualDebtForm.invoice_number"
+                                       placeholder="Contoh: INV-2026/11/001"
+                                       class="w-full text-xs font-medium border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 p-2.5 bg-slate-50">
+                            </div>
+                        </div>
+
+                        <!-- Keterangan / Catatan Utang -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5">Catatan / Keterangan Utang <span class="text-rose-500">*</span></label>
+                            <textarea x-model="manualDebtForm.notes"
+                                      rows="2"
+                                      required
+                                      placeholder="Contoh: Sisa nota pembelian kurma sukari tempo minggu lalu..."
+                                      class="w-full text-xs font-semibold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 p-2.5 bg-slate-50"></textarea>
+                        </div>
+
+                        <!-- Nominal Tagihan & DP -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">Total Tagihan Utang (Rp) <span class="text-rose-500">*</span></label>
+                                <input type="number"
+                                       min="1"
+                                       x-model="manualDebtForm.amount"
+                                       required
+                                       placeholder="Contoh: 5000000"
+                                       class="w-full text-sm font-black border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 p-2.5 text-rose-600 bg-slate-50">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">Uang Muka / DP (Rp)</label>
+                                <input type="number"
+                                       min="0"
+                                       x-model="manualDebtForm.initial_deposit"
+                                       placeholder="0 jika belum bayar"
+                                       class="w-full text-sm font-black border-slate-200 rounded-xl focus:border-teal-500 focus:ring-teal-500 p-2.5 text-teal-700 bg-slate-50">
+                            </div>
+                        </div>
+
+                        <!-- Tanggal Faktur & Jatuh Tempo -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">Tanggal Pembelian</label>
+                                <input type="date"
+                                       x-model="manualDebtForm.purchase_date"
+                                       class="w-full text-xs font-medium border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 p-2.5 bg-slate-50">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">Tanggal Jatuh Tempo</label>
+                                <input type="date"
+                                       x-model="manualDebtForm.due_date"
+                                       class="w-full text-xs font-medium border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 p-2.5 bg-slate-50">
+                            </div>
+                        </div>
+
+                        <!-- Ringkasan Sisa Utang -->
+                        <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between text-xs">
+                            <span class="font-bold text-slate-500">Sisa Utang yang Harus Dibayar:</span>
+                            <span class="font-black text-sm text-rose-600"
+                                  x-text="formatRupiah(Math.max(0, (Number(manualDebtForm.amount) || 0) - (Number(manualDebtForm.initial_deposit) || 0)))"></span>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
+                            <button type="button"
+                                    @click="showManualDebtModal = false"
+                                    class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-xs transition">
+                                Batal
+                            </button>
+                            <button type="submit"
+                                    :disabled="isSubmittingManualDebt || !manualDebtForm.amount || manualDebtForm.amount <= 0"
+                                    style="background: linear-gradient(135deg, #059669 0%, #0d9488 100%);"
+                                    class="px-5 py-2.5 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-emerald-950/20 hover:brightness-110 disabled:opacity-50 transition active:scale-95 flex items-center gap-2">
+                                <span x-show="!isSubmittingManualDebt">Simpan Utang Supplier</span>
+                                <span x-show="isSubmittingManualDebt">Menyimpan...</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- ======================================================= -->
@@ -1985,6 +2194,22 @@
                 },
                 isSubmittingNewProduct: false,
 
+                // Manual Debt State (Hanya Nominal & Catatan)
+                showManualDebtModal: false,
+                isSubmittingManualDebt: false,
+                manualDebtForm: {
+                    supplier_name: '',
+                    supplier_phone: '',
+                    invoice_number: '',
+                    amount: '',
+                    notes: '',
+                    initial_deposit: '',
+                    purchase_date: new Date().toISOString().slice(0, 10),
+                    due_date: '',
+                    payment_method: 'Transfer Bank',
+                    location_id: (locations && locations.length > 0) ? locations[0].id : ''
+                },
+
                 // Form Input State
                 form: {
                     supplier_name: '',
@@ -1994,6 +2219,7 @@
                     purchase_date: new Date().toISOString().slice(0, 10),
                     payment_method: 'Tunai',
                     is_tempo: false,
+                    skip_stock_increment: false,
                     due_date: '',
                     initial_deposit: 0,
                     notes: '',
@@ -2246,6 +2472,7 @@
                     const payload = {
                         ...this.form,
                         is_tempo: Boolean(this.form.is_tempo),
+                        skip_stock_increment: Boolean(this.form.skip_stock_increment),
                         initial_deposit: Number(this.form.initial_deposit) || 0,
                         items: this.form.items.map(it => ({
                             product_id: it.product_id,
@@ -2314,6 +2541,83 @@
                 closePayModal() {
                     this.showPayModal = false;
                     this.activePayTrx = null;
+                },
+
+                openManualDebtModal() {
+                    this.manualDebtForm = {
+                        supplier_name: '',
+                        supplier_phone: '',
+                        invoice_number: '',
+                        amount: '',
+                        notes: '',
+                        initial_deposit: '',
+                        purchase_date: new Date().toISOString().slice(0, 10),
+                        due_date: '',
+                        payment_method: 'Transfer Bank',
+                        location_id: (this.locationsList && this.locationsList.length > 0) ? this.locationsList[0].id : ''
+                    };
+                    this.showManualDebtModal = true;
+                },
+
+                async submitManualDebt() {
+                    if (!this.manualDebtForm.supplier_name.trim()) {
+                        alert('Nama supplier wajib diisi!');
+                        return;
+                    }
+                    const amt = Number(this.manualDebtForm.amount);
+                    if (!amt || amt <= 0) {
+                        alert('Nominal utang harus lebih besar dari 0!');
+                        return;
+                    }
+                    if (!this.manualDebtForm.notes.trim()) {
+                        alert('Catatan / keterangan utang wajib diisi!');
+                        return;
+                    }
+                    const dp = Number(this.manualDebtForm.initial_deposit) || 0;
+                    if (dp > amt) {
+                        alert('Uang muka / DP tidak boleh melebihi total tagihan utang!');
+                        return;
+                    }
+
+                    this.isSubmittingManualDebt = true;
+                    const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+                    try {
+                        const res = await fetch("{{ route('admin.purchases.store-manual-debt') }}", {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrf
+                            },
+                            body: JSON.stringify({
+                                ...this.manualDebtForm,
+                                amount: amt,
+                                initial_deposit: dp
+                            })
+                        });
+
+                        const data = await res.json();
+                        if (data.success) {
+                            if (window.showToast) {
+                                window.showToast(data.message, 'success');
+                            } else {
+                                alert(data.message);
+                            }
+                            this.showManualDebtModal = false;
+                            setTimeout(() => {
+                                const url = new URL(window.location.href);
+                                url.searchParams.set('tab', 'payables');
+                                window.location.href = url.toString();
+                            }, 1000);
+                        } else {
+                            alert(data.message || 'Gagal mencatat utang supplier.');
+                            this.isSubmittingManualDebt = false;
+                        }
+                    } catch (e) {
+                        alert('Terjadi kesalahan jaringan: ' + e);
+                        this.isSubmittingManualDebt = false;
+                    }
                 },
 
                 async submitDebtPayment() {

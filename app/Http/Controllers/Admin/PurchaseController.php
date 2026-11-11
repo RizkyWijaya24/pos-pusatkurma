@@ -137,6 +137,7 @@ class PurchaseController extends Controller
             'purchase_date'   => 'required|date',
             'payment_method'  => 'required|string|max:50',
             'is_tempo'        => 'nullable|boolean',
+            'skip_stock_increment' => 'nullable|boolean',
             'due_date'        => 'nullable|required_if:is_tempo,true,1|date',
             'initial_deposit' => 'nullable|numeric|min:0',
             'notes'           => 'nullable|string|max:1000',
@@ -147,6 +148,8 @@ class PurchaseController extends Controller
             'items.*.unit_cost'           => 'required|numeric|min:0',
             'items.*.update_product_cost' => 'nullable|boolean',
         ]);
+
+        $skipStock = $request->boolean('skip_stock_increment');
 
         DB::beginTransaction();
         try {
@@ -194,6 +197,11 @@ class PurchaseController extends Controller
                 $dueDate = $validated['due_date'];
             }
 
+            $notes = $validated['notes'] ?? null;
+            if ($skipStock) {
+                $notes = ($notes ? $notes . ' ' : '') . '[Stok Sudah Didata / Masuk Sebelumnya]';
+            }
+
             // 5. Create Purchase record
             $purchase = Purchase::create([
                 'purchase_code'  => $purchaseCode,
@@ -210,7 +218,7 @@ class PurchaseController extends Controller
                 'payment_method' => $validated['payment_method'],
                 'payment_status' => $paymentStatus,
                 'due_date'       => $dueDate,
-                'notes'          => $validated['notes'] ?? null,
+                'notes'          => $notes,
             ]);
 
             // 6. Create Purchase Items & update stocks
@@ -230,39 +238,47 @@ class PurchaseController extends Controller
                     'update_product_cost' => $shouldUpdateCost,
                 ]);
 
-                // Update location stock
-                $productStock = ProductStock::firstOrCreate([
-                    'product_id'  => $prod->id,
-                    'location_id' => $validated['location_id'],
-                ], [
-                    'stock' => 0,
-                ]);
+                if (!$skipStock) {
+                    // Update location stock
+                    $productStock = ProductStock::firstOrCreate([
+                        'product_id'  => $prod->id,
+                        'location_id' => $validated['location_id'],
+                    ], [
+                        'stock' => 0,
+                    ]);
 
-                $qtyBefore = (float) $productStock->stock;
-                $productStock->incrementStock((float) $itemData['quantity']);
-                $qtyAfter = (float) $productStock->stock;
+                    $qtyBefore = (float) $productStock->stock;
+                    $productStock->incrementStock((float) $itemData['quantity']);
+                    $qtyAfter = (float) $productStock->stock;
 
-                // Update product total stock & HPP
-                $prod->stock = (float) $prod->stock + (float) $itemData['quantity'];
+                    // Update product total stock
+                    $prod->stock = (float) $prod->stock + (float) $itemData['quantity'];
+                }
+
+                // Update product HPP if requested
                 if ($shouldUpdateCost && (float) $itemData['unit_cost'] > 0) {
                     $prod->cost_price = (int) round($itemData['unit_cost']);
+                    $prod->save();
+                } elseif (!$skipStock) {
+                    $prod->save();
                 }
-                $prod->save();
 
-                // Log into StockAdjustmentLog
-                StockAdjustmentLog::create([
-                    'product_id'      => $prod->id,
-                    'location_id'     => $validated['location_id'],
-                    'type'            => 'adjustment',
-                    'quantity_before' => $qtyBefore,
-                    'quantity_change' => (float) $itemData['quantity'],
-                    'quantity_after'  => $qtyAfter,
-                    'reference_type'  => 'purchase',
-                    'reference_id'    => $purchase->id,
-                    'created_by'      => auth()->id(),
-                    'notes'           => "Penerimaan Barang Masuk ({$purchase->purchase_code}) dari {$purchase->supplier_name}",
-                    'created_at'      => now(),
-                ]);
+                if (!$skipStock) {
+                    // Log into StockAdjustmentLog
+                    StockAdjustmentLog::create([
+                        'product_id'      => $prod->id,
+                        'location_id'     => $validated['location_id'],
+                        'type'            => 'adjustment',
+                        'quantity_before' => $qtyBefore,
+                        'quantity_change' => (float) $itemData['quantity'],
+                        'quantity_after'  => $qtyAfter,
+                        'reference_type'  => 'purchase',
+                        'reference_id'    => $purchase->id,
+                        'created_by'      => auth()->id(),
+                        'notes'           => "Penerimaan Barang Masuk ({$purchase->purchase_code}) dari {$purchase->supplier_name}",
+                        'created_at'      => now(),
+                    ]);
+                }
             }
 
             // 7. If initial payment made (either full or DP), create PurchasePayment
@@ -281,16 +297,20 @@ class PurchaseController extends Controller
 
             DB::commit();
 
+            $successMsg = $skipStock
+                ? "Faktur pembelian & utang supplier berhasil dicatat ({$purchase->purchase_code}) tanpa menambah stok lagi!"
+                : "Stok masuk & faktur pembelian berhasil dicatat dengan kode {$purchase->purchase_code}!";
+
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => true,
-                    'message' => "Stok masuk berhasil dicatat dengan kode {$purchase->purchase_code}!",
+                    'message' => $successMsg,
                     'purchase' => $purchase,
                 ]);
             }
 
             return redirect()->route('admin.purchases.index')
-                ->with('success', "Stok barang masuk berhasil dicatat ({$purchase->purchase_code})!");
+                ->with('success', $successMsg);
         } catch (\Throwable $e) {
             DB::rollBack();
             if ($request->wantsJson()) {
@@ -434,5 +454,97 @@ class PurchaseController extends Controller
                 'stock'         => 0,
             ],
         ]);
+    }
+
+    /**
+     * Catat Utang Supplier Manual (Hanya Nominal & Catatan tanpa pilih produk).
+     */
+    public function storeManualDebt(Request $request)
+    {
+        $validated = $request->validate([
+            'supplier_name'   => 'required|string|max:255',
+            'supplier_phone'  => 'nullable|string|max:50',
+            'invoice_number'  => 'nullable|string|max:100',
+            'amount'          => 'required|numeric|min:1',
+            'notes'           => 'required|string|max:1000',
+            'initial_deposit' => 'nullable|numeric|min:0',
+            'purchase_date'   => 'nullable|date',
+            'due_date'        => 'nullable|date',
+            'payment_method'  => 'nullable|string|max:50',
+            'location_id'     => 'nullable|exists:stock_locations,id',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $supplier = null;
+            if (!empty($validated['supplier_name'])) {
+                $supplier = Supplier::firstOrCreate(
+                    ['name' => trim($validated['supplier_name'])],
+                    ['phone' => $validated['supplier_phone'] ?? null]
+                );
+            }
+
+            $purchaseDate = $request->filled('purchase_date') ? $validated['purchase_date'] : Carbon::now()->toDateString();
+            $datePrefix = Carbon::parse($purchaseDate)->format('Ymd');
+            $randomSuffix = strtoupper(substr(bin2hex(random_bytes(3)), 0, 5));
+            $purchaseCode = "PO-M-{$datePrefix}-{$randomSuffix}";
+
+            $totalAmount = floatval($validated['amount']);
+            $initialDeposit = floatval($validated['initial_deposit'] ?? 0);
+            $paidAmount = min($totalAmount, $initialDeposit);
+            $paymentStatus = ($paidAmount >= $totalAmount) ? 'paid' : ($paidAmount > 0 ? 'partial' : 'unpaid');
+
+            $locationId = $validated['location_id'] 
+                ?? StockLocation::where('is_active', true)->first()?->id 
+                ?? StockLocation::first()?->id;
+
+            $itemsSummary = trim($validated['notes']) . ' (Rp ' . number_format($totalAmount, 0, ',', '.') . ')';
+            $fullNotes = trim($validated['notes']) . ' [Utang Manual / Saldo Awal - Tanpa Tambah Stok]';
+
+            $purchase = Purchase::create([
+                'purchase_code'  => $purchaseCode,
+                'invoice_number' => $validated['invoice_number'] ?? null,
+                'supplier_id'    => $supplier ? $supplier->id : null,
+                'supplier_name'  => trim($validated['supplier_name']),
+                'supplier_phone' => $validated['supplier_phone'] ?? ($supplier ? $supplier->phone : null),
+                'location_id'    => $locationId,
+                'created_by'     => auth()->id(),
+                'purchase_date'  => $purchaseDate,
+                'items_summary'  => $itemsSummary,
+                'total_amount'   => $totalAmount,
+                'paid_amount'    => $paidAmount,
+                'payment_method' => $validated['payment_method'] ?? 'Transfer Bank',
+                'payment_status' => $paymentStatus,
+                'due_date'       => $validated['due_date'] ?? null,
+                'notes'          => $fullNotes,
+            ]);
+
+            if ($paidAmount > 0) {
+                PurchasePayment::create([
+                    'purchase_id'      => $purchase->id,
+                    'payment_code'     => 'PAY-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6)),
+                    'amount'           => $paidAmount,
+                    'payment_date'     => $purchaseDate,
+                    'payment_method'   => $validated['payment_method'] ?? 'Transfer Bank',
+                    'reference_number' => $validated['invoice_number'] ?? null,
+                    'created_by'       => auth()->id(),
+                    'notes'            => 'Pembayaran Uang Muka (DP) Utang Supplier',
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Utang supplier berhasil dicatat dengan kode {$purchase->purchase_code}!",
+                'purchase' => $purchase,
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mencatat utang supplier: ' . $e->getMessage(),
+            ], 422);
+        }
     }
 }

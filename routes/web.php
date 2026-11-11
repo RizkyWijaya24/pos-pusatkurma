@@ -66,12 +66,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/wholesale-transactions/{transaction}/print', [\App\Http\Controllers\TransactionController::class, 'printWholesale'])->name('wholesale-transactions.print');
         Route::post('/transactions/{transaction}/mark-as-paid', [\App\Http\Controllers\TransactionController::class, 'markAsPaid'])->name('transactions.mark-as-paid');
         Route::get('/receivables', [\App\Http\Controllers\TransactionController::class, 'getReceivables'])->name('receivables.index');
+        Route::post('/receivables/manual', [\App\Http\Controllers\TransactionController::class, 'storeManualReceivable'])->name('receivables.store-manual');
         Route::get('/receivables/history', [\App\Http\Controllers\TransactionController::class, 'getReceivablesHistory'])->name('receivables.history');
         Route::post('/transactions/{transaction}/installments', [\App\Http\Controllers\TransactionController::class, 'storeInstallment'])->name('transactions.store-installment');
 
         // ── Pembelian & Stok Masuk (Procurement & Utang Supplier) ──
         Route::get('/purchases', [\App\Http\Controllers\Admin\PurchaseController::class, 'index'])->name('purchases.index');
         Route::post('/purchases', [\App\Http\Controllers\Admin\PurchaseController::class, 'store'])->name('purchases.store');
+        Route::post('/purchases/manual-debt', [\App\Http\Controllers\Admin\PurchaseController::class, 'storeManualDebt'])->name('purchases.store-manual-debt');
         Route::post('/purchases/quick-create-product', [\App\Http\Controllers\Admin\PurchaseController::class, 'quickCreateProduct'])->name('purchases.quick-create-product');
         Route::get('/purchases/{purchase}', [\App\Http\Controllers\Admin\PurchaseController::class, 'show'])->name('purchases.show');
         Route::post('/purchases/{purchase}/pay-debt', [\App\Http\Controllers\Admin\PurchaseController::class, 'payDebt'])->name('purchases.pay-debt');

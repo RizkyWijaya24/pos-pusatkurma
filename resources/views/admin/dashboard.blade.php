@@ -296,6 +296,7 @@
             discount: '',
             shipping_cost: '',
             paymentReceived: '',
+            skip_stock_deduction: false,
             items: [
                 { name: '', qty: 1, price_unit: 'pcs', selling_price: '', cost_price: '', showSuggestions: false, activeSuggestionIndex: -1 }
             ]
@@ -317,6 +318,8 @@
         selectedHistoryTrx: null,
         showInstallmentModal: false,
         installmentForm: { transaction_id: null, transaction_code: '', amount: '', payment_method: 'Tunai', note: '', max_amount: 0 },
+        showManualReceivableModal: false,
+        manualReceivableForm: { customer_name: '', customer_phone: '', description: '', amount: '', down_payment: '', transaction_date: '', submitting: false },
 
         // Camera integration state
         showCamera: false,
@@ -494,6 +497,82 @@
             })
             .catch(err => {
                 this.showToast(err.message || 'Gagal menyimpan cicilan!', 'error');
+            });
+        },
+
+        openManualReceivableModal() {
+            const today = new Date().toISOString().split('T')[0];
+            this.manualReceivableForm = {
+                customer_name: this.selectedCustomer ? this.selectedCustomer.customer_name : '',
+                customer_phone: this.selectedCustomer ? (this.selectedCustomer.customer_phone || '') : '',
+                description: '',
+                amount: '',
+                down_payment: '',
+                transaction_date: today,
+                submitting: false
+            };
+            this.showManualReceivableModal = true;
+        },
+
+        submitManualReceivable() {
+            if (!this.manualReceivableForm.customer_name.trim()) {
+                this.showToast('Nama pelanggan wajib diisi!', 'warning');
+                return;
+            }
+            if (!this.manualReceivableForm.description.trim()) {
+                this.showToast('Keterangan / rincian barang piutang wajib diisi!', 'warning');
+                return;
+            }
+            const amount = parseInt(this.manualReceivableForm.amount);
+            if (!amount || amount <= 0) {
+                this.showToast('Nominal piutang harus lebih dari 0!', 'warning');
+                return;
+            }
+            const dp = parseInt(this.manualReceivableForm.down_payment) || 0;
+            if (dp > amount) {
+                this.showToast('Uang muka / DP tidak boleh melebihi total tagihan!', 'warning');
+                return;
+            }
+
+            this.manualReceivableForm.submitting = true;
+            const csrfToken = document.querySelector('meta[name=csrf-token]').getAttribute('content');
+
+            fetch('/admin/receivables/manual', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    customer_name: this.manualReceivableForm.customer_name.trim(),
+                    customer_phone: this.manualReceivableForm.customer_phone ? this.manualReceivableForm.customer_phone.trim() : null,
+                    description: this.manualReceivableForm.description.trim(),
+                    amount: amount,
+                    down_payment: dp,
+                    transaction_date: this.manualReceivableForm.transaction_date
+                })
+            })
+            .then(res => {
+                if (!res.ok) {
+                    return res.json().then(err => { throw err; });
+                }
+                return res.json();
+            })
+            .then(data => {
+                this.manualReceivableForm.submitting = false;
+                if (data.success) {
+                    this.showToast(data.message, 'success');
+                    this.showManualReceivableModal = false;
+                    this.fetchReceivables();
+                    this.fetchReceivablesHistory();
+                } else {
+                    this.showToast(data.message || 'Gagal mencatat piutang', 'error');
+                }
+            })
+            .catch(err => {
+                this.manualReceivableForm.submitting = false;
+                this.showToast(err.message || 'Terjadi kesalahan sistem saat mencatat piutang', 'error');
             });
         },
 
@@ -1758,6 +1837,7 @@
                         discount: parseInt(this.wholesaleForm.discount) || 0,
                         shipping_cost: parseInt(this.wholesaleForm.shipping_cost) || 0,
                         payment_received: parseInt(this.wholesaleForm.paymentReceived) || 0,
+                        skip_stock_deduction: !!this.wholesaleForm.skip_stock_deduction,
                         items: itemsData
                     };
 
@@ -1788,6 +1868,7 @@
                                 discount: '',
                                 shipping_cost: '',
                                 paymentReceived: '',
+                                skip_stock_deduction: false,
                                 items: [
                                     { name: '', qty: 1, price_unit: 'pcs', selling_price: '', cost_price: '', showSuggestions: false, activeSuggestionIndex: -1 }
                                 ]
@@ -2588,6 +2669,32 @@
                             </select>
                         </div>
 
+                        <!-- Opsi Tanpa Potong Stok (Barang Sudah Didata Sebelumnya) -->
+                        <div class="p-3.5 rounded-2xl border transition-all duration-200"
+                             :class="wholesaleForm.skip_stock_deduction ? 'bg-amber-500/10 border-amber-500/40 shadow-sm' : 'bg-slate-50/80 border-slate-200/80'">
+                            <label class="flex items-start gap-3 cursor-pointer select-none">
+                                <input type="checkbox" 
+                                       x-model="wholesaleForm.skip_stock_deduction" 
+                                       class="mt-0.5 h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer">
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-black" :class="wholesaleForm.skip_stock_deduction ? 'text-amber-800 dark:text-amber-300' : 'text-slate-700'">
+                                        Barang sudah didata / keluar sebelumnya
+                                    </span>
+                                    <span class="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                                        Centang jika fisik barang sudah dihitung atau dikeluarkan sebelumnya. Sistem <strong>tidak akan mengurangi stok inventori lagi</strong> dan mengabaikan batas stok.
+                                    </span>
+                                </div>
+                            </label>
+                            <template x-if="wholesaleForm.skip_stock_deduction">
+                                <div class="mt-2.5 text-[10px] font-bold text-amber-800 bg-amber-100/80 border border-amber-300/80 px-2.5 py-1.5 rounded-xl flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 shrink-0 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span>Mode Tanpa Potong Stok: Stok aman dari dobel potongan, nota piutang tetap resmi!</span>
+                                </div>
+                            </template>
+                        </div>
+
                         <!-- Grand Total -->
                         <div class="flex justify-between border-t border-slate-100 pt-3 text-base font-extrabold items-center">
                             <span class="text-slate-800">Total Akhir Nota</span>
@@ -2806,12 +2913,12 @@
             </style>
 
             <!-- Sub-tab Navigation for Kelola Piutang -->
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div class="inline-flex p-1.5 bg-slate-100 rounded-2xl border border-slate-200/80 text-xs font-bold gap-1">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div class="inline-flex p-1.5 bg-slate-100 rounded-2xl border border-slate-200/80 text-xs font-bold gap-1 overflow-x-auto">
                     <button type="button" 
                             @click="receivablesSubTab = 'active'"
                             :class="receivablesSubTab === 'active' ? 'bg-white text-emerald-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
-                            class="px-4 py-2 rounded-xl transition flex items-center gap-2">
+                            class="px-4 py-2 rounded-xl transition flex items-center gap-2 whitespace-nowrap">
                         <span>Piutang Aktif</span>
                         <template x-if="receivables.length > 0">
                             <span class="px-2 py-0.5 rounded-full text-[10px] bg-rose-100 text-rose-700 font-extrabold" x-text="receivables.length"></span>
@@ -2820,7 +2927,7 @@
                     <button type="button" 
                             @click="receivablesSubTab = 'history'; fetchReceivablesHistory()"
                             :class="receivablesSubTab === 'history' ? 'bg-white text-emerald-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
-                            class="px-4 py-2 rounded-xl transition flex items-center gap-2">
+                            class="px-4 py-2 rounded-xl transition flex items-center gap-2 whitespace-nowrap">
                         <span>Riwayat Piutang Lunas</span>
                         <template x-if="receivablesHistory.length > 0">
                             <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-800 font-extrabold" x-text="receivablesHistory.length"></span>
@@ -2829,17 +2936,29 @@
                     <button type="button" 
                             @click="receivablesSubTab = 'logs'; fetchReceivablesHistory()"
                             :class="receivablesSubTab === 'logs' ? 'bg-white text-emerald-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
-                            class="px-4 py-2 rounded-xl transition flex items-center gap-2">
+                            class="px-4 py-2 rounded-xl transition flex items-center gap-2 whitespace-nowrap">
                         <span>Log Pembayaran Masuk</span>
                     </button>
                 </div>
 
-                <!-- Search bar for History / Logs -->
-                <div x-show="receivablesSubTab !== 'active'" class="w-full sm:w-72">
-                    <input type="text"
-                           x-model="receivablesHistorySearch"
-                           placeholder="Cari pelanggan / invoice..."
-                           class="w-full border-slate-200 rounded-xl text-xs font-semibold focus:border-emerald-500 focus:ring-emerald-500 py-2 px-3 shadow-inner bg-white">
+                <div class="flex items-center gap-3">
+                    <!-- Search bar for History / Logs -->
+                    <div x-show="receivablesSubTab !== 'active'" class="w-full sm:w-64">
+                        <input type="text"
+                               x-model="receivablesHistorySearch"
+                               placeholder="Cari pelanggan / invoice..."
+                               class="w-full border-slate-200 rounded-xl text-xs font-semibold focus:border-emerald-500 focus:ring-emerald-500 py-2 px-3 shadow-inner bg-white">
+                    </div>
+
+                    <!-- Tombol Catat Piutang Manual -->
+                    <button type="button" 
+                            @click="openManualReceivableModal()"
+                            class="px-4 py-2 bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-800 hover:to-teal-800 text-white rounded-2xl font-extrabold text-xs tracking-wide transition duration-150 flex items-center gap-2 shadow-md shadow-emerald-700/10 active:scale-95 shrink-0 whitespace-nowrap">
+                        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                        </svg>
+                        <span>+ Catat Piutang Manual</span>
+                    </button>
                 </div>
             </div>
 
@@ -3354,6 +3473,114 @@
                         </button>
                     </div>
                 </div>
+
+            </div>
+        </div>
+
+        <!-- MODAL CATAT PIUTANG MANUAL (BARANG SUDAH DIDATA / SALDO AWAL TANPA POTONG STOK) -->
+        <div x-show="showManualReceivableModal" 
+             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
+             style="display: none;">
+            <div class="modal-card bg-white p-6 rounded-3xl border border-slate-100 shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+                 @click.away="showManualReceivableModal = false">
+                
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+                    <div>
+                        <h3 class="text-base font-extrabold text-slate-800">Catat Piutang Manual</h3>
+                        <p class="text-xs text-slate-400 font-medium">Input piutang/tempo untuk barang yang sudah dikeluarkan/didata sebelumnya</p>
+                    </div>
+                    <button type="button" @click="showManualReceivableModal = false" class="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                <div class="p-3 bg-amber-50 rounded-2xl border border-amber-200/80 mb-4 flex items-start gap-2.5 text-xs text-amber-800">
+                    <svg class="w-4 h-4 text-amber-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span><strong>Tanpa Potong Stok:</strong> Fitur ini mencatat tagihan piutang resmi ke sistem. Stok inventori barang <strong>tidak akan dipotong lagi</strong> (mencegah stok minus/dobel pengurangan).</span>
+                </div>
+
+                <form @submit.prevent="submitManualReceivable()" class="flex flex-col gap-4">
+                    <!-- Nama Pelanggan -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Nama Pelanggan / Toko <span class="text-rose-500">*</span></label>
+                        <input type="text" 
+                               x-model="manualReceivableForm.customer_name" 
+                               placeholder="Contoh: Haji Umar / Toko Berkah" 
+                               required
+                               class="w-full border-slate-200 rounded-xl font-bold text-sm py-2 px-3 focus:border-emerald-500 focus:ring-emerald-500 shadow-inner">
+                    </div>
+
+                    <!-- Nomor WhatsApp -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Nomor WhatsApp (Opsional)</label>
+                        <input type="text" 
+                               x-model="manualReceivableForm.customer_phone" 
+                               placeholder="Contoh: 081234567890" 
+                               class="w-full border-slate-200 rounded-xl font-semibold text-sm py-2 px-3 focus:border-emerald-500 focus:ring-emerald-500 shadow-inner">
+                    </div>
+
+                    <!-- Rincian / Keterangan Barang -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Keterangan / Rincian Barang <span class="text-rose-500">*</span></label>
+                        <textarea x-model="manualReceivableForm.description" 
+                                  placeholder="Contoh: Pengambilan Kurma Sukari 10 Dus tempo minggu lalu..." 
+                                  rows="2"
+                                  required
+                                  class="w-full border-slate-200 rounded-xl font-semibold text-sm py-2 px-3 focus:border-emerald-500 focus:ring-emerald-500 shadow-inner"></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Total Nilai Piutang -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Total Tagihan (Rp) <span class="text-rose-500">*</span></label>
+                            <input type="number" 
+                                   x-model="manualReceivableForm.amount" 
+                                   placeholder="Contoh: 1500000" 
+                                   required
+                                   class="w-full border-slate-200 rounded-xl font-black text-sm py-2 px-3 focus:border-emerald-500 focus:ring-emerald-500 shadow-inner text-rose-600">
+                        </div>
+
+                        <!-- Uang Muka / DP Awal -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Uang Muka / DP (Rp)</label>
+                            <input type="number" 
+                                   x-model="manualReceivableForm.down_payment" 
+                                   placeholder="0 jika belum bayar" 
+                                   class="w-full border-slate-200 rounded-xl font-black text-sm py-2 px-3 focus:border-teal-500 focus:ring-teal-500 shadow-inner text-teal-700">
+                        </div>
+                    </div>
+
+                    <!-- Tanggal Transaksi -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Tanggal Transaksi</label>
+                        <input type="date" 
+                               x-model="manualReceivableForm.transaction_date" 
+                               class="w-full border-slate-200 rounded-xl font-semibold text-sm py-2 px-3 focus:border-emerald-500 focus:ring-emerald-500 shadow-inner">
+                    </div>
+
+                    <!-- Ringkasan Sisa Piutang -->
+                    <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 flex justify-between items-center text-xs">
+                        <span class="font-bold text-slate-500">Sisa Tagihan Piutang:</span>
+                        <span class="font-black text-sm text-rose-600" 
+                              x-text="formatRupiah(Math.max(0, (parseInt(manualReceivableForm.amount) || 0) - (parseInt(manualReceivableForm.down_payment) || 0)))"></span>
+                    </div>
+
+                    <div class="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
+                        <button type="button" 
+                                @click="showManualReceivableModal = false"
+                                class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold text-xs tracking-wide uppercase transition duration-150">
+                            Batal
+                        </button>
+                        <button type="submit" 
+                                :disabled="manualReceivableForm.submitting"
+                                class="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white rounded-2xl font-extrabold text-xs tracking-wide uppercase transition duration-150 shadow-md shadow-emerald-700/10 flex items-center gap-1.5">
+                            <span x-show="!manualReceivableForm.submitting">Simpan Piutang</span>
+                            <span x-show="manualReceivableForm.submitting">Menyimpan...</span>
+                        </button>
+                    </div>
+                </form>
 
             </div>
         </div>

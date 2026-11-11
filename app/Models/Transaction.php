@@ -160,6 +160,22 @@ class Transaction extends Model
     }
 
     /**
+     * Cek apakah transaksi ini dicatat tanpa pemotongan stok fisik inventori
+     * (misal: barang sudah dikeluarkan / didata duluan sebelumnya, atau saldo awal piutang manual).
+     */
+    public function isStockDeductionSkipped(): bool
+    {
+        if (str_starts_with($this->transaction_code, 'PTM-') || str_contains($this->transaction_code, 'NOSTK') || str_contains($this->transaction_code, '-NS-')) {
+            return true;
+        }
+        $summary = $this->items_summary ?? '';
+        if (str_contains($summary, '[Stok Sudah Didata]') || str_contains($summary, '[Tanpa Potong Stok]') || str_contains($summary, '[Piutang Manual]')) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Parse items_summary into structured array of items with formatted quantities and prices.
      */
     public function getParsedItemsAttribute(): array
@@ -172,6 +188,11 @@ class Transaction extends Model
 
         $parts = explode(', ', $summary);
         foreach ($parts as $part) {
+            $trimmed = trim($part);
+            if (in_array($trimmed, ['[Stok Sudah Didata]', '[Tanpa Potong Stok]', '[Piutang Manual]'])) {
+                continue;
+            }
+
             if (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z\s]+)\s*x\s*(\d+)\)$/', $part, $matches)) {
                 $name = trim($matches[1]);
                 $qty = floatval($matches[2]);
