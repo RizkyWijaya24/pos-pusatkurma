@@ -40,12 +40,15 @@ class AppServiceProvider extends ServiceProvider
             @mkdir($dompdfFontDir, 0775, true);
         }
 
-        // Share shop settings globally to all views if table exists
+        // Share shop settings globally to all views if table exists (cached to prevent information_schema queries on every request)
         try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {
-                $settings = \App\Models\Setting::pluck('value', 'key')->all();
-                \Illuminate\Support\Facades\View::share('shop_settings', $settings);
-            }
+            $settings = \Illuminate\Support\Facades\Cache::remember('shop_settings_global', 3600, function () {
+                if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {
+                    return \App\Models\Setting::pluck('value', 'key')->all();
+                }
+                return [];
+            });
+            \Illuminate\Support\Facades\View::share('shop_settings', $settings);
         } catch (\Throwable $e) {
             // Prevent artisan commands from crashing when DB is uninitialized or unreachable
         }

@@ -9,29 +9,34 @@
         $dbNotifications = $user->notifications()->take(5)->get();
         $unreadCount = $user->unreadNotifications()->count();
 
-        // Query dasar low stock (stok di bawah atau sama dengan 10, tapi di atas 0)
-        $lowStockQuery = \App\Models\ProductStock::with(['product', 'location'])
-            ->where('stock', '<=', 10)
-            ->where('stock', '>', 0);
+        // Cache alert low stock 60 detik agar tidak menjalankan query berat di setiap refresh halaman
+        $cacheKey = ($user->isAdmin() || $user->isOwner()) ? 'all' : ($user->branch ?? 'default');
+        $lowStockData = \Illuminate\Support\Facades\Cache::remember("low_stock_alerts_{$cacheKey}", 60, function () use ($user) {
+            $query = \App\Models\ProductStock::with(['product', 'location'])
+                ->where('stock', '<=', 10)
+                ->where('stock', '>', 0);
 
-        if ($user->isAdmin() || $user->isOwner()) {
-            $lowStockQuery->whereHas('location', function($q) {
-                $q->active();
-            });
-        } else {
-            $myLocation = \App\Models\StockLocation::findByBranchName($user->branch);
-            if ($myLocation) {
-                $lowStockQuery->where('location_id', $myLocation->id);
+            if ($user->isAdmin() || $user->isOwner()) {
+                $query->whereHas('location', function($q) {
+                    $q->active();
+                });
             } else {
-                $lowStockQuery->whereRaw('1 = 0');
+                $myLocation = \App\Models\StockLocation::findByBranchName($user->branch);
+                if ($myLocation) {
+                    $query->where('location_id', $myLocation->id);
+                } else {
+                    return ['count' => 0, 'alerts' => collect()];
+                }
             }
-        }
 
-        // Dapatkan jumlah total item kritis untuk badge
-        $lowStockCount = $lowStockQuery->count();
-        
-        // Ambil maksimal 5 item kritis teratas untuk dirender di dropdown
-        $lowStockAlerts = $lowStockQuery->orderBy('stock', 'asc')->take(5)->get();
+            return [
+                'count' => (int) $query->count(),
+                'alerts' => $query->orderBy('stock', 'asc')->take(5)->get()
+            ];
+        });
+
+        $lowStockCount = $lowStockData['count'];
+        $lowStockAlerts = $lowStockData['alerts'];
     }
     $totalAlertCount = $unreadCount + $lowStockCount;
 @endphp

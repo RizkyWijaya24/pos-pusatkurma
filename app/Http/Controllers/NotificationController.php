@@ -60,25 +60,26 @@ class NotificationController extends Controller
 
         $unreadCount = $user->unreadNotifications()->count();
 
-        // Query dasar low stock
-        $lowStockQuery = \App\Models\ProductStock::with(['product', 'location'])
-            ->where('stock', '<=', 10)
-            ->where('stock', '>', 0);
+        // Query dasar low stock (di-cache 60 detik agar polling kasir/admin tidak membakar CPU hosting)
+        $cacheKey = ($user->isAdmin() || $user->isOwner()) ? 'all' : ($user->branch ?? 'default');
+        $lowStockCount = \Illuminate\Support\Facades\Cache::remember("low_stock_cnt_{$cacheKey}", 60, function () use ($user) {
+            $query = \App\Models\ProductStock::where('stock', '<=', 10)->where('stock', '>', 0);
 
-        if ($user->isAdmin() || $user->isOwner()) {
-            $lowStockQuery->whereHas('location', function($q) {
-                $q->active();
-            });
-        } else {
-            $myLocation = \App\Models\StockLocation::findByBranchName($user->branch);
-            if ($myLocation) {
-                $lowStockQuery->where('location_id', $myLocation->id);
+            if ($user->isAdmin() || $user->isOwner()) {
+                $query->whereHas('location', function($q) {
+                    $q->active();
+                });
             } else {
-                $lowStockQuery->whereRaw('1 = 0');
+                $myLocation = \App\Models\StockLocation::findByBranchName($user->branch);
+                if ($myLocation) {
+                    $query->where('location_id', $myLocation->id);
+                } else {
+                    return 0;
+                }
             }
-        }
 
-        $lowStockCount = $lowStockQuery->count();
+            return $query->count();
+        });
 
         return response()->json([
             'unread_count' => $unreadCount,

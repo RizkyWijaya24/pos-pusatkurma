@@ -22,6 +22,7 @@ class Setting extends Model
      */
     public static function set(string $key, $value): self
     {
+        \Illuminate\Support\Facades\Cache::forget('shop_settings_global');
         return self::updateOrCreate(['key' => $key], ['value' => $value]);
     }
 }
