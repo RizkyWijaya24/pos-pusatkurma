@@ -323,9 +323,34 @@
             font-size: 8pt;
             color: #64748b;
         }
+
+        /* ─── DENSITY RESPONSIVE ─── */
+        .dense .kop-table { margin-bottom: 4px; padding-bottom: 3px; }
+        .dense .company-logo, .dense .company-logo-placeholder { width: 38px; height: 38px; font-size: 14pt; line-height: 38px; }
+        .dense .company-name { font-size: 11pt; }
+        .dense .company-tagline { font-size: 6.5pt; }
+        .dense .company-addr { font-size: 6.5pt; }
+        .dense .invoice-main-title { font-size: 13pt; }
+        .dense .meta-table { margin-bottom: 4px; }
+        .dense .meta-box { padding: 3px 6px; }
+        .dense .meta-box-title { font-size: 6.5pt; margin-bottom: 2px; }
+        .dense .meta-row-table td { padding: 1px 0; font-size: 7pt; }
+        .dense .items-table { margin-bottom: 4px; font-size: 6.8pt; }
+        .dense .items-table th { padding: 2px 4px; font-size: 6.5pt; }
+        .dense .items-table td { padding: 1.8px 4px; }
+        .dense .bottom-table { margin-bottom: 4px; }
+        .dense .payment-box { padding: 4px 6px; }
+        .dense .payment-box-title { font-size: 6.5pt; }
+        .dense .bank-num { font-size: 8.5pt; }
+        .dense .terms-text { font-size: 5.8pt; }
+        .dense .summary-table td { padding: 1.5px 6px; font-size: 7pt; }
+        .dense .grand-val { font-size: 9pt; }
+        .dense .sig-table { margin-top: 4px; }
+        .dense .sig-space { height: 22px; }
+        .dense .sig-line { width: 110px; }
     </style>
 </head>
-<body>
+<body class="{{ count($items) > 13 ? 'dense' : '' }}">
 
     <!-- Kop Header -->
     <table class="kop-table">

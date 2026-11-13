@@ -95,14 +95,14 @@
             background: #b45309;
         }
 
-        /* Faktur Container (A4 Portrait Standard - Compact) */
+        /* Faktur Container (A4 Portrait Standard - Compact & Responsive) */
         .invoice-sheet {
             background: #ffffff;
             width: 100%;
             max-width: 210mm;
             min-height: 275mm;
             margin: 0 auto;
-            padding: 8mm 12mm 8mm 12mm;
+            padding: 7mm 12mm 8mm 12mm;
             box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07);
             border-radius: 4px;
             box-sizing: border-box;
@@ -114,6 +114,8 @@
 
         .invoice-content {
             flex-grow: 1;
+            display: flex;
+            flex-direction: column;
         }
 
         /* ─── HEADER SECTION ─── */
@@ -415,14 +417,14 @@
             font-weight: 800;
         }
 
-        /* ─── SIGNATURE SECTION ─── */
+        /* ─── SIGNATURE SECTION (Anchored at Bottom) ─── */
         .signatures-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
             text-align: center;
             margin-top: auto;
-            padding-top: 10px;
+            padding-top: 8px;
         }
 
         .sig-box {
@@ -430,7 +432,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: space-between;
-            min-height: 58px;
+            min-height: 54px;
         }
 
         .sig-title {
@@ -443,7 +445,7 @@
             width: 140px;
             max-width: 80%;
             border-bottom: 1px solid #0f172a;
-            margin: 30px auto 3px auto;
+            margin: 28px auto 3px auto;
         }
 
         .sig-name {
@@ -457,11 +459,209 @@
             color: #64748b;
         }
 
+        /* ─── RESPONSIVE DENSITY STYLES (Based on Item Count) ─── */
+        /* Tier 1: Spacious (1 - 5 items: Rows stretch and fill space so table and signature look balanced) */
+        .density-spacious .table-wrapper {
+            min-height: 60mm;
+        }
+        .density-spacious .items-table {
+            height: 100%;
+        }
+        .density-spacious .items-table th {
+            padding: 7px 8px;
+            font-size: 8pt;
+        }
+        .density-spacious .items-table td {
+            padding: 7px 8px;
+            font-size: 8.5pt;
+        }
+        .density-spacious .meta-grid {
+            margin-top: 8px;
+            margin-bottom: 10px;
+            gap: 12px;
+        }
+        .density-spacious .meta-card {
+            padding: 8px 12px;
+        }
+        .density-spacious .bottom-grid {
+            margin-top: 8px;
+            margin-bottom: 8px;
+            gap: 14px;
+        }
+        .density-spacious .payment-info-box {
+            padding: 8px 12px;
+        }
+        .density-spacious .summary-table td {
+            padding: 4.5px 10px;
+        }
+
+        /* Tier 2: Normal (6 - 9 items) */
+        .density-normal .table-wrapper {
+            min-height: 45mm;
+        }
+        .density-normal .items-table th {
+            padding: 5px 8px;
+            font-size: 7.5pt;
+        }
+        .density-normal .items-table td {
+            padding: 4.5px 8px;
+            font-size: 8.5pt;
+        }
+
+        /* Tier 3: Compact (10 - 13 items) */
+        .density-compact .items-table th {
+            padding: 3.5px 6px;
+            font-size: 7pt;
+        }
+        .density-compact .items-table td {
+            padding: 2.8px 6px;
+            font-size: 7.5pt;
+        }
+        .density-compact .header-grid {
+            padding-bottom: 5px;
+        }
+        .density-compact .meta-grid {
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+
+        /* Tier 4: Dense (14+ items, e.g. 15-22 items like 18 items) */
+        .density-dense {
+            padding: 5mm 10mm 6mm 10mm !important;
+        }
+        .density-dense .header-grid {
+            gap: 8px;
+            padding-bottom: 3px;
+        }
+        .density-dense .company-logo,
+        .density-dense .company-logo-placeholder {
+            width: 38px;
+            height: 38px;
+            line-height: 38px;
+            font-size: 14px;
+            border-radius: 6px;
+        }
+        .density-dense .company-name {
+            font-size: 11pt;
+            line-height: 1.1;
+        }
+        .density-dense .company-tagline {
+            font-size: 7pt;
+        }
+        .density-dense .company-address {
+            font-size: 6.5pt;
+            line-height: 1.15;
+        }
+        .density-dense .invoice-badge-title {
+            font-size: 14pt;
+        }
+        .density-dense .invoice-subcode {
+            font-size: 7.5pt;
+        }
+        .density-dense .meta-grid {
+            gap: 6px;
+            margin-top: 3px;
+            margin-bottom: 4px;
+        }
+        .density-dense .meta-card {
+            padding: 3px 6px;
+            border-radius: 4px;
+        }
+        .density-dense .meta-card-title {
+            font-size: 6.5pt;
+            margin-bottom: 1.5px;
+            padding-bottom: 1px;
+        }
+        .density-dense .meta-row {
+            font-size: 7pt;
+            margin-bottom: 0.5px;
+            line-height: 1.15;
+        }
+        .density-dense .table-wrapper {
+            margin-bottom: 4px;
+        }
+        .density-dense .items-table th {
+            padding: 2.2px 5px;
+            font-size: 6.5pt;
+        }
+        .density-dense .items-table td {
+            padding: 1.6px 5px;
+            font-size: 7pt;
+            line-height: 1.15;
+        }
+        .density-dense .bottom-grid {
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .density-dense .payment-info-box {
+            padding: 4px 6px;
+            border-radius: 4px;
+        }
+        .density-dense .payment-info-title {
+            font-size: 6.5pt;
+            margin-bottom: 1px;
+        }
+        .density-dense .bank-details {
+            font-size: 6.5pt;
+            line-height: 1.15;
+            margin-bottom: 2px;
+        }
+        .density-dense .bank-account-num {
+            font-size: 8.5pt;
+            margin: 0;
+        }
+        .density-dense .terms-note {
+            font-size: 5.8pt;
+            line-height: 1.15;
+            padding-top: 2px;
+        }
+        .density-dense .summary-card {
+            border-radius: 4px;
+        }
+        .density-dense .summary-table {
+            font-size: 7pt;
+        }
+        .density-dense .summary-table td {
+            padding: 1.5px 6px;
+        }
+        .density-dense .grand-total-row td {
+            padding: 2.5px 6px;
+        }
+        .density-dense .grand-total-label {
+            font-size: 7.5pt;
+        }
+        .density-dense .grand-total-val {
+            font-size: 9pt;
+        }
+        .density-dense .remaining-val {
+            font-size: 8.5pt;
+        }
+        .density-dense .signatures-grid {
+            gap: 12px;
+            padding-top: 0;
+        }
+        .density-dense .sig-box {
+            min-height: 40px;
+        }
+        .density-dense .sig-title {
+            font-size: 6.5pt;
+        }
+        .density-dense .sig-line {
+            margin: 20px auto 2px auto;
+            width: 110px;
+        }
+        .density-dense .sig-name {
+            font-size: 7.5pt;
+        }
+        .density-dense .sig-sub {
+            font-size: 6.5pt;
+        }
+
         /* ─── PRINT MEDIA SPECIFIC ─── */
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 6mm 8mm 6mm 8mm;
+                margin: 5mm 8mm 5mm 8mm;
             }
 
             html, body {
@@ -483,24 +683,41 @@
                 margin: 0 !important;
                 max-width: 100% !important;
                 width: 100% !important;
-                min-height: 275mm !important;
-                display: flex !important;
-                flex-direction: column !important;
-                justify-content: space-between !important;
+                min-height: 278mm !important;
                 padding: 0 !important;
                 border: none !important;
                 box-sizing: border-box !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
             }
 
             .invoice-content {
                 flex-grow: 1 !important;
+                display: flex !important;
+                flex-direction: column !important;
             }
 
-            .signatures-grid {
-                margin-top: auto !important;
-                padding-top: 10px !important;
+            .table-wrapper {
+                page-break-inside: auto;
+            }
+
+            .items-table {
+                page-break-inside: auto;
+                border-collapse: collapse !important;
+            }
+
+            .items-table thead {
+                display: table-header-group !important;
+            }
+
+            .items-table tbody {
+                display: table-row-group !important;
+            }
+
+            .items-table tr {
                 page-break-inside: avoid !important;
-                page-break-after: avoid !important;
+                page-break-after: auto;
             }
 
             .header-grid {
@@ -517,11 +734,10 @@
             }
 
             .signatures-grid {
-                page-break-inside: avoid;
-            }
-
-            .items-table tr {
-                page-break-inside: avoid;
+                margin-top: auto !important;
+                padding-top: 6px !important;
+                page-break-inside: avoid !important;
+                page-break-after: avoid !important;
             }
 
             .company-name {
@@ -536,13 +752,11 @@
                 background-color: #f1f5f9 !important;
                 color: #000000 !important;
                 border: 1px solid #64748b !important;
-                padding: 3.5px 5px !important;
             }
 
             .items-table td {
                 border: 1px solid #cbd5e1 !important;
                 color: #000000 !important;
-                padding: 3px 5px !important;
             }
 
             .grand-total-val {
@@ -589,8 +803,21 @@
         </div>
     </div>
 
+    @php
+        $itemCount = count($items);
+        if ($itemCount <= 5) {
+            $densityClass = 'density-spacious';
+        } elseif ($itemCount <= 9) {
+            $densityClass = 'density-normal';
+        } elseif ($itemCount <= 13) {
+            $densityClass = 'density-compact';
+        } else {
+            $densityClass = 'density-dense';
+        }
+    @endphp
+
     <!-- Faktur Paper Sheet -->
-    <div class="invoice-sheet">
+    <div class="invoice-sheet {{ $densityClass }}">
         <div class="invoice-content">
             <!-- Kop Perusahaan & Judul Faktur -->
             <div class="header-grid">
