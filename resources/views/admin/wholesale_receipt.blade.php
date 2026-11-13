@@ -13,55 +13,55 @@
 
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            font-size: 11pt;
+            font-size: 8.5pt;
             color: #1e293b;
             background: #f1f5f9;
-            line-height: 1.45;
-            padding: 20px 10px 40px;
+            line-height: 1.3;
+            padding: 10px 10px 30px;
         }
 
         /* Top control bar (Screen only) */
         .preview-controls {
             position: sticky;
-            top: 15px;
+            top: 10px;
             max-width: 210mm;
-            margin: 0 auto 20px;
+            margin: 0 auto 15px;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(8px);
             border: 1px solid #cbd5e1;
-            padding: 12px 24px;
+            padding: 8px 18px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
             z-index: 100;
-            border-radius: 12px;
+            border-radius: 10px;
             box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
         }
 
         .preview-title {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 700;
             color: #334155;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         .btn-group {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            padding: 9px 18px;
-            border-radius: 8px;
-            font-size: 13px;
+            gap: 6px;
+            padding: 7px 14px;
+            border-radius: 6px;
+            font-size: 12px;
             font-weight: 700;
             text-decoration: none;
             cursor: pointer;
@@ -95,15 +95,15 @@
             background: #b45309;
         }
 
-        /* Faktur Container (A4 Portrait Standard) */
+        /* Faktur Container (A4 Portrait Standard - Compact) */
         .invoice-sheet {
             background: #ffffff;
             width: 100%;
             max-width: 210mm;
-            min-height: 297mm;
+            min-height: 275mm;
             margin: 0 auto;
-            padding: 18mm 20mm 20mm 20mm;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            padding: 8mm 12mm 8mm 12mm;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07);
             border-radius: 4px;
             box-sizing: border-box;
             position: relative;
@@ -112,117 +112,122 @@
             justify-content: space-between;
         }
 
+        .invoice-content {
+            flex-grow: 1;
+        }
+
         /* ─── HEADER SECTION ─── */
         .header-grid {
             display: grid;
             grid-template-columns: auto 1fr auto;
-            gap: 20px;
+            gap: 12px;
             align-items: center;
             border-bottom: 2px solid #0f172a;
-            padding-bottom: 16px;
+            padding-bottom: 6px;
         }
 
         .company-logo {
-            width: 72px;
-            height: 72px;
+            width: 48px;
+            height: 48px;
             object-fit: cover;
-            border-radius: 12px;
+            border-radius: 8px;
         }
 
         .company-logo-placeholder {
-            width: 72px;
-            height: 72px;
-            border-radius: 12px;
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
             background-color: #047857;
             text-align: center;
-            line-height: 72px;
-            font-size: 24px;
+            line-height: 48px;
+            font-size: 18px;
             font-weight: 800;
             color: #ffffff;
             letter-spacing: -1px;
         }
 
         .company-info {
-            padding-left: 4px;
+            padding-left: 2px;
         }
 
         .company-name {
-            font-size: 16pt;
+            font-size: 13pt;
             font-weight: 800;
             color: #047857;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
             text-transform: uppercase;
-            line-height: 1.2;
+            line-height: 1.15;
         }
 
         .company-tagline {
-            font-size: 10pt;
+            font-size: 8pt;
             font-weight: 600;
             color: #475569;
-            margin-top: 3px;
+            margin-top: 1px;
         }
 
         .company-address {
-            font-size: 9.5pt;
+            font-size: 7.5pt;
             color: #64748b;
-            margin-top: 3px;
-            line-height: 1.35;
+            margin-top: 1px;
+            line-height: 1.25;
         }
 
         .invoice-title-block {
             text-align: right;
             border-left: 2px solid #e2e8f0;
-            padding-left: 20px;
+            padding-left: 14px;
         }
 
         .invoice-badge-title {
-            font-size: 20pt;
+            font-size: 16pt;
             font-weight: 900;
             color: #0f172a;
-            letter-spacing: 1.5px;
+            letter-spacing: 1px;
             line-height: 1;
             text-transform: uppercase;
         }
 
         .invoice-subcode {
-            font-size: 11pt;
+            font-size: 9pt;
             font-weight: 700;
             color: #047857;
-            margin-top: 4px;
+            margin-top: 2px;
         }
 
         /* ─── META INFO SECTION ─── */
         .meta-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 24px;
-            margin-top: 18px;
-            margin-bottom: 20px;
+            gap: 10px;
+            margin-top: 6px;
+            margin-bottom: 7px;
         }
 
         .meta-card {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 12px 16px;
+            border-radius: 6px;
+            padding: 6px 10px;
         }
 
         .meta-card-title {
-            font-size: 8.5pt;
+            font-size: 7pt;
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
+            letter-spacing: 0.5px;
             color: #64748b;
-            margin-bottom: 8px;
+            margin-bottom: 3px;
             border-bottom: 1px solid #cbd5e1;
-            padding-bottom: 4px;
+            padding-bottom: 2px;
         }
 
         .meta-row {
             display: flex;
             justify-content: space-between;
-            font-size: 9.5pt;
-            margin-bottom: 4px;
+            font-size: 8pt;
+            margin-bottom: 1.5px;
+            line-height: 1.25;
         }
         .meta-row:last-child {
             margin-bottom: 0;
@@ -241,9 +246,9 @@
 
         .status-pill {
             display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 8.5pt;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 7.5pt;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -259,15 +264,15 @@
             border: 1px solid #fca5a5;
         }
 
-        /* ─── ITEMS TABLE ─── */
+        /* ─── ITEMS TABLE (COMPACT STANDARD) ─── */
         .table-wrapper {
-            margin-bottom: 24px;
+            margin-bottom: 7px;
         }
 
         .items-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 10pt;
+            font-size: 8pt;
         }
 
         .items-table th {
@@ -275,16 +280,17 @@
             color: #ffffff;
             font-weight: 800;
             text-transform: uppercase;
-            font-size: 8.5pt;
-            letter-spacing: 0.6px;
-            padding: 9px 12px;
+            font-size: 7pt;
+            letter-spacing: 0.4px;
+            padding: 4px 6px;
             border: 1px solid #047857;
         }
 
         .items-table td {
-            padding: 9px 12px;
+            padding: 3px 6px;
             border: 1px solid #cbd5e1;
             color: #1e293b;
+            line-height: 1.2;
         }
 
         .items-table tr:nth-child(even) {
@@ -304,67 +310,67 @@
         /* ─── SUMMARY & PAYMENT SECTION ─── */
         .bottom-grid {
             display: grid;
-            grid-template-columns: 1.1fr 0.9fr;
-            gap: 24px;
+            grid-template-columns: 1.05fr 0.95fr;
+            gap: 12px;
             align-items: start;
-            margin-bottom: 28px;
+            margin-bottom: 7px;
         }
 
         .payment-info-box {
             border: 1px solid #cbd5e1;
             background: #f8fafc;
-            border-radius: 10px;
-            padding: 14px 16px;
+            border-radius: 6px;
+            padding: 6px 10px;
         }
 
         .payment-info-title {
-            font-size: 9pt;
+            font-size: 7.5pt;
             font-weight: 800;
             text-transform: uppercase;
             color: #047857;
-            margin-bottom: 6px;
+            margin-bottom: 3px;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
         }
 
         .bank-details {
-            font-size: 9.5pt;
+            font-size: 7.5pt;
             color: #334155;
-            line-height: 1.5;
-            margin-bottom: 10px;
+            line-height: 1.3;
+            margin-bottom: 4px;
         }
 
         .bank-account-num {
-            font-size: 13pt;
+            font-size: 10pt;
             font-weight: 900;
             color: #0f172a;
-            letter-spacing: 1px;
-            margin: 2px 0;
+            letter-spacing: 0.5px;
+            margin: 1px 0;
         }
 
         .terms-note {
-            font-size: 8.5pt;
+            font-size: 7pt;
             color: #64748b;
-            line-height: 1.4;
+            line-height: 1.25;
             border-top: 1px dashed #cbd5e1;
-            padding-top: 8px;
+            padding-top: 3px;
         }
 
         .summary-card {
             border: 1px solid #cbd5e1;
-            border-radius: 10px;
+            border-radius: 6px;
             overflow: hidden;
         }
 
         .summary-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 9.5pt;
+            font-size: 8pt;
         }
 
         .summary-table td {
-            padding: 8px 14px;
+            padding: 3px 8px;
             border-bottom: 1px solid #f1f5f9;
         }
 
@@ -385,16 +391,16 @@
             border-bottom: 2px solid #cbd5e1 !important;
         }
         .grand-total-row td {
-            padding: 10px 14px;
+            padding: 5px 8px;
         }
         .grand-total-label {
-            font-size: 10.5pt;
+            font-size: 8.5pt;
             font-weight: 800;
             color: #0f172a;
             text-transform: uppercase;
         }
         .grand-total-val {
-            font-size: 12.5pt;
+            font-size: 10.5pt;
             font-weight: 900;
             color: #047857;
             text-align: right;
@@ -405,7 +411,7 @@
         }
         .remaining-val {
             color: #e11d48;
-            font-size: 11pt;
+            font-size: 9.5pt;
             font-weight: 800;
         }
 
@@ -413,10 +419,10 @@
         .signatures-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 40px;
+            gap: 20px;
             text-align: center;
             margin-top: auto;
-            padding-top: 20px;
+            padding-top: 10px;
         }
 
         .sig-box {
@@ -424,30 +430,30 @@
             flex-direction: column;
             align-items: center;
             justify-content: space-between;
-            min-height: 110px;
+            min-height: 58px;
         }
 
         .sig-title {
-            font-size: 9.5pt;
+            font-size: 7.5pt;
             font-weight: 700;
             color: #475569;
         }
 
         .sig-line {
-            width: 75%;
+            width: 140px;
+            max-width: 80%;
             border-bottom: 1px solid #0f172a;
-            margin-top: 65px;
-            margin-bottom: 4px;
+            margin: 30px auto 3px auto;
         }
 
         .sig-name {
-            font-size: 9.5pt;
+            font-size: 8pt;
             font-weight: 700;
             color: #0f172a;
         }
 
         .sig-sub {
-            font-size: 8.5pt;
+            font-size: 7pt;
             color: #64748b;
         }
 
@@ -455,14 +461,16 @@
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 12mm 15mm 15mm 15mm;
+                margin: 6mm 8mm 6mm 8mm;
             }
 
-            body {
+            html, body {
+                height: 100%;
                 background: #ffffff !important;
                 padding: 0 !important;
                 margin: 0 !important;
                 color: #000000 !important;
+                font-size: 8pt !important;
             }
 
             .no-print {
@@ -474,13 +482,46 @@
                 border-radius: 0 !important;
                 margin: 0 !important;
                 max-width: 100% !important;
-                min-height: auto !important;
+                width: 100% !important;
+                min-height: 275mm !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
                 padding: 0 !important;
                 border: none !important;
+                box-sizing: border-box !important;
+            }
+
+            .invoice-content {
+                flex-grow: 1 !important;
+            }
+
+            .signatures-grid {
+                margin-top: auto !important;
+                padding-top: 10px !important;
+                page-break-inside: avoid !important;
+                page-break-after: avoid !important;
             }
 
             .header-grid {
                 border-bottom: 2px solid #000000 !important;
+                page-break-inside: avoid;
+            }
+
+            .meta-grid {
+                page-break-inside: avoid;
+            }
+
+            .bottom-grid {
+                page-break-inside: avoid;
+            }
+
+            .signatures-grid {
+                page-break-inside: avoid;
+            }
+
+            .items-table tr {
+                page-break-inside: avoid;
             }
 
             .company-name {
@@ -495,11 +536,13 @@
                 background-color: #f1f5f9 !important;
                 color: #000000 !important;
                 border: 1px solid #64748b !important;
+                padding: 3.5px 5px !important;
             }
 
             .items-table td {
                 border: 1px solid #cbd5e1 !important;
                 color: #000000 !important;
+                padding: 3px 5px !important;
             }
 
             .grand-total-val {
@@ -548,7 +591,7 @@
 
     <!-- Faktur Paper Sheet -->
     <div class="invoice-sheet">
-        <div>
+        <div class="invoice-content">
             <!-- Kop Perusahaan & Judul Faktur -->
             <div class="header-grid">
                 @php

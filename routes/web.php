@@ -63,6 +63,8 @@ Route::middleware('auth')->group(function () {
 
         // Wholesale Order Routes
         Route::post('/wholesale-transactions', [\App\Http\Controllers\TransactionController::class, 'storeWholesale'])->name('wholesale-transactions.store');
+        Route::get('/wholesale-transactions/{transaction}', [\App\Http\Controllers\TransactionController::class, 'showWholesale'])->name('wholesale-transactions.show');
+        Route::put('/wholesale-transactions/{transaction}', [\App\Http\Controllers\TransactionController::class, 'updateWholesale'])->name('wholesale-transactions.update');
         Route::get('/wholesale-transactions/{transaction}/print', [\App\Http\Controllers\TransactionController::class, 'printWholesale'])->name('wholesale-transactions.print');
         Route::post('/transactions/{transaction}/mark-as-paid', [\App\Http\Controllers\TransactionController::class, 'markAsPaid'])->name('transactions.mark-as-paid');
         Route::get('/receivables', [\App\Http\Controllers\TransactionController::class, 'getReceivables'])->name('receivables.index');

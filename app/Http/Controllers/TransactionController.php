@@ -1546,6 +1546,330 @@ class TransactionController extends Controller
     }
 
     /**
+     * Get wholesale transaction details for editing.
+     */
+    public function showWholesale(Transaction $transaction)
+    {
+        if (!auth()->user()->isAdmin() && !auth()->user()->isOwner()) {
+            return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+        }
+
+        $items = [];
+        if (!empty($transaction->items_summary)) {
+            $parts = explode(', ', $transaction->items_summary);
+            foreach ($parts as $part) {
+                $trimmed = trim($part);
+                if (in_array($trimmed, ['[Stok Sudah Didata]', '[Tanpa Potong Stok]', '[Piutang Manual]'])) {
+                    continue;
+                }
+
+                if (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z\s]+)\s*x\s*(\d+)\)$/', $part, $matches)) {
+                    $name = trim($matches[1]);
+                    $qty = floatval($matches[2]);
+                    $unit = trim($matches[3]);
+                    $price = intval($matches[4]);
+
+                    $product = \App\Models\Product::where('name', $name)->first();
+                    $baseUnit = $product ? $product->price_unit : $unit;
+
+                    // Jika unit di summary tersimpan sebagai gram, konversikan ke kg untuk edit form
+                    $unitLower = strtolower($unit);
+                    if (in_array($unitLower, ['gram', 'g', 'gr'])) {
+                        $qty = $qty / 1000;
+                        $unit = 'kg';
+                        $price = $price * 1000;
+                    }
+
+                    // Tentukan cost_price
+                    $costPrice = 0;
+                    if ($product) {
+                        $productCost = (int)$product->cost_price;
+                        if (strtolower($product->price_unit) === 'gram' && $unit === 'kg') {
+                            $costPrice = $productCost * 1000;
+                        } else {
+                            $costPrice = $productCost;
+                        }
+                    }
+
+                    $items[] = [
+                        'name' => $name,
+                        'qty' => $qty,
+                        'price_unit' => $unit,
+                        'base_unit' => $baseUnit,
+                        'selling_price' => $price,
+                        'cost_price' => $costPrice,
+                    ];
+                } else if (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z\s]+)\)$/', $part, $matches)) {
+                    $name = trim($matches[1]);
+                    $qty = floatval($matches[2]);
+                    $unit = trim($matches[3]);
+                    $product = \App\Models\Product::where('name', $name)->first();
+
+                    $items[] = [
+                        'name' => $name,
+                        'qty' => $qty,
+                        'price_unit' => $unit,
+                        'base_unit' => $product ? $product->price_unit : $unit,
+                        'selling_price' => 0,
+                        'cost_price' => $product ? (int)$product->cost_price : 0,
+                    ];
+                }
+            }
+        }
+
+        $totalPaid = (float) $transaction->installments()->sum('amount');
+        $firstInstallment = $transaction->installments()->oldest()->first();
+        $dpAmount = $firstInstallment ? (int) $firstInstallment->amount : 0;
+
+        return response()->json([
+            'success' => true,
+            'transaction' => [
+                'id' => $transaction->id,
+                'transaction_code' => $transaction->transaction_code,
+                'customer_name' => $transaction->customer_name,
+                'customer_phone' => $transaction->customer_phone,
+                'payment_method' => $transaction->payment_method,
+                'payment_status' => $transaction->payment_status,
+                'discount' => (int) $transaction->discount,
+                'shipping_cost' => (int) $transaction->shipping_cost,
+                'total_price' => (int) $transaction->total_price,
+                'total_cost' => (int) $transaction->total_cost,
+                'skip_stock_deduction' => $transaction->isStockDeductionSkipped(),
+            ],
+            'items' => $items,
+            'total_paid' => $totalPaid,
+            'dp_amount' => $dpAmount,
+        ]);
+    }
+
+    /**
+     * Update an existing wholesale transaction.
+     */
+    public function updateWholesale(Request $request, Transaction $transaction)
+    {
+        if (!auth()->user()->isAdmin() && !auth()->user()->isOwner()) {
+            return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+        }
+
+        $request->validate([
+            'customer_name' => 'required|string|max:255',
+            'customer_phone' => 'nullable|string|max:50',
+            'payment_method' => 'required|string',
+            'discount' => 'nullable|integer|min:0',
+            'shipping_cost' => 'nullable|integer|min:0',
+            'skip_stock_deduction' => 'nullable|boolean',
+            'items' => 'required|array|min:1',
+            'items.*.name' => 'required|string',
+            'items.*.qty' => 'required|numeric|min:0',
+            'items.*.price_unit' => 'required|string',
+            'items.*.selling_price' => 'required|integer|min:0',
+            'items.*.cost_price' => 'nullable|integer|min:0',
+        ]);
+
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $transaction) {
+            $stockService = app(\App\Services\StockService::class);
+            $wholesaleLocation = \App\Models\StockLocation::where('name', 'Cabang Rumah')->first()
+                ?? \App\Models\StockLocation::gudang()->first()
+                ?? \App\Models\StockLocation::first();
+
+            $newSkipStock = $request->boolean('skip_stock_deduction');
+            $wasSkipped = $transaction->isStockDeductionSkipped();
+
+            // 1. KEMBALIKAN STOK LAMA SEBELUM MENERAPKAN PERUBAHAN BARU
+            if (!$wasSkipped) {
+                $oldSaleLogs = \App\Models\StockAdjustmentLog::where('reference_type', Transaction::class)
+                    ->where('reference_id', $transaction->id)
+                    ->where('type', 'sale')
+                    ->get();
+
+                if ($oldSaleLogs->isNotEmpty()) {
+                    foreach ($oldSaleLogs as $log) {
+                        $qtyToReturn = abs((float) $log->quantity_change);
+                        if ($qtyToReturn > 0) {
+                            $prod = \App\Models\Product::find($log->product_id);
+                            if ($prod) {
+                                $ps = \App\Models\ProductStock::getOrCreate($prod->id, $log->location_id);
+                                $ps->increment('stock', $qtyToReturn);
+                                $stockService->syncGlobalStock($prod);
+                            }
+                        }
+                    }
+                    // Hapus log penjualan lama karena akan diganti log mutasi item baru
+                    \App\Models\StockAdjustmentLog::where('reference_type', Transaction::class)
+                        ->where('reference_id', $transaction->id)
+                        ->where('type', 'sale')
+                        ->delete();
+                } else {
+                    // Fallback jika tidak ada StockAdjustmentLog (transaksi legacy)
+                    $oldItems = $transaction->parsed_items;
+                    foreach ($oldItems as $oItem) {
+                        $prod = \App\Models\Product::where('name', $oItem['name'])->first();
+                        if ($prod && $wholesaleLocation) {
+                            $oUnit = strtolower(trim($oItem['unit'] ?? ''));
+                            $pUnit = strtolower(trim($prod->price_unit ?? ''));
+                            $retQty = floatval($oItem['qty']);
+                            if ($pUnit === 'gram' && in_array($oUnit, ['kg', 'kilogram'])) {
+                                $retQty *= 1000;
+                            }
+                            $ps = \App\Models\ProductStock::getOrCreate($prod->id, $wholesaleLocation->id);
+                            $ps->increment('stock', $retQty);
+                            $stockService->syncGlobalStock($prod);
+                        }
+                    }
+                }
+            }
+
+            // 2. VALIDASI STOK ITEM BARU (SETELAH STOK LAMA DIKEMBALIKAN)
+            $aggregatedItems = [];
+            foreach ($request->items as $item) {
+                $product = \App\Models\Product::where('name', $item['name'])->first();
+                if (!$product && !$newSkipStock) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Produk "' . $item['name'] . '" tidak ditemukan di database.'
+                    ], 422);
+                }
+                if ($product) {
+                    $pName = $product->name;
+                    if (!isset($aggregatedItems[$pName])) {
+                        $aggregatedItems[$pName] = [
+                            'product' => $product,
+                            'qty' => 0.0,
+                        ];
+                    }
+
+                    $itemUnit = strtolower(trim($item['price_unit'] ?? ''));
+                    $productUnit = strtolower(trim($product->price_unit ?? ''));
+                    $convertedQty = floatval($item['qty']);
+
+                    if ($productUnit === 'gram' && in_array($itemUnit, ['kg', 'kilogram'])) {
+                        $convertedQty *= 1000;
+                    } elseif (in_array($productUnit, ['kg', 'kilogram']) && $itemUnit === 'gram') {
+                        $convertedQty /= 1000;
+                    }
+
+                    $aggregatedItems[$pName]['qty'] += $convertedQty;
+                }
+            }
+
+            if (!$newSkipStock && $wholesaleLocation) {
+                foreach ($aggregatedItems as $agg) {
+                    $product = $agg['product'];
+                    $qtyRequested = $agg['qty'];
+                    $availableStock = $product->getStockAtLocation($wholesaleLocation->id);
+
+                    if ($availableStock < $qtyRequested) {
+                        $availFormatted = ($product->price_unit === 'gram' && $availableStock >= 1000)
+                            ? ($availableStock / 1000) . ' kg (' . $availableStock . ' gram)'
+                            : $availableStock . ' ' . $product->price_unit;
+                        $reqFormatted = ($product->price_unit === 'gram' && $qtyRequested >= 1000)
+                            ? ($qtyRequested / 1000) . ' kg (' . $qtyRequested . ' gram)'
+                            : $qtyRequested . ' ' . $product->price_unit;
+
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Stok produk "' . $product->name . '" tidak mencukupi! Tersedia: ' . $availFormatted . ', diminta: ' . $reqFormatted
+                        ], 422);
+                    }
+                }
+            }
+
+            // 3. HITUNG ULANG TOTAL & REKAP ITEMS SUMMARY
+            $totalPrice = 0;
+            $totalCost = 0;
+
+            $itemsSummary = collect($request->items)->map(function ($item) use (&$totalPrice, &$totalCost) {
+                $qty = floatval($item['qty']);
+                $sellPrice = intval($item['selling_price']);
+                $costPrice = isset($item['cost_price']) && $item['cost_price'] !== '' ? intval($item['cost_price']) : 0;
+
+                $totalPrice += round($sellPrice * $qty);
+                $totalCost += round($costPrice * $qty);
+
+                return $item['name'] . ' (' . $qty . ' ' . $item['price_unit'] . ' x ' . $sellPrice . ')';
+            })->join(', ');
+
+            if ($newSkipStock) {
+                $itemsSummary .= ', [Stok Sudah Didata]';
+            }
+
+            $discount = intval($request->input('discount', 0));
+            $shippingCost = intval($request->input('shipping_cost', 0));
+            $grandTotal = max(0, $totalPrice - $discount + $shippingCost);
+
+            // 4. POTONG STOK SESUAI ITEM BARU
+            if (!$newSkipStock && $wholesaleLocation) {
+                $itemNames = collect($request->items)->pluck('name')->values()->toArray();
+                $productsByName = \App\Models\Product::whereIn('name', $itemNames)->get()->keyBy('name');
+
+                foreach ($request->items as $item) {
+                    $product = $productsByName->get($item['name']);
+                    if ($product) {
+                        $itemUnit = strtolower(trim($item['price_unit'] ?? ''));
+                        $productUnit = strtolower(trim($product->price_unit ?? ''));
+                        $deductQty = floatval($item['qty']);
+
+                        if ($productUnit === 'gram' && in_array($itemUnit, ['kg', 'kilogram'])) {
+                            $deductQty *= 1000;
+                        } elseif (in_array($productUnit, ['kg', 'kilogram']) && $itemUnit === 'gram') {
+                            $deductQty /= 1000;
+                        }
+
+                        try {
+                            $stockService->deductSaleStock(
+                                $product,
+                                $wholesaleLocation,
+                                $deductQty,
+                                $transaction->id,
+                                auth()->user() ?? \App\Models\User::first(),
+                                "Penjualan Nota Partai #{$transaction->transaction_code} (Diperbarui)"
+                            );
+                        } catch (\Exception $e) {
+                            $product->decrement('stock', $deductQty);
+                        }
+                    }
+                }
+            }
+
+            // 5. UPDATE CICILAN & STATUS PEMBAYARAN
+            $totalPaid = (float) $transaction->installments()->sum('amount');
+            if ($request->payment_method === 'Piutang / Tempo') {
+                $paymentStatus = ($totalPaid >= $grandTotal && $grandTotal > 0) ? 'paid' : 'unpaid';
+            } else {
+                $paymentStatus = 'paid';
+                // Jika metode pembayaran Tunai/Transfer dan belum tercatat lunas di installments
+                if ($totalPaid < $grandTotal) {
+                    $diff = $grandTotal - $totalPaid;
+                    $transaction->installments()->create([
+                        'amount' => $diff,
+                        'payment_method' => $request->payment_method,
+                        'note' => 'Penyesuaian Pelunasan saat Edit Nota'
+                    ]);
+                }
+            }
+
+            // 6. UPDATE DATA TRANSAKSI
+            $transaction->update([
+                'customer_name' => $request->customer_name,
+                'customer_phone' => $request->customer_phone,
+                'payment_method' => $request->payment_method,
+                'payment_status' => $paymentStatus,
+                'discount' => $discount,
+                'shipping_cost' => $shippingCost,
+                'total_price' => $grandTotal,
+                'total_cost' => $totalCost,
+                'items_summary' => $itemsSummary,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Nota partai #' . $transaction->transaction_code . ' berhasil diperbarui!',
+                'transaction' => $transaction
+            ]);
+        });
+    }
+
+    /**
      * Print wholesale transaction receipt.
      */
     public function printWholesale(Transaction $transaction)

@@ -302,6 +302,23 @@
             ]
         },
 
+        // Edit Wholesale Modal State
+        showEditWholesaleModal: false,
+        editWholesaleForm: {
+            id: null,
+            transaction_code: '',
+            customer_name: '',
+            customer_phone: '',
+            payment_method: 'Tunai',
+            discount: '',
+            shipping_cost: '',
+            paymentReceived: '',
+            skip_stock_deduction: false,
+            items: [],
+            loading: false,
+            saving: false
+        },
+
         // Cashier Form State
         newCashier: { name: '', email: '', password: '', branch: 'Pusat Cianjur' },
 
@@ -2005,6 +2022,191 @@
                 'danger',
                 'Ya, Hapus & Kembalikan Stok'
             );
+        },
+
+        openEditWholesaleModal(trxId) {
+            this.editWholesaleForm.id = trxId;
+            this.editWholesaleForm.loading = true;
+            this.showEditWholesaleModal = true;
+
+            fetch(`/admin/wholesale-transactions/${trxId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const trx = data.transaction;
+                        this.editWholesaleForm.transaction_code = trx.transaction_code;
+                        this.editWholesaleForm.customer_name = trx.customer_name;
+                        this.editWholesaleForm.customer_phone = trx.customer_phone || '';
+                        this.editWholesaleForm.payment_method = trx.payment_method || 'Tunai';
+                        this.editWholesaleForm.discount = trx.discount || '';
+                        this.editWholesaleForm.shipping_cost = trx.shipping_cost || '';
+                        this.editWholesaleForm.paymentReceived = data.dp_amount || '';
+                        this.editWholesaleForm.skip_stock_deduction = !!trx.skip_stock_deduction;
+                        this.editWholesaleForm.items = data.items.map(item => ({
+                            name: item.name,
+                            qty: item.qty,
+                            price_unit: item.price_unit,
+                            base_unit: item.base_unit || item.price_unit,
+                            selling_price: item.selling_price,
+                            cost_price: item.cost_price || '',
+                            showSuggestions: false,
+                            activeSuggestionIndex: -1
+                        }));
+                        if (this.editWholesaleForm.items.length === 0) {
+                            this.addEditWholesaleItem();
+                        }
+                    } else {
+                        this.showToast(data.message || 'Gagal memuat detail nota.', 'error');
+                        this.showEditWholesaleModal = false;
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    this.showToast('Gagal menghubungi server.', 'error');
+                    this.showEditWholesaleModal = false;
+                })
+                .finally(() => {
+                    this.editWholesaleForm.loading = false;
+                });
+        },
+
+        addEditWholesaleItem() {
+            this.editWholesaleForm.items.push({
+                name: '',
+                qty: 1,
+                price_unit: 'pcs',
+                base_unit: 'pcs',
+                selling_price: '',
+                cost_price: '',
+                showSuggestions: false,
+                activeSuggestionIndex: -1
+            });
+        },
+
+        removeEditWholesaleItem(idx) {
+            this.editWholesaleForm.items.splice(idx, 1);
+            if (this.editWholesaleForm.items.length === 0) {
+                this.addEditWholesaleItem();
+            }
+        },
+
+        selectEditWholesaleProduct(idx, product) {
+            const item = this.editWholesaleForm.items[idx];
+            if (item) {
+                item.name = product.name;
+                item.base_unit = product.price_unit || 'pcs';
+
+                if ((product.price_unit || '').toLowerCase() === 'gram') {
+                    item.price_unit = 'kg';
+                    item.selling_price = Math.round((parseFloat(product.selling_price) || 0) * 1000);
+                    item.cost_price = product.cost_price ? Math.round(parseFloat(product.cost_price) * 1000) : '';
+                } else {
+                    item.price_unit = product.price_unit || 'pcs';
+                    item.selling_price = product.selling_price;
+                    item.cost_price = product.cost_price;
+                }
+
+                item.showSuggestions = false;
+                item.activeSuggestionIndex = -1;
+            }
+        },
+
+        toggleEditWholesaleItemUnit(idx) {
+            const item = this.editWholesaleForm.items[idx];
+            if (!item) return;
+            const currentUnit = (item.price_unit || '').toLowerCase();
+            if (currentUnit === 'kg') {
+                item.price_unit = 'gram';
+                if (item.selling_price) item.selling_price = Math.round(parseFloat(item.selling_price) / 1000);
+                if (item.cost_price) item.cost_price = Math.round(parseFloat(item.cost_price) / 1000);
+                if (item.qty) item.qty = Math.round(parseFloat(item.qty) * 1000);
+            } else if (currentUnit === 'gram') {
+                item.price_unit = 'kg';
+                if (item.selling_price) item.selling_price = Math.round(parseFloat(item.selling_price) * 1000);
+                if (item.cost_price) item.cost_price = Math.round(parseFloat(item.cost_price) * 1000);
+                if (item.qty) item.qty = parseFloat((parseFloat(item.qty) / 1000).toFixed(3));
+            }
+        },
+
+        calculateEditWholesaleSubtotal() {
+            return this.editWholesaleForm.items.reduce((sum, item) => {
+                const qty = parseFloat(item.qty) || 0;
+                const price = parseFloat(item.selling_price) || 0;
+                return sum + (qty * price);
+            }, 0);
+        },
+
+        calculateEditWholesaleGrandTotal() {
+            const subtotal = this.calculateEditWholesaleSubtotal();
+            const discount = parseFloat(this.editWholesaleForm.discount) || 0;
+            const shipping = parseFloat(this.editWholesaleForm.shipping_cost) || 0;
+            return Math.max(0, subtotal - discount + shipping);
+        },
+
+        submitUpdateWholesale() {
+            if (!this.editWholesaleForm.customer_name.trim()) {
+                this.showToast('Nama pelanggan wajib diisi!', 'warning');
+                return;
+            }
+            const validItems = this.editWholesaleForm.items.filter(i => i.name && i.name.trim() !== '');
+            if (validItems.length === 0) {
+                this.showToast('Minimal harus ada 1 barang terisi!', 'warning');
+                return;
+            }
+
+            this.showConfirm(
+                'Perbarui Nota Partai?',
+                'Apakah Anda yakin ingin menyimpan perubahan nota partai ini? Stok dan nominal tagihan akan disinkronkan otomatis.',
+                () => {
+                    this.editWholesaleForm.saving = true;
+                    const csrfToken = document.querySelector('meta[name=csrf-token]').getAttribute('content');
+                    const payload = {
+                        customer_name: this.editWholesaleForm.customer_name,
+                        customer_phone: this.editWholesaleForm.customer_phone,
+                        payment_method: this.editWholesaleForm.payment_method,
+                        discount: parseInt(this.editWholesaleForm.discount) || 0,
+                        shipping_cost: parseInt(this.editWholesaleForm.shipping_cost) || 0,
+                        payment_received: parseInt(this.editWholesaleForm.paymentReceived) || 0,
+                        skip_stock_deduction: !!this.editWholesaleForm.skip_stock_deduction,
+                        items: validItems.map(item => ({
+                            name: item.name,
+                            qty: parseFloat(item.qty) || 1,
+                            price_unit: item.price_unit,
+                            selling_price: parseInt(item.selling_price) || 0,
+                            cost_price: item.cost_price !== '' ? parseInt(item.cost_price) : 0
+                        }))
+                    };
+
+                    fetch(`/admin/wholesale-transactions/${this.editWholesaleForm.id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.showToast(data.message, 'success');
+                            this.showEditWholesaleModal = false;
+                            setTimeout(() => location.reload(), 1000);
+                        } else {
+                            this.showToast(data.message || 'Gagal memperbarui nota.', 'error');
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        this.showToast(err.message || 'Terjadi kesalahan sistem.', 'error');
+                    })
+                    .finally(() => {
+                        this.editWholesaleForm.saving = false;
+                    });
+                },
+                'warning',
+                'Ya, Simpan Perubahan'
+            );
         }
             };
         }
@@ -2886,6 +3088,15 @@
                                     </td>
                                     <td class="px-5 py-4 text-center">
                                         <div class="flex items-center justify-center gap-1.5">
+                                            <!-- Edit Nota Partai -->
+                                            <button type="button"
+                                                    @click="openEditWholesaleModal({{ $wTrx->id }})"
+                                                    class="p-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition duration-150 text-xs text-center inline-flex items-center justify-center"
+                                                    title="Edit Nota Partai">
+                                                <svg class="w-3.5 h-3.5 text-amber-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
                                             <!-- Print Screen -->
                                             <a href="{{ route('admin.wholesale-transactions.print', $wTrx) }}" 
                                                target="_blank"
@@ -4583,6 +4794,258 @@
                     <button type="button" @click="showCashierModal = false" class="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold">Batal</button>
                     <button type="button" @click="isEditingCashier ? updateCashier() : addCashier()" class="py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold">Simpan</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- EDIT WHOLESALE TRANSACTION MODAL -->
+        <div x-show="showEditWholesaleModal" 
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/70 backdrop-blur-sm"
+             style="display: none;"
+             @keydown.escape.window="if (!editWholesaleForm.saving) showEditWholesaleModal = false">
+            
+            <div class="modal-card bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden"
+                 @click.stop>
+                
+                <!-- Modal Header -->
+                <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-extrabold text-slate-800">Edit Nota Partai</h3>
+                            <p class="text-xs text-slate-400 font-mono" x-text="'#' + editWholesaleForm.transaction_code"></p>
+                        </div>
+                    </div>
+                    <button type="button" 
+                            @click="showEditWholesaleModal = false" 
+                            :disabled="editWholesaleForm.saving"
+                            class="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Modal Body with Scroll -->
+                <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
+                    
+                    <!-- Loading state -->
+                    <template x-if="editWholesaleForm.loading">
+                        <div class="py-16 flex flex-col items-center justify-center gap-3 text-slate-400">
+                            <svg class="animate-spin h-8 w-8 text-emerald-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span class="text-xs font-bold">Memuat rincian nota partai...</span>
+                        </div>
+                    </template>
+
+                    <!-- Form Content -->
+                    <template x-if="!editWholesaleForm.loading">
+                        <div class="flex flex-col gap-5">
+                            
+                            <!-- Customer & Payment Metadata Grid -->
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Nama Pelanggan *</label>
+                                    <input type="text" 
+                                           x-model="editWholesaleForm.customer_name" 
+                                           placeholder="Nama pembeli / toko..." 
+                                           class="w-full border-slate-200 rounded-xl text-xs font-bold py-2 px-3 focus:border-emerald-500 focus:ring-emerald-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">No. WhatsApp / HP</label>
+                                    <input type="text" 
+                                           x-model="editWholesaleForm.customer_phone" 
+                                           placeholder="08xxxxxxxxxx" 
+                                           class="w-full border-slate-200 rounded-xl text-xs font-bold py-2 px-3 focus:border-emerald-500 focus:ring-emerald-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Metode Pembayaran</label>
+                                    <select x-model="editWholesaleForm.payment_method" 
+                                            class="w-full border-slate-200 rounded-xl text-xs font-bold py-2 px-3 focus:border-emerald-500 focus:ring-emerald-500 bg-white">
+                                        <option value="Tunai">Tunai / Cash (Lunas)</option>
+                                        <option value="Transfer Bank BCA">Transfer BCA (Lunas)</option>
+                                        <option value="Transfer Bank Mandiri">Transfer Mandiri (Lunas)</option>
+                                        <option value="Piutang / Tempo">Piutang / Tempo (Belum Lunas)</option>
+                                    </select>
+                                </div>
+                                <div class="sm:col-span-3 pt-1">
+                                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                                        <input type="checkbox" 
+                                               x-model="editWholesaleForm.skip_stock_deduction" 
+                                               class="rounded border-slate-300 text-emerald-700 focus:ring-emerald-500">
+                                        <span class="text-xs font-bold text-slate-600">Catat Tanpa Potong Stok (Barang sudah dikeluarkan / didata terpisah)</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Items Section -->
+                            <div class="flex flex-col gap-2.5">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-black text-slate-700 uppercase tracking-wider">Rincian Barang</span>
+                                    <button type="button" 
+                                            @click="addEditWholesaleItem()" 
+                                            class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                                        Tambah Baris Barang
+                                    </button>
+                                </div>
+
+                                <!-- Desktop Table Header -->
+                                <div class="hidden sm:grid gap-2 px-3 py-1 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider"
+                                     style="grid-template-columns: 28px minmax(200px, 1fr) 105px 135px 120px 36px;">
+                                    <div class="text-center">No</div>
+                                    <div>Nama Produk / Custom Nama</div>
+                                    <div class="text-center">Qty & Satuan</div>
+                                    <div class="text-right">Harga Jual (Rp)</div>
+                                    <div class="text-right">Modal (Rp)</div>
+                                    <div class="text-center">Aksi</div>
+                                </div>
+
+                                <!-- Dynamic Items List -->
+                                <div class="flex flex-col gap-2">
+                                    <template x-for="(item, idx) in editWholesaleForm.items" :key="idx">
+                                        <div class="flex flex-col sm:grid gap-2 items-center p-3 rounded-2xl bg-slate-50/80 border border-slate-100 hover:bg-slate-50 hover:border-slate-200 transition"
+                                             style="grid-template-columns: 28px minmax(200px, 1fr) 105px 135px 120px 36px;">
+                                            
+                                            <!-- No -->
+                                            <div class="text-center font-bold text-slate-400 text-xs hidden sm:block" x-text="idx + 1"></div>
+
+                                            <!-- Nama Produk (Lebar maksimal / auto-stretch) -->
+                                            <div class="w-full relative">
+                                                <input type="text" 
+                                                       x-model="item.name" 
+                                                       @input="item.showSuggestions = true; item.activeSuggestionIndex = -1"
+                                                       @focus="item.showSuggestions = true"
+                                                       placeholder="Ketik nama produk..." 
+                                                       class="w-full border-slate-200 rounded-lg text-xs font-bold py-2 px-3 focus:border-emerald-500 focus:ring-emerald-500 shadow-sm">
+                                                
+                                                <!-- Dropdown suggestions (Lebar & Tidak Kepotong) -->
+                                                <div x-show="item.showSuggestions && getWholesaleSuggestions(item.name).length > 0" 
+                                                     @click.away="item.showSuggestions = false"
+                                                     class="absolute z-50 top-full left-0 bg-white border border-slate-200 shadow-2xl rounded-xl mt-1 overflow-hidden max-h-52 overflow-y-auto w-full min-w-[340px]">
+                                                    <template x-for="p in getWholesaleSuggestions(item.name)" :key="p.id">
+                                                        <button type="button" 
+                                                                @click="selectEditWholesaleProduct(idx, p)"
+                                                                class="w-full text-left px-3.5 py-2.5 text-xs hover:bg-emerald-50 text-slate-700 font-bold transition flex justify-between items-center border-b border-slate-50">
+                                                            <span x-text="p.name" class="font-extrabold text-slate-800"></span>
+                                                            <span class="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-black uppercase shrink-0 ml-2" x-text="'Stok: ' + formatStock(p.stock, p.price_unit)"></span>
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </div>
+
+                                            <!-- Qty & Unit Toggle -->
+                                            <div class="w-full">
+                                                <div class="relative flex items-stretch">
+                                                    <input type="number" 
+                                                           step="any" 
+                                                           x-model="item.qty" 
+                                                           placeholder="1" 
+                                                           class="w-full border-slate-200 rounded-l-lg text-xs font-bold py-2 px-2 text-center focus:border-emerald-500 focus:ring-emerald-500">
+                                                    <button type="button" 
+                                                            @click="toggleEditWholesaleItemUnit(idx)"
+                                                            :title="['gram','kg'].includes((item.price_unit||'').toLowerCase()) ? 'Klik untuk ubah kg ⇄ gram' : 'Satuan'"
+                                                            :class="['gram','kg'].includes((item.price_unit||'').toLowerCase()) ? 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100 cursor-pointer' : 'bg-slate-100 border-slate-200 text-slate-600 cursor-default'"
+                                                            class="border border-l-0 rounded-r-lg px-2 text-[10px] font-black uppercase flex items-center justify-center min-w-[36px] select-none">
+                                                        <span x-text="item.price_unit || 'pcs'"></span>
+                                                        <template x-if="['gram','kg'].includes((item.price_unit||'').toLowerCase())">
+                                                            <svg class="w-2.5 h-2.5 ml-0.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                                                        </template>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <!-- Harga Jual -->
+                                            <div class="w-full relative flex items-center">
+                                                <input type="number" 
+                                                       x-model="item.selling_price" 
+                                                       placeholder="Harga..." 
+                                                       class="w-full border-slate-200 rounded-lg text-xs font-bold py-2 px-2.5 focus:border-emerald-500 focus:ring-emerald-500 text-right pr-12">
+                                                <span class="absolute right-2 text-[9px] font-black text-slate-400 uppercase pointer-events-none" x-text="'/' + (item.price_unit || 'pcs')"></span>
+                                            </div>
+
+                                            <!-- Harga Modal -->
+                                            <div class="w-full relative flex items-center">
+                                                <input type="number" 
+                                                       x-model="item.cost_price" 
+                                                       placeholder="Modal..." 
+                                                       class="w-full border-slate-200 rounded-lg text-xs font-bold py-2 px-2.5 focus:border-emerald-500 focus:ring-emerald-500 text-right pr-12">
+                                                <span class="absolute right-2 text-[9px] font-black text-slate-400 uppercase pointer-events-none" x-text="'/' + (item.price_unit || 'pcs')"></span>
+                                            </div>
+
+                                            <!-- Delete Row Button -->
+                                            <div class="w-full sm:w-auto flex justify-center">
+                                                <button type="button" 
+                                                        @click="removeEditWholesaleItem(idx)" 
+                                                        class="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
+                                                        title="Hapus baris">
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Calculations & Summary -->
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100/70 text-xs font-bold">
+                                <div>
+                                    <span class="text-slate-500 block mb-1">Potongan Diskon (Rp)</span>
+                                    <input type="number" 
+                                           x-model="editWholesaleForm.discount" 
+                                           placeholder="0" 
+                                           class="w-full border-slate-200 rounded-xl text-xs font-bold py-2 px-3 text-right focus:border-emerald-500 focus:ring-emerald-500 bg-white">
+                                </div>
+                                <div>
+                                    <span class="text-slate-500 block mb-1">Biaya Kirim / Ongkir (Rp)</span>
+                                    <input type="number" 
+                                           x-model="editWholesaleForm.shipping_cost" 
+                                           placeholder="0" 
+                                           class="w-full border-slate-200 rounded-xl text-xs font-bold py-2 px-3 text-right focus:border-emerald-500 focus:ring-emerald-500 bg-white">
+                                </div>
+                                <div class="flex flex-col justify-end text-right">
+                                    <span class="text-slate-500 text-[11px]">Total Tagihan Akhir:</span>
+                                    <span class="text-emerald-800 text-lg font-black" x-text="formatRupiah(calculateEditWholesaleGrandTotal())"></span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+                    <button type="button" 
+                            @click="showEditWholesaleModal = false" 
+                            :disabled="editWholesaleForm.saving"
+                            class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-xs tracking-wide uppercase transition">
+                        Batal
+                    </button>
+                    <button type="button" 
+                            @click="submitUpdateWholesale()" 
+                            :disabled="editWholesaleForm.saving || editWholesaleForm.loading"
+                            class="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-extrabold text-xs tracking-wide uppercase transition shadow-md shadow-emerald-700/20 flex items-center gap-2 disabled:opacity-50">
+                        <template x-if="editWholesaleForm.saving">
+                            <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </template>
+                        <span>Simpan Perubahan Nota</span>
+                    </button>
+                </div>
+
             </div>
         </div>
 

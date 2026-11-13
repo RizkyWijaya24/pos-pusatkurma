@@ -6,7 +6,7 @@
     <style>
         @page {
             size: a4 portrait;
-            margin: 12mm 14mm 14mm 14mm;
+            margin: 8mm 10mm 8mm 10mm;
         }
         * {
             box-sizing: border-box;
@@ -15,9 +15,9 @@
         }
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            font-size: 10pt;
+            font-size: 8pt;
             color: #1e293b;
-            line-height: 1.4;
+            line-height: 1.3;
             background: #ffffff;
         }
 
@@ -26,8 +26,8 @@
             width: 100%;
             border-collapse: collapse;
             border-bottom: 2px solid #0f172a;
-            padding-bottom: 12px;
-            margin-bottom: 14px;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
         }
         .kop-table td {
             vertical-align: middle;
@@ -35,53 +35,53 @@
             padding: 0;
         }
         .logo-col {
-            width: 70px;
-            padding-right: 12px;
+            width: 55px;
+            padding-right: 10px;
         }
         .company-logo {
-            width: 65px;
-            height: 65px;
-            border-radius: 8px;
+            width: 48px;
+            height: 48px;
+            border-radius: 6px;
         }
         .company-logo-placeholder {
-            width: 65px;
-            height: 65px;
-            border-radius: 8px;
+            width: 48px;
+            height: 48px;
+            border-radius: 6px;
             background-color: #047857;
             text-align: center;
-            line-height: 65px;
-            font-size: 22pt;
+            line-height: 48px;
+            font-size: 18pt;
             font-weight: bold;
             color: #ffffff;
         }
         .company-name {
-            font-size: 15pt;
+            font-size: 13pt;
             font-weight: bold;
             color: #047857;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            line-height: 1.2;
+            letter-spacing: 0.3px;
+            line-height: 1.15;
         }
         .company-tagline {
-            font-size: 9.5pt;
+            font-size: 8pt;
             font-weight: bold;
             color: #475569;
-            margin-top: 2px;
+            margin-top: 1px;
         }
         .company-addr {
-            font-size: 8.5pt;
+            font-size: 7.5pt;
             color: #64748b;
-            margin-top: 2px;
-            line-height: 1.3;
+            margin-top: 1px;
+            line-height: 1.25;
         }
         .invoice-title-col {
             text-align: right;
             border-left: 2px solid #e2e8f0;
-            padding-left: 15px;
-            width: 180px;
+            padding-left: 12px;
+            width: 160px;
         }
         .invoice-main-title {
-            font-size: 18pt;
+            font-size: 16pt;
             font-weight: 900;
             color: #0f172a;
             text-transform: uppercase;
@@ -89,17 +89,17 @@
             line-height: 1;
         }
         .invoice-code {
-            font-size: 10pt;
+            font-size: 9pt;
             font-weight: bold;
             color: #047857;
-            margin-top: 4px;
+            margin-top: 2px;
         }
 
         /* ─── META INFO TABLE ─── */
         .meta-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 16px;
+            margin-bottom: 8px;
         }
         .meta-table td {
             vertical-align: top;
@@ -110,25 +110,25 @@
             background-color: #f8fafc;
             border: 1px solid #cbd5e1;
             border-radius: 6px;
-            padding: 10px 12px;
+            padding: 6px 10px;
         }
         .meta-box-title {
-            font-size: 8pt;
+            font-size: 7pt;
             font-weight: bold;
             text-transform: uppercase;
-            letter-spacing: 0.6px;
+            letter-spacing: 0.5px;
             color: #64748b;
             border-bottom: 1px solid #cbd5e1;
-            padding-bottom: 3px;
-            margin-bottom: 6px;
+            padding-bottom: 2px;
+            margin-bottom: 4px;
         }
         .meta-row-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 9pt;
+            font-size: 8pt;
         }
         .meta-row-table td {
-            padding: 2px 0;
+            padding: 1.5px 0;
             border: none;
         }
         .meta-lbl {
@@ -143,9 +143,9 @@
         }
         .status-badge {
             display: inline-block;
-            padding: 2px 6px;
+            padding: 1px 6px;
             border-radius: 3px;
-            font-size: 8pt;
+            font-size: 7.5pt;
             font-weight: bold;
         }
         .status-paid {
@@ -163,20 +163,20 @@
         .items-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 16px;
-            font-size: 9pt;
+            margin-bottom: 8px;
+            font-size: 7.5pt;
         }
         .items-table th {
             background-color: #047857;
             color: #ffffff;
             font-weight: bold;
             text-transform: uppercase;
-            font-size: 8pt;
-            padding: 7px 8px;
+            font-size: 7pt;
+            padding: 4px 6px;
             border: 1px solid #047857;
         }
         .items-table td {
-            padding: 6px 8px;
+            padding: 3px 6px;
             border: 1px solid #cbd5e1;
             color: #1e293b;
         }
@@ -197,7 +197,7 @@
         .bottom-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 24px;
+            margin-bottom: 8px;
         }
         .bottom-table td {
             vertical-align: top;
@@ -208,29 +208,29 @@
             background-color: #f8fafc;
             border: 1px solid #cbd5e1;
             border-radius: 6px;
-            padding: 10px 12px;
-            margin-right: 12px;
+            padding: 6px 10px;
+            margin-right: 10px;
         }
         .payment-box-title {
-            font-size: 8.5pt;
+            font-size: 7.5pt;
             font-weight: bold;
             text-transform: uppercase;
             color: #047857;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
         .bank-num {
-            font-size: 11pt;
+            font-size: 10pt;
             font-weight: bold;
             color: #0f172a;
-            margin: 2px 0;
+            margin: 1px 0;
         }
         .terms-text {
-            font-size: 7.5pt;
+            font-size: 7pt;
             color: #64748b;
             border-top: 1px dashed #cbd5e1;
-            padding-top: 6px;
-            margin-top: 6px;
-            line-height: 1.35;
+            padding-top: 3px;
+            margin-top: 3px;
+            line-height: 1.25;
         }
 
         .summary-box {
@@ -242,10 +242,10 @@
         .summary-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 9pt;
+            font-size: 8pt;
         }
         .summary-table td {
-            padding: 5px 10px;
+            padding: 3px 8px;
             border-bottom: 1px solid #f1f5f9;
         }
         .summary-lbl {
@@ -264,14 +264,14 @@
         }
         .grand-lbl {
             font-weight: bold;
-            font-size: 9.5pt;
+            font-size: 8.5pt;
             color: #0f172a;
             text-transform: uppercase;
         }
         .grand-val {
             text-align: right;
             font-weight: bold;
-            font-size: 11pt;
+            font-size: 10.5pt;
             color: #047857;
         }
         .remaining-row {
@@ -285,37 +285,37 @@
             text-align: right;
             font-weight: bold;
             color: #e11d48;
-            font-size: 9.5pt;
+            font-size: 9pt;
         }
 
         /* ─── SIGNATURE TABLE ─── */
         .sig-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
+            margin-top: 6px;
         }
         .sig-table td {
             width: 50%;
             text-align: center;
             vertical-align: top;
             border: none;
-            padding: 0 20px;
+            padding: 0 15px;
         }
         .sig-header {
-            font-size: 9pt;
+            font-size: 8pt;
             font-weight: bold;
             color: #475569;
         }
         .sig-space {
-            height: 60px;
+            height: 35px;
         }
         .sig-line {
             border-bottom: 1px solid #0f172a;
-            width: 180px;
-            margin: 0 auto 4px auto;
+            width: 140px;
+            margin: 0 auto 3px auto;
         }
         .sig-name {
-            font-size: 9pt;
+            font-size: 8pt;
             font-weight: bold;
             color: #0f172a;
         }
