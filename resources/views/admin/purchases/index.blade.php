@@ -163,20 +163,82 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <!-- Nama Supplier -->
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1.5">Nama Supplier / Toko Pemasok <span class="text-rose-500">*</span></label>
-                            <input type="text"
-                                   list="supplier-suggestions"
-                                   x-model="form.supplier_name"
-                                   @input="onSupplierSelected()"
-                                   required
-                                   placeholder="Contoh: PT Kurma Barokah / H. Ahmad"
-                                   class="w-full text-xs font-medium border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 px-3.5 py-2.5">
-                            <datalist id="supplier-suggestions">
-                                <template x-for="s in suppliersList" :key="s.id">
-                                    <option :value="s.name"></option>
+                        <div class="relative" @click.away="showInputSupplierDropdown = false">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="block text-xs font-bold text-slate-600">Nama Supplier / Toko Pemasok <span class="text-rose-500">*</span></label>
+                                <template x-if="suppliersList.length > 0">
+                                    <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/80 flex items-center gap-1">
+                                        <svg class="w-3 h-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                        Auto Assist
+                                    </span>
                                 </template>
-                            </datalist>
+                            </div>
+                            <div class="relative">
+                                <input type="text"
+                                       x-model="form.supplier_name"
+                                       @focus="showInputSupplierDropdown = true"
+                                       @input="onInputSupplierChange()"
+                                       @keydown.escape="showInputSupplierDropdown = false"
+                                       required
+                                       autocomplete="off"
+                                       placeholder="Contoh: PT Kurma Barokah / H. Ahmad"
+                                       class="w-full text-xs font-medium border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 px-3.5 py-2.5 pr-8">
+                                <div class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <!-- Dropdown Assist List -->
+                            <div x-show="showInputSupplierDropdown && suppliersList.length > 0"
+                                 x-cloak
+                                 x-transition:enter="transition ease-out duration-150"
+                                 x-transition:enter-start="opacity-0 translate-y-1"
+                                 x-transition:enter-end="opacity-100 translate-y-0"
+                                 x-transition:leave="transition ease-in duration-100"
+                                 x-transition:leave-start="opacity-100 translate-y-0"
+                                 x-transition:leave-end="opacity-0 translate-y-1"
+                                 class="absolute left-0 right-0 mt-1 bg-white rounded-2xl shadow-xl border border-slate-200/90 z-50 overflow-hidden">
+                                <div class="px-3 py-1.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-500">
+                                    <span>Pilih Supplier Terdaftar:</span>
+                                    <span class="text-[10px] font-normal text-slate-400" x-text="getFilteredSuppliers(form.supplier_name).length + ' ditemukan'"></span>
+                                </div>
+                                <div class="max-h-48 overflow-y-auto divide-y divide-slate-100">
+                                    <template x-for="s in getFilteredSuppliers(form.supplier_name)" :key="s.id">
+                                        <div @click="selectInputSupplier(s)"
+                                             class="p-2.5 hover:bg-emerald-50 transition cursor-pointer flex items-center justify-between gap-3 group">
+                                            <div class="min-w-0">
+                                                <div class="font-bold text-xs text-slate-800 group-hover:text-emerald-900 truncate" x-text="s.name"></div>
+                                                <div class="flex items-center gap-2 mt-0.5 text-[10px]">
+                                                    <template x-if="s.phone">
+                                                        <span class="flex items-center gap-1 text-emerald-600 font-medium">
+                                                            <svg class="w-3 h-3 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                                            </svg>
+                                                            <span x-text="s.phone"></span>
+                                                        </span>
+                                                    </template>
+                                                    <template x-if="!s.phone">
+                                                        <span class="text-slate-400 italic">Tanpa No. WA</span>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                            <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 group-hover:bg-emerald-600 group-hover:text-white px-2 py-0.5 rounded-lg border border-emerald-200 group-hover:border-transparent transition shrink-0">
+                                                Pilih
+                                            </span>
+                                        </div>
+                                    </template>
+                                    <template x-if="getFilteredSuppliers(form.supplier_name).length === 0">
+                                        <div class="p-3 text-center text-slate-400">
+                                            <p class="text-xs font-semibold text-slate-600">Supplier Baru</p>
+                                            <p class="text-[10px] text-slate-400 mt-0.5">Nama "<span class="font-bold text-slate-700" x-text="form.supplier_name"></span>" akan otomatis didaftarkan.</p>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- No. WhatsApp / Telepon -->
@@ -1982,9 +2044,9 @@
             <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showManualDebtModal = false"></div>
 
             <div class="flex min-h-full items-center justify-center p-4">
-                <div class="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden" @click.stop>
+                <div class="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-visible" @click.stop>
                     <!-- Header -->
-                    <div class="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/50">
+                    <div class="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/50 rounded-t-3xl">
                         <div>
                             <h3 class="text-base font-extrabold text-slate-800">Catat Utang Supplier Manual</h3>
                             <p class="text-xs text-slate-400 font-medium mt-0.5">Cukup masukkan nama supplier, nominal tagihan, dan catatan utang</p>
@@ -2007,14 +2069,83 @@
                     </div>
 
                     <form @submit.prevent="submitManualDebt()" class="p-6 space-y-4">
-                        <!-- Nama Supplier -->
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1.5">Nama Supplier / Pemasok <span class="text-rose-500">*</span></label>
-                            <input type="text"
-                                   x-model="manualDebtForm.supplier_name"
-                                   required
-                                   placeholder="Contoh: Haji Ali / PT Kurma Raya"
-                                   class="w-full text-xs font-bold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 p-2.5 bg-slate-50">
+                        <!-- Nama Supplier dengan Fitur Assist -->
+                        <div class="relative" @click.away="showManualSupplierDropdown = false">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="block text-xs font-bold text-slate-600">Nama Supplier / Pemasok <span class="text-rose-500">*</span></label>
+                                <template x-if="suppliersList.length > 0">
+                                    <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/80 flex items-center gap-1">
+                                        <svg class="w-3 h-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                        Auto Assist
+                                    </span>
+                                </template>
+                            </div>
+                            <div class="relative">
+                                <input type="text"
+                                       x-model="manualDebtForm.supplier_name"
+                                       @focus="showManualSupplierDropdown = true"
+                                       @input="onManualSupplierInput()"
+                                       @keydown.escape="showManualSupplierDropdown = false"
+                                       required
+                                       autocomplete="off"
+                                       placeholder="Ketik nama supplier (Contoh: CV Syifo Herbal / PT Kurma)"
+                                       class="w-full text-xs font-bold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 p-2.5 bg-slate-50 pr-8">
+                                <div class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <!-- Dropdown Assist List -->
+                            <div x-show="showManualSupplierDropdown && suppliersList.length > 0"
+                                 x-cloak
+                                 x-transition:enter="transition ease-out duration-150"
+                                 x-transition:enter-start="opacity-0 translate-y-1"
+                                 x-transition:enter-end="opacity-100 translate-y-0"
+                                 x-transition:leave="transition ease-in duration-100"
+                                 x-transition:leave-start="opacity-100 translate-y-0"
+                                 x-transition:leave-end="opacity-0 translate-y-1"
+                                 class="absolute left-0 right-0 mt-1 bg-white rounded-2xl shadow-xl border border-slate-200/90 z-50 overflow-hidden">
+                                <div class="px-3 py-1.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-500">
+                                    <span>Pilih Supplier Terdaftar:</span>
+                                    <span class="text-[10px] font-normal text-slate-400" x-text="getFilteredSuppliers(manualDebtForm.supplier_name).length + ' ditemukan'"></span>
+                                </div>
+                                <div class="max-h-48 overflow-y-auto divide-y divide-slate-100">
+                                    <template x-for="s in getFilteredSuppliers(manualDebtForm.supplier_name)" :key="s.id">
+                                        <div @click="selectManualSupplier(s)"
+                                             class="p-2.5 hover:bg-emerald-50 transition cursor-pointer flex items-center justify-between gap-3 group">
+                                            <div class="min-w-0">
+                                                <div class="font-bold text-xs text-slate-800 group-hover:text-emerald-900 truncate" x-text="s.name"></div>
+                                                <div class="flex items-center gap-2 mt-0.5 text-[10px]">
+                                                    <template x-if="s.phone">
+                                                        <span class="flex items-center gap-1 text-emerald-600 font-medium">
+                                                            <svg class="w-3 h-3 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                                            </svg>
+                                                            <span x-text="s.phone"></span>
+                                                        </span>
+                                                    </template>
+                                                    <template x-if="!s.phone">
+                                                        <span class="text-slate-400 italic">Tanpa No. WA</span>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                            <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 group-hover:bg-emerald-600 group-hover:text-white px-2 py-0.5 rounded-lg border border-emerald-200 group-hover:border-transparent transition shrink-0">
+                                                Pilih
+                                            </span>
+                                        </div>
+                                    </template>
+                                    <template x-if="getFilteredSuppliers(manualDebtForm.supplier_name).length === 0">
+                                        <div class="p-3 text-center text-slate-400">
+                                            <p class="text-xs font-semibold text-slate-600">Supplier Baru</p>
+                                            <p class="text-[10px] text-slate-400 mt-0.5">Nama "<span class="font-bold text-slate-700" x-text="manualDebtForm.supplier_name"></span>" akan otomatis didaftarkan.</p>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- No. WA & No. Faktur Fisik -->
@@ -2197,6 +2328,8 @@
                 // Manual Debt State (Hanya Nominal & Catatan)
                 showManualDebtModal: false,
                 isSubmittingManualDebt: false,
+                showManualSupplierDropdown: false,
+                showInputSupplierDropdown: false,
                 manualDebtForm: {
                     supplier_name: '',
                     supplier_phone: '',
@@ -2432,6 +2565,47 @@
                     }
                 },
 
+                getFilteredSuppliers(query) {
+                    const q = (query || '').toLowerCase().trim();
+                    if (!q) {
+                        return this.suppliersList.slice(0, 10);
+                    }
+                    return this.suppliersList.filter(s => {
+                        const nameMatch = (s.name || '').toLowerCase().includes(q);
+                        const phoneMatch = (s.phone || '').toLowerCase().includes(q);
+                        return nameMatch || phoneMatch;
+                    }).slice(0, 12);
+                },
+
+                onManualSupplierInput() {
+                    this.showManualSupplierDropdown = true;
+                    const match = this.suppliersList.find(s => s.name.toLowerCase() === this.manualDebtForm.supplier_name.trim().toLowerCase());
+                    if (match && match.phone) {
+                        this.manualDebtForm.supplier_phone = match.phone;
+                    }
+                },
+
+                selectManualSupplier(supplier) {
+                    this.manualDebtForm.supplier_name = supplier.name;
+                    if (supplier.phone) {
+                        this.manualDebtForm.supplier_phone = supplier.phone;
+                    }
+                    this.showManualSupplierDropdown = false;
+                },
+
+                onInputSupplierChange() {
+                    this.showInputSupplierDropdown = true;
+                    this.onSupplierSelected();
+                },
+
+                selectInputSupplier(supplier) {
+                    this.form.supplier_name = supplier.name;
+                    if (supplier.phone) {
+                        this.form.supplier_phone = supplier.phone;
+                    }
+                    this.showInputSupplierDropdown = false;
+                },
+
                 onSupplierSelected() {
                     const match = this.suppliersList.find(s => s.name.toLowerCase() === this.form.supplier_name.trim().toLowerCase());
                     if (match && match.phone) {
@@ -2544,6 +2718,7 @@
                 },
 
                 openManualDebtModal() {
+                    this.showManualSupplierDropdown = false;
                     this.manualDebtForm = {
                         supplier_name: '',
                         supplier_phone: '',
