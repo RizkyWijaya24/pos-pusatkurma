@@ -6,7 +6,7 @@
     <style>
         @page {
             size: a4 portrait;
-            margin: 8mm 10mm 8mm 10mm;
+            margin: 18mm 10mm 8mm 10mm;
         }
         * {
             box-sizing: border-box;
@@ -327,28 +327,28 @@
 
         /* ─── DENSITY RESPONSIVE ─── */
         .dense .kop-table { margin-bottom: 4px; padding-bottom: 3px; }
-        .dense .company-logo, .dense .company-logo-placeholder { width: 38px; height: 38px; font-size: 14pt; line-height: 38px; }
-        .dense .company-name { font-size: 11pt; }
-        .dense .company-tagline { font-size: 6.5pt; }
-        .dense .company-addr { font-size: 6.5pt; }
-        .dense .invoice-main-title { font-size: 13pt; }
-        .dense .meta-table { margin-bottom: 4px; }
-        .dense .meta-box { padding: 3px 6px; }
-        .dense .meta-box-title { font-size: 6.5pt; margin-bottom: 2px; }
-        .dense .meta-row-table td { padding: 1px 0; font-size: 7pt; }
-        .dense .items-table { margin-bottom: 4px; font-size: 6.8pt; }
-        .dense .items-table th { padding: 2px 4px; font-size: 6.5pt; }
-        .dense .items-table td { padding: 1.8px 4px; }
-        .dense .bottom-table { margin-top: 18px; margin-bottom: 6px; }
-        .dense .payment-box { padding: 4px 6px; }
-        .dense .payment-box-title { font-size: 6.5pt; }
-        .dense .bank-num { font-size: 8.5pt; }
-        .dense .terms-text { font-size: 5.8pt; }
-        .dense .summary-table td { padding: 1.5px 6px; font-size: 7pt; }
-        .dense .grand-val { font-size: 9pt; }
-        .dense .sig-table { margin-top: 4px; }
-        .dense .sig-space { height: 22px; }
-        .dense .sig-line { width: 110px; }
+        .dense .company-logo, .dense .company-logo-placeholder { width: 42px; height: 42px; font-size: 15pt; line-height: 42px; }
+        .dense .company-name { font-size: 12pt; }
+        .dense .company-tagline { font-size: 7.5pt; }
+        .dense .company-addr { font-size: 7pt; }
+        .dense .invoice-main-title { font-size: 14pt; }
+        .dense .meta-table { margin-bottom: 5px; }
+        .dense .meta-box { padding: 4px 8px; }
+        .dense .meta-box-title { font-size: 7pt; margin-bottom: 2px; }
+        .dense .meta-row-table td { padding: 1.5px 0; font-size: 7.5pt; }
+        .dense .items-table { margin-bottom: 5px; font-size: 8.5pt; }
+        .dense .items-table th { padding: 3.5px 5px; font-size: 7.8pt; }
+        .dense .items-table td { padding: 2.8px 5px; }
+        .dense .bottom-table { margin-top: 18px; margin-bottom: 8px; }
+        .dense .payment-box { padding: 5px 8px; }
+        .dense .payment-box-title { font-size: 7.5pt; }
+        .dense .bank-num { font-size: 9.5pt; }
+        .dense .terms-text { font-size: 6.8pt; }
+        .dense .summary-table td { padding: 2.2px 6px; font-size: 8.2pt; }
+        .dense .grand-val { font-size: 10pt; }
+        .dense .sig-table { margin-top: 6px; }
+        .dense .sig-space { height: 26px; }
+        .dense .sig-line { width: 120px; }
     </style>
 </head>
 <body class="{{ count($items) > 13 ? 'dense' : '' }}">

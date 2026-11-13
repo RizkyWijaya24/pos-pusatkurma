@@ -100,9 +100,9 @@
             background: #ffffff;
             width: 100%;
             max-width: 210mm;
-            min-height: 275mm;
+            min-height: 265mm;
             margin: 0 auto;
-            padding: 7mm 12mm 8mm 12mm;
+            padding: 16mm 14mm 10mm 14mm;
             box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07);
             border-radius: 4px;
             box-sizing: border-box;
@@ -461,7 +461,7 @@
         }
 
         /* ─── RESPONSIVE DENSITY STYLES (Based on Item Count) ─── */
-        /* Tier 1: Spacious (1 - 5 items: Rows stretch and fill space so table and signature look balanced) */
+        /* Tier 1: Spacious (1 - 5 items) */
         .density-spacious .table-wrapper {
             min-height: 60mm;
         }
@@ -469,12 +469,12 @@
             height: 100%;
         }
         .density-spacious .items-table th {
-            padding: 7px 8px;
-            font-size: 8pt;
+            padding: 6.5px 9px;
+            font-size: 9pt;
         }
         .density-spacious .items-table td {
-            padding: 7px 8px;
-            font-size: 8.5pt;
+            padding: 6.5px 9px;
+            font-size: 9.8pt;
         }
         .density-spacious .meta-grid {
             margin-top: 8px;
@@ -494,6 +494,7 @@
         }
         .density-spacious .summary-table td {
             padding: 4.5px 10px;
+            font-size: 9pt;
         }
 
         /* Tier 2: Normal (6 - 9 items) */
@@ -502,11 +503,11 @@
         }
         .density-normal .items-table th {
             padding: 5px 8px;
-            font-size: 7.5pt;
+            font-size: 8.5pt;
         }
         .density-normal .items-table td {
             padding: 4.5px 8px;
-            font-size: 8.5pt;
+            font-size: 9.2pt;
         }
         .density-normal .bottom-grid {
             margin-top: 26px;
@@ -515,12 +516,12 @@
 
         /* Tier 3: Compact (10 - 13 items) */
         .density-compact .items-table th {
-            padding: 3.5px 6px;
-            font-size: 7pt;
+            padding: 4.5px 7px;
+            font-size: 8pt;
         }
         .density-compact .items-table td {
-            padding: 2.8px 6px;
-            font-size: 7.5pt;
+            padding: 3.5px 7px;
+            font-size: 8.8pt;
         }
         .density-compact .header-grid {
             padding-bottom: 5px;
@@ -534,144 +535,144 @@
             margin-bottom: 12px;
         }
 
-        /* Tier 4: Dense (14+ items, e.g. 15-22 items like 18 items) */
+        /* Tier 4: Dense (14+ items, e.g. 15-22 items - Standard Faktur Proporsional) */
         .density-dense {
-            padding: 5mm 10mm 6mm 10mm !important;
+            padding: 16mm 12mm 8mm 12mm !important;
         }
         .density-dense .header-grid {
-            gap: 8px;
-            padding-bottom: 3px;
+            gap: 10px;
+            padding-bottom: 4px;
         }
         .density-dense .company-logo,
         .density-dense .company-logo-placeholder {
-            width: 38px;
-            height: 38px;
-            line-height: 38px;
-            font-size: 14px;
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
+            font-size: 15px;
             border-radius: 6px;
         }
         .density-dense .company-name {
-            font-size: 11pt;
-            line-height: 1.1;
-        }
-        .density-dense .company-tagline {
-            font-size: 7pt;
-        }
-        .density-dense .company-address {
-            font-size: 6.5pt;
+            font-size: 12.5pt;
             line-height: 1.15;
         }
+        .density-dense .company-tagline {
+            font-size: 7.8pt;
+        }
+        .density-dense .company-address {
+            font-size: 7.5pt;
+            line-height: 1.2;
+        }
         .density-dense .invoice-badge-title {
-            font-size: 14pt;
+            font-size: 15pt;
         }
         .density-dense .invoice-subcode {
-            font-size: 7.5pt;
+            font-size: 8.5pt;
         }
         .density-dense .meta-grid {
-            gap: 6px;
-            margin-top: 3px;
-            margin-bottom: 4px;
+            gap: 8px;
+            margin-top: 4px;
+            margin-bottom: 5px;
         }
         .density-dense .meta-card {
-            padding: 3px 6px;
-            border-radius: 4px;
+            padding: 4px 8px;
+            border-radius: 5px;
         }
         .density-dense .meta-card-title {
-            font-size: 6.5pt;
-            margin-bottom: 1.5px;
+            font-size: 7.2pt;
+            margin-bottom: 2px;
             padding-bottom: 1px;
         }
         .density-dense .meta-row {
-            font-size: 7pt;
-            margin-bottom: 0.5px;
-            line-height: 1.15;
+            font-size: 8pt;
+            margin-bottom: 1px;
+            line-height: 1.2;
         }
         .density-dense .table-wrapper {
-            margin-bottom: 4px;
+            margin-bottom: 5px;
         }
         .density-dense .items-table th {
-            padding: 2.2px 5px;
-            font-size: 6.5pt;
+            padding: 4px 6px;
+            font-size: 7.8pt;
         }
         .density-dense .items-table td {
-            padding: 1.6px 5px;
-            font-size: 7pt;
-            line-height: 1.15;
+            padding: 3px 6px;
+            font-size: 8.5pt;
+            line-height: 1.25;
         }
         .density-dense .bottom-grid {
-            gap: 8px;
-            margin-top: 28px;
+            gap: 10px;
+            margin-top: 22px;
             margin-bottom: 10px;
         }
         .density-dense .payment-info-box {
-            padding: 4px 6px;
-            border-radius: 4px;
+            padding: 5px 8px;
+            border-radius: 5px;
         }
         .density-dense .payment-info-title {
-            font-size: 6.5pt;
-            margin-bottom: 1px;
+            font-size: 7.5pt;
+            margin-bottom: 1.5px;
         }
         .density-dense .bank-details {
-            font-size: 6.5pt;
-            line-height: 1.15;
+            font-size: 7.5pt;
+            line-height: 1.2;
             margin-bottom: 2px;
         }
         .density-dense .bank-account-num {
-            font-size: 8.5pt;
+            font-size: 9.5pt;
             margin: 0;
         }
         .density-dense .terms-note {
-            font-size: 5.8pt;
-            line-height: 1.15;
+            font-size: 6.8pt;
+            line-height: 1.2;
             padding-top: 2px;
         }
         .density-dense .summary-card {
-            border-radius: 4px;
+            border-radius: 5px;
         }
         .density-dense .summary-table {
-            font-size: 7pt;
+            font-size: 8.2pt;
         }
         .density-dense .summary-table td {
-            padding: 1.5px 6px;
+            padding: 2.2px 7px;
         }
         .density-dense .grand-total-row td {
-            padding: 2.5px 6px;
+            padding: 3.5px 7px;
         }
         .density-dense .grand-total-label {
-            font-size: 7.5pt;
-        }
-        .density-dense .grand-total-val {
-            font-size: 9pt;
-        }
-        .density-dense .remaining-val {
             font-size: 8.5pt;
         }
+        .density-dense .grand-total-val {
+            font-size: 10.5pt;
+        }
+        .density-dense .remaining-val {
+            font-size: 9.5pt;
+        }
         .density-dense .signatures-grid {
-            gap: 12px;
+            gap: 14px;
             padding-top: 0;
         }
         .density-dense .sig-box {
-            min-height: 40px;
+            min-height: 45px;
         }
         .density-dense .sig-title {
-            font-size: 6.5pt;
-        }
-        .density-dense .sig-line {
-            margin: 20px auto 2px auto;
-            width: 110px;
-        }
-        .density-dense .sig-name {
             font-size: 7.5pt;
         }
+        .density-dense .sig-line {
+            margin: 22px auto 2px auto;
+            width: 120px;
+        }
+        .density-dense .sig-name {
+            font-size: 8.5pt;
+        }
         .density-dense .sig-sub {
-            font-size: 6.5pt;
+            font-size: 7.5pt;
         }
 
         /* ─── PRINT MEDIA SPECIFIC ─── */
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 5mm 8mm 5mm 8mm;
+                margin: 12mm 10mm 8mm 10mm;
             }
 
             html, body {
@@ -680,7 +681,7 @@
                 padding: 0 !important;
                 margin: 0 !important;
                 color: #000000 !important;
-                font-size: 8pt !important;
+                font-size: 8.5pt !important;
             }
 
             .no-print {
@@ -693,8 +694,11 @@
                 margin: 0 !important;
                 max-width: 100% !important;
                 width: 100% !important;
-                min-height: 278mm !important;
-                padding: 0 !important;
+                min-height: 260mm !important;
+                padding-top: 10mm !important;
+                padding-bottom: 5mm !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
                 border: none !important;
                 box-sizing: border-box !important;
                 display: flex !important;
