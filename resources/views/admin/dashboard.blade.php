@@ -1650,9 +1650,19 @@
             let subtotal = 0;
             this.wholesaleForm.items.forEach((item, idx) => {
                 if (!item.name) return;
+                let displayQty = parseFloat(item.qty) || 0;
+                let displayUnit = item.price_unit || 'pcs';
+                let displayPrice = parseFloat(item.selling_price) || 0;
+
+                if (displayUnit.toLowerCase() === 'gram') {
+                    displayQty = parseFloat((displayQty / 1000).toFixed(3));
+                    displayUnit = 'kg';
+                    displayPrice = Math.round(displayPrice * 1000);
+                }
+
                 const itemSub = Math.round((parseFloat(item.selling_price) || 0) * (parseFloat(item.qty) || 0));
                 subtotal += itemSub;
-                msg += `${idx + 1}. *${item.name}* : ${item.qty} ${item.price_unit} x ${this.formatRupiah(item.selling_price)} = ${this.formatRupiah(itemSub)}\n`;
+                msg += `${idx + 1}. *${item.name}* : ${displayQty} ${displayUnit} x ${this.formatRupiah(displayPrice)} = ${this.formatRupiah(itemSub)}\n`;
             });
             msg += `--------------------------------------\n`;
             msg += `*Subtotal:* ${this.formatRupiah(subtotal)}\n`;
@@ -1747,11 +1757,38 @@
             const item = this.wholesaleForm.items[idx];
             if (item) {
                 item.name = product.name;
-                item.selling_price = product.selling_price;
-                item.cost_price = product.cost_price;
-                item.price_unit = product.price_unit || 'pcs';
+                item.base_unit = product.price_unit || 'pcs';
+                
+                // Jika satuan dasar adalah gram, defaultkan ke kg untuk transaksi partai
+                if ((product.price_unit || '').toLowerCase() === 'gram') {
+                    item.price_unit = 'kg';
+                    item.selling_price = Math.round((parseFloat(product.selling_price) || 0) * 1000);
+                    item.cost_price = product.cost_price ? Math.round(parseFloat(product.cost_price) * 1000) : '';
+                } else {
+                    item.price_unit = product.price_unit || 'pcs';
+                    item.selling_price = product.selling_price;
+                    item.cost_price = product.cost_price;
+                }
+                
                 item.showSuggestions = false;
                 item.activeSuggestionIndex = -1;
+            }
+        },
+
+        toggleWholesaleItemUnit(idx) {
+            const item = this.wholesaleForm.items[idx];
+            if (!item) return;
+            const currentUnit = (item.price_unit || '').toLowerCase();
+            if (currentUnit === 'kg') {
+                item.price_unit = 'gram';
+                if (item.selling_price) item.selling_price = Math.round(parseFloat(item.selling_price) / 1000);
+                if (item.cost_price) item.cost_price = Math.round(parseFloat(item.cost_price) / 1000);
+                if (item.qty) item.qty = Math.round(parseFloat(item.qty) * 1000);
+            } else if (currentUnit === 'gram') {
+                item.price_unit = 'kg';
+                if (item.selling_price) item.selling_price = Math.round(parseFloat(item.selling_price) * 1000);
+                if (item.cost_price) item.cost_price = Math.round(parseFloat(item.cost_price) * 1000);
+                if (item.qty) item.qty = parseFloat((parseFloat(item.qty) / 1000).toFixed(3));
             }
         },
 
@@ -2520,7 +2557,7 @@
                                 }
                                 .wholesale-item-row {
                                     display: grid !important;
-                                    grid-template-columns: 35px minmax(120px, 1fr) 70px 115px 115px 45px !important;
+                                    grid-template-columns: 35px minmax(120px, 1fr) 110px 125px 115px 40px !important;
                                     align-items: center !important;
                                     gap: 12px !important;
                                     padding-top: 8px !important;
@@ -2541,7 +2578,7 @@
                         <div class="wholesale-desktop-header">
                             <div class="wholesale-col-no">No</div>
                             <div class="wholesale-col-name">Nama Produk / Custom Nama</div>
-                            <div class="wholesale-col-qty" style="text-align: center;">Qty</div>
+                            <div class="wholesale-col-qty" style="text-align: center;">Qty / Satuan</div>
                             <div class="wholesale-col-sell" style="text-align: right;">Harga Jual (Rp)</div>
                             <div class="wholesale-col-cost" style="text-align: right;">Harga Modal (Rp)</div>
                             <div class="wholesale-col-del">Aksi</div>
@@ -2595,33 +2632,53 @@
                                         </button>
                                     </div>
 
-                                    <!-- Qty -->
+                                    <!-- Qty & Satuan -->
                                     <div class="wholesale-col-qty col-span-4 order-4 flex flex-col gap-1">
-                                        <label class="wholesale-mobile-label text-[10px] font-bold text-slate-400 uppercase tracking-wider">Qty</label>
-                                        <input type="number" 
-                                               step="any"
-                                               x-model="item.qty" 
-                                               placeholder="1" 
-                                               class="w-full border-slate-200 rounded-lg text-xs font-bold py-2 px-3 text-center focus:border-emerald-500 focus:ring-emerald-500">
+                                        <label class="wholesale-mobile-label text-[10px] font-bold text-slate-400 uppercase tracking-wider">Qty & Satuan</label>
+                                        <div class="relative flex items-stretch">
+                                            <input type="number" 
+                                                   step="any"
+                                                   x-model="item.qty" 
+                                                   placeholder="1" 
+                                                   class="w-full border-slate-200 rounded-l-lg text-xs font-bold py-2 px-2 text-center focus:border-emerald-500 focus:ring-emerald-500">
+                                            <button type="button" 
+                                                    @click="toggleWholesaleItemUnit(idx)"
+                                                    :title="['gram','kg'].includes((item.price_unit||'').toLowerCase()) ? 'Klik untuk ubah kg ⇄ gram' : 'Satuan'"
+                                                    :class="['gram','kg'].includes((item.price_unit||'').toLowerCase()) ? 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100 cursor-pointer' : 'bg-slate-100 border-slate-200 text-slate-600 cursor-default'"
+                                                    class="border border-l-0 rounded-r-lg px-2 text-[10px] font-black uppercase flex items-center justify-center transition select-none flex-shrink-0 min-w-[36px]">
+                                                <span x-text="item.price_unit || 'pcs'"></span>
+                                                <template x-if="['gram','kg'].includes((item.price_unit||'').toLowerCase())">
+                                                    <svg class="w-2.5 h-2.5 ml-0.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                                    </svg>
+                                                </template>
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <!-- Harga Jual Satuan -->
                                     <div class="wholesale-col-sell col-span-4 order-5 flex flex-col gap-1">
-                                        <label class="wholesale-mobile-label text-[10px] font-bold text-slate-400 uppercase tracking-wider">Harga Jual (Rp)</label>
-                                        <input type="number" 
-                                               x-model="item.selling_price" 
-                                               placeholder="Harga jual..." 
-                                               class="w-full border-slate-200 rounded-lg text-xs font-bold py-2 px-3 focus:border-emerald-500 focus:ring-emerald-500 text-right">
+                                        <label class="wholesale-mobile-label text-[10px] font-bold text-slate-400 uppercase tracking-wider" x-text="'Harga Jual / ' + (item.price_unit || 'satuan')">Harga Jual (Rp)</label>
+                                        <div class="relative flex items-center">
+                                            <input type="number" 
+                                                   x-model="item.selling_price" 
+                                                   placeholder="Harga jual..." 
+                                                   class="w-full border-slate-200 rounded-lg text-xs font-bold py-2 px-2.5 focus:border-emerald-500 focus:ring-emerald-500 text-right pr-8">
+                                            <span class="absolute right-2 text-[9px] font-black text-slate-400 uppercase pointer-events-none" x-text="'/' + (item.price_unit || 'pcs')"></span>
+                                        </div>
                                     </div>
 
                                     <!-- Harga Modal Satuan (Untuk Profit) -->
                                     <div class="wholesale-col-cost col-span-4 order-6 flex flex-col gap-1">
-                                        <label class="wholesale-mobile-label text-[10px] font-bold text-slate-400 uppercase tracking-wider">Harga Modal (Rp)</label>
-                                        <input type="number" 
-                                               x-model="item.cost_price" 
-                                               @keydown.tab="if (idx === wholesaleForm.items.length - 1) { $event.preventDefault(); addWholesaleItem(); }"
-                                               placeholder="Modal..." 
-                                               class="w-full border-slate-200 rounded-lg text-xs font-bold py-2 px-3 focus:border-emerald-500 focus:ring-emerald-500 text-right">
+                                        <label class="wholesale-mobile-label text-[10px] font-bold text-slate-400 uppercase tracking-wider" x-text="'Harga Modal / ' + (item.price_unit || 'satuan')">Harga Modal (Rp)</label>
+                                        <div class="relative flex items-center">
+                                            <input type="number" 
+                                                   x-model="item.cost_price" 
+                                                   @keydown.tab="if (idx === wholesaleForm.items.length - 1) { $event.preventDefault(); addWholesaleItem(); }"
+                                                   placeholder="Modal..." 
+                                                   class="w-full border-slate-200 rounded-lg text-xs font-bold py-2 px-2.5 focus:border-emerald-500 focus:ring-emerald-500 text-right pr-8">
+                                            <span class="absolute right-2 text-[9px] font-black text-slate-400 uppercase pointer-events-none" x-text="'/' + (item.price_unit || 'pcs')"></span>
+                                        </div>
                                     </div>
 
                                 </div>

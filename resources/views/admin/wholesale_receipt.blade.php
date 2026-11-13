@@ -633,8 +633,8 @@
                             <tr>
                                 <td class="col-center">{{ $index + 1 }}</td>
                                 <td class="col-bold">{{ $item['name'] }}</td>
-                                <td class="col-center col-bold">{{ $item['qty'] }}</td>
-                                <td class="col-center" style="text-transform: capitalize;">{{ $item['unit'] }}</td>
+                                <td class="col-center col-bold">{{ rtrim(rtrim(number_format($item['qty'], 3, ',', '.'), '0'), ',') }}</td>
+                                <td class="col-center" style="text-transform: capitalize;">{{ strtolower($item['unit']) === 'kg' ? 'Kg' : $item['unit'] }}</td>
                                 <td class="col-right">Rp {{ number_format($item['unit_price'], 0, ',', '.') }}</td>
                                 <td class="col-right col-bold">Rp {{ number_format($item['total_price'], 0, ',', '.') }}</td>
                             </tr>

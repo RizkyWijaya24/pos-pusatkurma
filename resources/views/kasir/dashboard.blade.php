@@ -1060,6 +1060,8 @@
                                 <!-- Gambar: overlay di atas placeholder, sembunyi jika error -->
                                 <img x-show="product.image_path"
                                      :src="product.image_path ? ('/storage/' + product.image_path) : ''"
+                                     loading="lazy"
+                                     decoding="async"
                                      style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 2;"
                                      class="transition duration-300 group-hover:scale-105"
                                      onerror="this.style.display='none'"

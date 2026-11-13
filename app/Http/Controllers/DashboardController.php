@@ -95,47 +95,52 @@ class DashboardController extends Controller
             $query->where('category', $category);
         }
 
-        // Ambil data produk secara standar dari database
-        $productsFromDb = $query->get();
+        // Ambil data produk (di-cache 120 detik per lokasi & kategori agar saat kasir refresh/buka halaman tidak membebani CPU database)
+        $cacheCategoryKey = $category ? preg_replace('/[^a-zA-Z0-9]/', '', $category) : 'all';
+        $cacheKey = "kasir_products_loc_" . ($locationId ?? 'all') . "_" . $cacheCategoryKey;
 
-        $products = $productsFromDb->map(function ($product) use ($locationId) {
-            $stock = 0.0;
-            if ($locationId) {
-                if ($product->is_bundle) {
-                    if ($product->bundleItems->isEmpty()) {
-                        $stock = 0.0;
+        $products = \Illuminate\Support\Facades\Cache::remember($cacheKey, 120, function () use ($query, $locationId) {
+            $productsFromDb = $query->get();
+
+            return $productsFromDb->map(function ($product) use ($locationId) {
+                $stock = 0.0;
+                if ($locationId) {
+                    if ($product->is_bundle) {
+                        if ($product->bundleItems->isEmpty()) {
+                            $stock = 0.0;
+                        } else {
+                            $virtualStocks = $product->bundleItems->map(function ($item) use ($locationId) {
+                                $compStock = 0.0;
+                                if ($item->product->relationLoaded('productStocks')) {
+                                    $ps = $item->product->productStocks->firstWhere('location_id', $locationId);
+                                    $compStock = $ps ? (float) $ps->stock : 0.0;
+                                } else {
+                                    $compStock = (float) $item->product->getStockAtLocation($locationId);
+                                }
+                                return floor($compStock / max(1, $item->quantity));
+                            });
+                            $stock = (float) $virtualStocks->min();
+                        }
                     } else {
-                        $virtualStocks = $product->bundleItems->map(function ($item) use ($locationId) {
-                            $compStock = 0.0;
-                            if ($item->product->relationLoaded('productStocks')) {
-                                $ps = $item->product->productStocks->firstWhere('location_id', $locationId);
-                                $compStock = $ps ? (float) $ps->stock : 0.0;
-                            } else {
-                                $compStock = (float) $item->product->getStockAtLocation($locationId);
-                            }
-                            return floor($compStock / $item->quantity);
-                        });
-                        $stock = (float) $virtualStocks->min();
+                        $ps = $product->productStocks->firstWhere('location_id', $locationId);
+                        $stock = $ps ? (float) $ps->stock : 0.0;
                     }
                 } else {
-                    $ps = $product->productStocks->firstWhere('location_id', $locationId);
-                    $stock = $ps ? (float) $ps->stock : 0.0;
+                    $stock = (float) $product->stock; // fallback to legacy stock column
                 }
-            } else {
-                $stock = (float) $product->stock; // fallback to legacy stock column
-            }
 
-            return [
-                'id' => $product->id,
-                'sku' => $product->sku,
-                'name' => $product->name,
-                'category' => $product->category,
-                'price' => (int) $product->selling_price, // map selling_price to price in PHP
-                'price_unit' => $product->price_unit,
-                'image_path' => $product->image_path,
-                'stock' => $stock,
-                'price_tiers' => $product->price_tiers ?? []
-            ];
+                return [
+                    'id' => $product->id,
+                    'sku' => $product->sku,
+                    'name' => $product->name,
+                    'category' => $product->category,
+                    'price' => (int) $product->selling_price, // map selling_price to price in PHP
+                    'price_unit' => $product->price_unit,
+                    'image_path' => $product->image_path,
+                    'stock' => $stock,
+                    'price_tiers' => $product->price_tiers ?? []
+                ];
+            });
         });
 
 

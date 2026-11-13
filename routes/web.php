@@ -207,12 +207,29 @@ Route::post('/tour-leader/{affiliate}/withdraw', [\App\Http\Controllers\TourLead
 
 require __DIR__.'/auth.php';
 
-// Fallback untuk memuat gambar produk dari server live jika tidak ada di local storage
-// Security: hanya ekstensi file gambar yang diizinkan untuk mencegah open redirect abuse
+// Fallback untuk memuat gambar produk dari storage
+// Security: cek file lokal terlebih dahulu & cegah redirect loop tak terbatas di production
 Route::get('storage/products/{filename}', function ($filename) {
-    // Whitelist ekstensi file gambar yang diperbolehkan
     if (!preg_match('/\.(jpg|jpeg|png|webp|gif|avif)$/i', $filename)) {
         abort(404);
     }
-    return redirect('https://pos.pusatkurmacianjur.my.id/storage/products/' . rawurlencode(basename($filename)));
+
+    $cleanName = basename($filename);
+    $localPath = storage_path('app/public/products/' . $cleanName);
+
+    // 1. Jika file fisik ada di storage lokal/server ini, langsung kirim sebagai file statis
+    if (file_exists($localPath)) {
+        return response()->file($localPath, [
+            'Cache-Control' => 'public, max-age=604800',
+        ]);
+    }
+
+    // 2. Jika di production / host live, JANGAN redirect ke diri sendiri karena memicu loop tak berujung (CPU 100%)
+    $currentHost = request()->getHost();
+    if (app()->environment('production') || str_contains($currentHost, 'pusatkurmacianjur')) {
+        abort(404);
+    }
+
+    // 3. Fallback hanya untuk development lokal (localhost)
+    return redirect('https://pos.pusatkurmacianjur.my.id/storage/products/' . rawurlencode($cleanName));
 });

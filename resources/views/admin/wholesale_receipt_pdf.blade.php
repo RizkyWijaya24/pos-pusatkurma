@@ -419,8 +419,8 @@
                 <tr class="{{ $index % 2 == 1 ? 'even' : '' }}">
                     <td class="center">{{ $index + 1 }}</td>
                     <td class="bold">{{ $item['name'] }}</td>
-                    <td class="center bold">{{ $item['qty'] }}</td>
-                    <td class="center">{{ $item['unit'] }}</td>
+                    <td class="center bold">{{ rtrim(rtrim(number_format($item['qty'], 3, ',', '.'), '0'), ',') }}</td>
+                    <td class="center">{{ strtolower($item['unit']) === 'kg' ? 'Kg' : $item['unit'] }}</td>
                     <td class="right">{{ number_format($item['unit_price'], 0, ',', '.') }}</td>
                     <td class="right bold">{{ number_format($item['total_price'], 0, ',', '.') }}</td>
                 </tr>

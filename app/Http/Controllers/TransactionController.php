@@ -1386,7 +1386,19 @@ class TransactionController extends Controller
                         'qty' => 0.0,
                     ];
                 }
-                $aggregatedItems[$pName]['qty'] += floatval($item['qty']);
+
+                // Konversi satuan jika produk berbasis gram tetapi diorder dalam kg
+                $itemUnit = strtolower(trim($item['price_unit'] ?? ''));
+                $productUnit = strtolower(trim($product->price_unit ?? ''));
+                $convertedQty = floatval($item['qty']);
+
+                if ($productUnit === 'gram' && in_array($itemUnit, ['kg', 'kilogram'])) {
+                    $convertedQty *= 1000;
+                } elseif (in_array($productUnit, ['kg', 'kilogram']) && $itemUnit === 'gram') {
+                    $convertedQty /= 1000;
+                }
+
+                $aggregatedItems[$pName]['qty'] += $convertedQty;
             }
         }
 
@@ -1401,9 +1413,16 @@ class TransactionController extends Controller
                     : $product->stock;
 
                 if ($availableStock < $qtyRequested) {
+                    $availFormatted = ($product->price_unit === 'gram' && $availableStock >= 1000)
+                        ? ($availableStock / 1000) . ' kg (' . $availableStock . ' gram)'
+                        : $availableStock . ' ' . $product->price_unit;
+                    $reqFormatted = ($product->price_unit === 'gram' && $qtyRequested >= 1000)
+                        ? ($qtyRequested / 1000) . ' kg (' . $qtyRequested . ' gram)'
+                        : $qtyRequested . ' ' . $product->price_unit;
+
                     return response()->json([
                         'success' => false,
-                        'message' => 'Stok produk "' . $product->name . '" tidak mencukupi! Tersedia: ' . $availableStock . ' ' . $product->price_unit . ', diminta: ' . $qtyRequested . ' ' . $product->price_unit
+                        'message' => 'Stok produk "' . $product->name . '" tidak mencukupi! Tersedia: ' . $availFormatted . ', diminta: ' . $reqFormatted
                     ], 422);
                 }
             }
@@ -1473,21 +1492,31 @@ class TransactionController extends Controller
             foreach ($request->items as $item) {
                 $product = $productsByName->get($item['name']);
                 if ($product) {
+                    $itemUnit = strtolower(trim($item['price_unit'] ?? ''));
+                    $productUnit = strtolower(trim($product->price_unit ?? ''));
+                    $deductQty = floatval($item['qty']);
+
+                    if ($productUnit === 'gram' && in_array($itemUnit, ['kg', 'kilogram'])) {
+                        $deductQty *= 1000;
+                    } elseif (in_array($productUnit, ['kg', 'kilogram']) && $itemUnit === 'gram') {
+                        $deductQty /= 1000;
+                    }
+
                     if ($wholesaleLocation) {
                         try {
                             $stockService->deductSaleStock(
                                 $product,
                                 $wholesaleLocation,
-                                floatval($item['qty']),
+                                $deductQty,
                                 $transaction->id,
                                 auth()->user() ?? \App\Models\User::first(),
                                 "Penjualan Nota Partai #{$transaction->transaction_code}"
                             );
                         } catch (\Exception $e) {
-                            $product->decrement('stock', floatval($item['qty']));
+                            $product->decrement('stock', $deductQty);
                         }
                     } else {
-                        $product->decrement('stock', floatval($item['qty']));
+                        $product->decrement('stock', $deductQty);
                     }
                 }
             }
@@ -1543,6 +1572,15 @@ class TransactionController extends Controller
                     $unit = trim($matches[3]);
                     $price = intval($matches[4]);
                     
+                    // Smart conversion untuk nota partai ke pelanggan:
+                    // Jika satuan barang gram, konversikan ke kg agar faktur partai tampil profesional
+                    $unitLower = strtolower($unit);
+                    if (in_array($unitLower, ['gram', 'g', 'gr'])) {
+                        $qty = $qty / 1000;
+                        $unit = 'kg';
+                        $price = $price * 1000;
+                    }
+
                     $items[] = [
                         'name' => $name,
                         'qty' => $qty,
@@ -1555,6 +1593,12 @@ class TransactionController extends Controller
                     $qty = floatval($matches[2]);
                     $unit = trim($matches[3]);
                     
+                    $unitLower = strtolower($unit);
+                    if (in_array($unitLower, ['gram', 'g', 'gr'])) {
+                        $qty = $qty / 1000;
+                        $unit = 'kg';
+                    }
+
                     $items[] = [
                         'name' => $name,
                         'qty' => $qty,
