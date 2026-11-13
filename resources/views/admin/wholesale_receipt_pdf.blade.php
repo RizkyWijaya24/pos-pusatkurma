@@ -197,6 +197,7 @@
         .bottom-table {
             width: 100%;
             border-collapse: collapse;
+            margin-top: 15px;
             margin-bottom: 8px;
         }
         .bottom-table td {
@@ -338,7 +339,7 @@
         .dense .items-table { margin-bottom: 4px; font-size: 6.8pt; }
         .dense .items-table th { padding: 2px 4px; font-size: 6.5pt; }
         .dense .items-table td { padding: 1.8px 4px; }
-        .dense .bottom-table { margin-bottom: 4px; }
+        .dense .bottom-table { margin-top: 18px; margin-bottom: 6px; }
         .dense .payment-box { padding: 4px 6px; }
         .dense .payment-box-title { font-size: 6.5pt; }
         .dense .bank-num { font-size: 8.5pt; }

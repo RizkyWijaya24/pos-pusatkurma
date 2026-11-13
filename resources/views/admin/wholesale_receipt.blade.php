@@ -315,7 +315,8 @@
             grid-template-columns: 1.05fr 0.95fr;
             gap: 12px;
             align-items: start;
-            margin-bottom: 7px;
+            margin-top: 24px;
+            margin-bottom: 12px;
         }
 
         .payment-info-box {
@@ -484,8 +485,8 @@
             padding: 8px 12px;
         }
         .density-spacious .bottom-grid {
-            margin-top: 8px;
-            margin-bottom: 8px;
+            margin-top: 28px;
+            margin-bottom: 15px;
             gap: 14px;
         }
         .density-spacious .payment-info-box {
@@ -507,6 +508,10 @@
             padding: 4.5px 8px;
             font-size: 8.5pt;
         }
+        .density-normal .bottom-grid {
+            margin-top: 26px;
+            margin-bottom: 14px;
+        }
 
         /* Tier 3: Compact (10 - 13 items) */
         .density-compact .items-table th {
@@ -523,6 +528,10 @@
         .density-compact .meta-grid {
             margin-top: 5px;
             margin-bottom: 5px;
+        }
+        .density-compact .bottom-grid {
+            margin-top: 24px;
+            margin-bottom: 12px;
         }
 
         /* Tier 4: Dense (14+ items, e.g. 15-22 items like 18 items) */
@@ -591,7 +600,8 @@
         }
         .density-dense .bottom-grid {
             gap: 8px;
-            margin-bottom: 4px;
+            margin-top: 28px;
+            margin-bottom: 10px;
         }
         .density-dense .payment-info-box {
             padding: 4px 6px;
