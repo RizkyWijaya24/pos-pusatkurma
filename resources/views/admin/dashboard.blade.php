@@ -4805,15 +4805,17 @@
              x-transition:leave="transition ease-in duration-150"
              x-transition:leave-start="opacity-100"
              x-transition:leave-end="opacity-0"
-             class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/70 backdrop-blur-sm"
+             class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-2 sm:p-4 bg-slate-900/70 backdrop-blur-sm"
              style="display: none;"
              @keydown.escape.window="if (!editWholesaleForm.saving) showEditWholesaleModal = false">
             
-            <div class="modal-card bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden"
+            <div class="modal-card bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden my-auto"
+                 style="max-height: 90vh; height: auto;"
                  @click.stop>
                 
                 <!-- Modal Header -->
-                <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                <div class="shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50"
+                     style="flex-shrink: 0;">
                     <div class="flex items-center gap-3">
                         <div class="p-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -4836,7 +4838,8 @@
                 </div>
 
                 <!-- Modal Body with Scroll -->
-                <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
+                <div class="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-5"
+                     style="overflow-y: auto; flex: 1 1 auto; min-height: 0;">
                     
                     <!-- Loading state -->
                     <template x-if="editWholesaleForm.loading">
@@ -5024,26 +5027,37 @@
                     </template>
                 </div>
 
-                <!-- Modal Footer -->
-                <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-                    <button type="button" 
-                            @click="showEditWholesaleModal = false" 
-                            :disabled="editWholesaleForm.saving"
-                            class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-xs tracking-wide uppercase transition">
-                        Batal
-                    </button>
-                    <button type="button" 
-                            @click="submitUpdateWholesale()" 
-                            :disabled="editWholesaleForm.saving || editWholesaleForm.loading"
-                            class="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-extrabold text-xs tracking-wide uppercase transition shadow-md shadow-emerald-700/20 flex items-center gap-2 disabled:opacity-50">
-                        <template x-if="editWholesaleForm.saving">
-                            <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                        </template>
-                        <span>Simpan Perubahan Nota</span>
-                    </button>
+                <!-- Modal Footer (Fixed at Bottom) -->
+                <div class="shrink-0 flex items-center justify-between gap-3 px-6 py-3.5 border-t border-slate-100 bg-slate-50/90"
+                     style="flex-shrink: 0;">
+                    <div class="flex items-center gap-3">
+                        <div class="text-xs">
+                            <span class="text-slate-400 font-bold block text-[10px] uppercase">Total Nota:</span>
+                            <span class="text-emerald-700 font-extrabold text-sm sm:text-base font-mono" x-text="formatRupiah(calculateEditWholesaleGrandTotal())"></span>
+                        </div>
+                        <span class="text-[10px] font-bold text-slate-500 bg-slate-200/80 px-2.5 py-0.5 rounded-full hidden sm:inline-block" 
+                              x-text="(editWholesaleForm.items ? editWholesaleForm.items.length : 0) + ' baris barang'"></span>
+                    </div>
+                    <div class="flex items-center gap-2.5">
+                        <button type="button" 
+                                @click="showEditWholesaleModal = false" 
+                                :disabled="editWholesaleForm.saving"
+                                class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-xs tracking-wide uppercase transition">
+                            Batal
+                        </button>
+                        <button type="button" 
+                                @click="submitUpdateWholesale()" 
+                                :disabled="editWholesaleForm.saving || editWholesaleForm.loading"
+                                class="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-extrabold text-xs tracking-wide uppercase transition shadow-md shadow-emerald-700/20 flex items-center gap-2 disabled:opacity-50">
+                            <template x-if="editWholesaleForm.saving">
+                                <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </template>
+                            <span>Simpan Perubahan Nota</span>
+                        </button>
+                    </div>
                 </div>
 
             </div>
