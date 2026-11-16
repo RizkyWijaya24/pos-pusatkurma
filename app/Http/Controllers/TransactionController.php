@@ -29,9 +29,10 @@ class TransactionController extends Controller
             ->latest('id')
             ->paginate(15);
 
-        // ---- Today totals ----
+        // ---- Today totals (hanya select kolom esensial untuk menghemat memori) ----
         $todayTrxList = Transaction::where('cashier_id', $cashierId)
             ->whereBetween('created_at', [$todayStart, $todayEnd])
+            ->select('id', 'total_price', 'total_cost', 'payment_method')
             ->get();
 
         $omsetSum = 0;
@@ -58,7 +59,7 @@ class TransactionController extends Controller
             'debit_total' => $debitSum,
         ];
 
-        // ---- Weekly summary (Mon–Sun) ----
+        // ---- Weekly summary (Mon–Sun) via DB GROUP BY aggregation ----
         $startOfWeek = $now->copy()->startOfWeek();
         $endOfWeek   = $now->copy()->endOfWeek();
         $weeklyDays  = [];
@@ -71,22 +72,29 @@ class TransactionController extends Controller
                 'count'     => 0,
             ];
         }
-        $weeklyTrxs = Transaction::where('cashier_id', $cashierId)
+
+        $weeklyStats = Transaction::where('cashier_id', $cashierId)
             ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
-            ->get();
-        foreach ($weeklyTrxs as $trx) {
-            $key = $trx->created_at->format('Y-m-d');
-            if (isset($weeklyDays[$key])) {
-                $weeklyDays[$key]['omset']  += (int)$trx->total_price;
-                $weeklyDays[$key]['profit'] += (int)($trx->total_price - $trx->total_cost);
-                $weeklyDays[$key]['count']++;
+            ->selectRaw('DATE(created_at) as date, SUM(total_price) as omset, SUM(total_price - total_cost) as profit, COUNT(id) as count')
+            ->groupBy('date')
+            ->get()
+            ->keyBy('date');
+
+        foreach ($weeklyDays as $key => &$day) {
+            if ($weeklyStats->has($key)) {
+                $stat = $weeklyStats->get($key);
+                $day['omset']  = (int) $stat->omset;
+                $day['profit'] = (int) $stat->profit;
+                $day['count']  = (int) $stat->count;
             }
         }
+        unset($day);
+
         $weeklyOmset  = array_sum(array_column($weeklyDays, 'omset'));
         $weeklyProfit = array_sum(array_column($weeklyDays, 'profit'));
         $weeklyCount  = array_sum(array_column($weeklyDays, 'count'));
 
-        // ---- Monthly summary (per week) ----
+        // ---- Monthly summary (per week) via DB GROUP BY aggregation ----
         $startOfMonth  = $now->copy()->startOfMonth();
         $endOfMonth    = $now->copy()->endOfMonth();
         $daysInMonth   = $now->daysInMonth;
@@ -99,21 +107,26 @@ class TransactionController extends Controller
         if ($daysInMonth > 28) {
             $monthlyWeeks[5] = ['label' => 'Minggu 5', 'sub_label' => '29 – ' . $daysInMonth . ' ' . $startOfMonth->translatedFormat('F'), 'omset' => 0, 'profit' => 0, 'count' => 0, 'start' => 29, 'end' => $daysInMonth];
         }
-        $monthlyTrxs = Transaction::where('cashier_id', $cashierId)
+
+        $monthlyStats = Transaction::where('cashier_id', $cashierId)
             ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->selectRaw('DAY(created_at) as day_num, SUM(total_price) as omset, SUM(total_price - total_cost) as profit, COUNT(id) as count')
+            ->groupBy('day_num')
             ->get();
-        foreach ($monthlyTrxs as $trx) {
-            $day = $trx->created_at->day;
+
+        foreach ($monthlyStats as $stat) {
+            $day = (int) $stat->day_num;
             foreach ($monthlyWeeks as $wNum => &$w) {
                 if ($day >= $w['start'] && $day <= $w['end']) {
-                    $w['omset']  += (int)$trx->total_price;
-                    $w['profit'] += (int)($trx->total_price - $trx->total_cost);
-                    $w['count']++;
+                    $w['omset']  += (int) $stat->omset;
+                    $w['profit'] += (int) $stat->profit;
+                    $w['count']  += (int) $stat->count;
                     break;
                 }
             }
-            unset($w);
         }
+        unset($w);
+
         $monthlyOmset  = array_sum(array_column($monthlyWeeks, 'omset'));
         $monthlyProfit = array_sum(array_column($monthlyWeeks, 'profit'));
         $monthlyCount  = array_sum(array_column($monthlyWeeks, 'count'));
@@ -559,7 +572,9 @@ class TransactionController extends Controller
         } else {
             $periodTrxs->whereDate('created_at', $today);
         }
-        $periodTrxList = $periodTrxs->get();
+        $periodTrxList = $periodTrxs
+            ->select('id', 'total_price', 'total_cost', 'payment_method')
+            ->get();
 
         $todayOmset  = 0;
         $todayProfit = 0;
@@ -706,7 +721,9 @@ class TransactionController extends Controller
         } else {
             $periodTrxs->whereDate('created_at', $today);
         }
-        $periodTrxList = $periodTrxs->get();
+        $periodTrxList = $periodTrxs
+            ->select('id', 'total_price', 'total_cost', 'payment_method')
+            ->get();
 
         $todayOmset  = 0;
         $todayProfit = 0;

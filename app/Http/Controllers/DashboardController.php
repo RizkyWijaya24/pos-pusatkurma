@@ -51,11 +51,12 @@ class DashboardController extends Controller
             ->take(10)
             ->get();
 
-        // Ambil data rekap pelanggan nota partai & piutang berjalan mereka
+        // Ambil data rekap pelanggan nota partai & piutang berjalan mereka (select minimal kolom)
         $wholesaleCustomers = \App\Models\Transaction::where('transaction_type', 'wholesale')
             ->whereNotNull('customer_name')
             ->where('customer_name', '!=', '')
-            ->with('installments')
+            ->select('id', 'customer_name', 'customer_phone', 'total_price', 'payment_status')
+            ->with(['installments:id,transaction_id,amount'])
             ->get()
             ->groupBy(fn($t) => strtolower(trim($t->customer_name)))
             ->map(function ($group) {
@@ -202,9 +203,12 @@ class DashboardController extends Controller
      */
     public function owner(Request $request)
     {
-        // 1. Fetch stock alerts — 1 query (ambil sekaligus, count dari collection)
-        $lowStockProducts = Product::where('stock', '<=', 10)->get();
-        $lowStockCount    = $lowStockProducts->count();
+        // 1. Fetch stock alerts — count dari DB, hanya load data jika dibutuhkan untuk tampilan
+        $lowStockCount    = Product::where('stock', '<=', 10)->count();
+        $lowStockProducts = Product::where('stock', '<=', 10)
+            ->select('id', 'name', 'sku', 'stock', 'category')
+            ->orderBy('stock')
+            ->get();
 
         // 2. Resolve Active Date Ranges
         $dateRanges = $this->resolveDateRanges($request);
@@ -327,15 +331,22 @@ class DashboardController extends Controller
                 ];
             }
 
-            $weeklyTrxs = $baseQuery()->whereBetween('created_at', [$startOfWeek, $endOfWeek])->get();
-            foreach ($weeklyTrxs as $trx) {
-                $dateStr = $trx->created_at->format('Y-m-d');
-                if (isset($days[$dateStr])) {
-                    $days[$dateStr]['omset'] += $trx->total_price;
-                    $days[$dateStr]['profit'] += ($trx->total_price - $trx->total_cost);
-                    $days[$dateStr]['count']++;
+            // DB-level aggregation (GROUP BY date) — jauh lebih hemat RAM
+            $weeklyStats = $baseQuery()
+                ->selectRaw('DATE(created_at) as date, SUM(total_price) as omset, SUM(total_price - total_cost) as profit, COUNT(id) as count')
+                ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
+                ->groupBy('date')
+                ->get()
+                ->keyBy('date');
+            foreach ($days as $dateStr => &$dayData) {
+                if ($weeklyStats->has($dateStr)) {
+                    $stat = $weeklyStats->get($dateStr);
+                    $dayData['omset']  = (int) $stat->omset;
+                    $dayData['profit'] = (int) $stat->profit;
+                    $dayData['count']  = (int) $stat->count;
                 }
             }
+            unset($dayData);
             $breakdownData = array_values($days);
         } else { // bulanan
             $daysInMonth = $startOfMonth->daysInMonth;
@@ -349,14 +360,19 @@ class DashboardController extends Controller
                 $weeksBreakdown[5] = ['start' => 29, 'end' => $daysInMonth, 'label' => 'Minggu 5', 'sub_label' => '29 - ' . $daysInMonth . ' ' . $startOfMonth->translatedFormat('F'), 'omset' => 0, 'profit' => 0, 'count' => 0];
             }
 
-            $monthlyTrxs = $baseQuery()->whereBetween('created_at', [$startOfMonth, $endOfMonth])->get();
-            foreach ($monthlyTrxs as $trx) {
-                $day = $trx->created_at->day;
+            // DB-level aggregation per hari (GROUP BY day) — hemat RAM untuk data bulanan
+            $monthlyStats = $baseQuery()
+                ->selectRaw('DAY(created_at) as day_num, SUM(total_price) as omset, SUM(total_price - total_cost) as profit, COUNT(id) as count')
+                ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+                ->groupBy('day_num')
+                ->get();
+            foreach ($monthlyStats as $stat) {
+                $dayNum = (int) $stat->day_num;
                 foreach ($weeksBreakdown as $wNum => &$w) {
-                    if ($day >= $w['start'] && $day <= $w['end']) {
-                        $w['omset'] += $trx->total_price;
-                        $w['profit'] += ($trx->total_price - $trx->total_cost);
-                        $w['count']++;
+                    if ($dayNum >= $w['start'] && $dayNum <= $w['end']) {
+                        $w['omset']  += (int) $stat->omset;
+                        $w['profit'] += (int) $stat->profit;
+                        $w['count']  += (int) $stat->count;
                         break;
                     }
                 }
@@ -448,24 +464,26 @@ class DashboardController extends Controller
 
         $monthlyTrend = array_values($weeks);
 
-        // 7. Fetch transactions untuk best sellers — gunakan 1 query (monthly), filter di memory
+        // 7. Best sellers — 3 query ringan hanya ambil kolom yang diperlukan
         $bestSellerDay = ($filterType === 'harian') ? $dateObj : $start;
 
-        // Ambil semua transaksi bulan ini dalam 1 query, lalu filter di PHP
-        $allMonthlyForBestSeller = $baseQuery()
-            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+        $todayTransactionsForBestSeller = $baseQuery()
+            ->select('items_summary', 'created_at')
+            ->whereBetween('created_at', [
+                $bestSellerDay->copy()->startOfDay(),
+                $bestSellerDay->copy()->endOfDay(),
+            ])
             ->get();
 
-        $todayTransactionsForBestSeller   = $allMonthlyForBestSeller->filter(
-            fn($t) => $t->created_at->between(
-                $bestSellerDay->copy()->startOfDay(),
-                $bestSellerDay->copy()->endOfDay()
-            )
-        );
-        $weeklyTransactionsForBestSeller  = $allMonthlyForBestSeller->filter(
-            fn($t) => $t->created_at->between($startOfWeek, $endOfWeek)
-        );
-        $monthlyTransactionsForBestSeller = $allMonthlyForBestSeller;
+        $weeklyTransactionsForBestSeller = $baseQuery()
+            ->select('items_summary', 'created_at')
+            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
+            ->get();
+
+        $monthlyTransactionsForBestSeller = $baseQuery()
+            ->select('items_summary', 'created_at')
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->get();
 
         $bestSellersToday = $this->getBestSellers($todayTransactionsForBestSeller, 5);
         $bestSellersWeekly = $this->getBestSellers($weeklyTransactionsForBestSeller, 5);

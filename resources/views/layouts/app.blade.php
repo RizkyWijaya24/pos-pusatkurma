@@ -6,8 +6,15 @@
     $lowStockCount = 0;
 
     if ($user) {
-        $dbNotifications = $user->notifications()->take(5)->get();
-        $unreadCount = $user->unreadNotifications()->count();
+        // Cache notifikasi 30 detik per user (mengurangi 2 query DB di setiap request)
+        $notifData = \Illuminate\Support\Facades\Cache::remember("user_notif_{$user->id}", 30, function () use ($user) {
+            return [
+                'notifications' => $user->notifications()->take(5)->get(),
+                'unread_count'  => $user->unreadNotifications()->count(),
+            ];
+        });
+        $dbNotifications = $notifData['notifications'];
+        $unreadCount     = $notifData['unread_count'];
 
         // Cache alert low stock 60 detik agar tidak menjalankan query berat di setiap refresh halaman
         $cacheKey = ($user->isAdmin() || $user->isOwner()) ? 'all' : ($user->branch ?? 'default');
@@ -62,6 +69,30 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+        <!-- Page Loading Indicator: instant feedback saat navigasi -->
+        <style>
+            #page-loader {
+                position: fixed;
+                top: 0; left: 0;
+                width: 0%;
+                height: 3px;
+                background: linear-gradient(90deg, #10b981, #34d399);
+                z-index: 9999999;
+                transition: width 0.2s ease, opacity 0.3s ease;
+                opacity: 0;
+            }
+            #page-loader.loading {
+                opacity: 1;
+                width: 70%;
+                transition: width 8s cubic-bezier(0.1, 0.05, 0, 1);
+            }
+            #page-loader.done {
+                opacity: 0;
+                width: 100%;
+                transition: width 0.1s ease, opacity 0.4s ease 0.1s;
+            }
+        </style>
 
         <style>
             body {
@@ -162,6 +193,78 @@
         </script>
     </head>
     <body class="h-full text-slate-800 dark:text-purple-100 antialiased overflow-x-hidden bg-slate-50 dark:bg-dp-950" x-data="{ sidebarOpen: false }">
+
+        <!-- Page Loading Progress Bar -->
+        <div id="page-loader"></div>
+        <script>
+            // Instant loading feedback: tampilkan bar hijau saat klik link navigasi
+            (function() {
+                var loader = document.getElementById('page-loader');
+                var timer = null;
+                function startLoad() {
+                    if (timer) clearTimeout(timer);
+                    loader.className = 'loading';
+                }
+                function finishLoad() {
+                    loader.className = 'done';
+                    timer = setTimeout(function() { loader.className = ''; loader.style.width = '0%'; }, 500);
+                }
+                document.addEventListener('click', function(e) {
+                    var a = e.target.closest('a[href]');
+                    if (!a) return;
+                    var href = a.getAttribute('href');
+                    if (!href || href.startsWith('#') || href.startsWith('javascript') || href.startsWith('mailto') || href.startsWith('tel') || a.target === '_blank') return;
+                    // Hanya link navigasi internal (bukan file download)
+                    if (href.startsWith('http') && !href.includes(window.location.hostname)) return;
+                    startLoad();
+                });
+                window.addEventListener('pageshow', finishLoad);
+                window.addEventListener('load', finishLoad);
+
+                // Speculative Prefetch on Hover (Instant Page Transition)
+                var prefetched = new Set();
+                var hoverTimer = null;
+                function canPrefetch(urlStr) {
+                    if (!urlStr) return false;
+                    try {
+                        var url = new URL(urlStr, window.location.href);
+                        if (url.origin !== window.location.origin) return false;
+                        if (url.pathname === window.location.pathname && url.search === window.location.search) return false;
+                        if (urlStr.includes('/logout') || urlStr.includes('/export') || urlStr.match(/\.(pdf|xlsx?|csv|zip|png|jpe?g)$/i)) return false;
+                        return true;
+                    } catch(e) {
+                        return false;
+                    }
+                }
+                function prefetch(urlStr) {
+                    if (prefetched.has(urlStr) || !canPrefetch(urlStr)) return;
+                    prefetched.add(urlStr);
+                    var link = document.createElement('link');
+                    link.rel = 'prefetch';
+                    link.href = urlStr;
+                    link.as = 'document';
+                    document.head.appendChild(link);
+                }
+                document.addEventListener('mouseover', function(e) {
+                    var a = e.target.closest('a[href]');
+                    if (!a) return;
+                    var href = a.getAttribute('href');
+                    if (!canPrefetch(href)) return;
+                    hoverTimer = setTimeout(function() {
+                        prefetch(href);
+                    }, 65);
+                }, { passive: true });
+                document.addEventListener('mouseout', function() {
+                    if (hoverTimer) clearTimeout(hoverTimer);
+                }, { passive: true });
+                document.addEventListener('touchstart', function(e) {
+                    var a = e.target.closest('a[href]');
+                    if (!a) return;
+                    var href = a.getAttribute('href');
+                    prefetch(href);
+                }, { passive: true });
+            })();
+        </script>
 
         <!-- Impersonation Banner -->
         @if (session()->has('impersonate_original_user_id'))

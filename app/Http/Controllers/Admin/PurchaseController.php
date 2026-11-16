@@ -13,6 +13,7 @@ use App\Models\StockLocation;
 use App\Models\StockAdjustmentLog;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -63,19 +64,22 @@ class PurchaseController extends Controller
             ->orderBy('due_date', 'asc')
             ->get();
 
-        // Summary Stats
-        $monthlyPurchases = Purchase::whereBetween('purchase_date', [$startOfMonth, $endOfMonth])->get();
-        $monthlyTotal = $monthlyPurchases->sum('total_amount');
-        $monthlyCount = $monthlyPurchases->count();
+        // Summary Stats — gunakan DB aggregation, bukan PHP collection sum/count
+        $monthlyStats   = Purchase::whereBetween('purchase_date', [$startOfMonth, $endOfMonth])
+            ->selectRaw('SUM(total_amount) as total, COUNT(id) as cnt')
+            ->first();
+        $monthlyTotal   = (int) ($monthlyStats->total ?? 0);
+        $monthlyCount   = (int) ($monthlyStats->cnt ?? 0);
 
         $totalOutstandingDebt = $payables->sum(fn($p) => $p->remaining_debt);
-        $overdueCount = $payables->filter(fn($p) => $p->is_overdue)->count();
+        $overdueCount         = $payables->filter(fn($p) => $p->is_overdue)->count();
 
-        // Customer Receivables Stats (Piutang Pelanggan dari Penjualan Tempo)
+        // Customer Receivables Stats — select hanya kolom yang diperlukan
         $activeReceivables = Transaction::where('transaction_type', 'wholesale')
             ->where('payment_method', 'Piutang / Tempo')
             ->where('payment_status', 'unpaid')
-            ->with('installments')
+            ->select('id', 'total_price', 'customer_name')
+            ->with(['installments:id,transaction_id,amount'])
             ->get();
 
         $totalReceivablesAmount = $activeReceivables->sum(function ($trx) {
@@ -86,13 +90,19 @@ class PurchaseController extends Controller
         })->count();
         $receivablesInvoicesCount = $activeReceivables->count();
 
-        // Master Data for Form
-        $suppliers = Supplier::where('is_active', true)->orderBy('name')->get();
-        $locations = StockLocation::where('is_active', true)->orderBy('name')->get();
-        $products = Product::where('is_active', true)
-            ->select('id', 'sku', 'name', 'category', 'cost_price', 'selling_price', 'price_unit', 'stock')
-            ->orderBy('name')
-            ->get();
+        // Master Data for Form — di-cache 10 menit (data jarang berubah)
+        $suppliers = Cache::remember('active_suppliers_list', 600,
+            fn() => Supplier::where('is_active', true)->orderBy('name')->get()
+        );
+        $locations = Cache::remember('active_locations_list', 600,
+            fn() => StockLocation::where('is_active', true)->orderBy('name')->get()
+        );
+        $products = Cache::remember('active_products_purchase_form', 300,
+            fn() => Product::where('is_active', true)
+                ->select('id', 'sku', 'name', 'category', 'cost_price', 'selling_price', 'price_unit', 'stock')
+                ->orderBy('name')
+                ->get()
+        );
         $categories = \App\Models\Category::pluck('name')
             ->merge(Product::distinct()->whereNotNull('category')->pluck('category'))
             ->filter(fn($c) => !empty(trim($c)))
@@ -544,6 +554,248 @@ class PurchaseController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mencatat utang supplier: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * Update an existing purchase order / manual debt.
+     */
+    public function update(Request $request, Purchase $purchase)
+    {
+        $isManual = empty($purchase->items) || $purchase->items->count() === 0;
+
+        $validated = $request->validate([
+            'supplier_name'   => 'required|string|max:255',
+            'supplier_phone'  => 'nullable|string|max:50',
+            'invoice_number'  => 'nullable|string|max:100',
+            'location_id'     => 'required|exists:stock_locations,id',
+            'purchase_date'   => 'required|date',
+            'due_date'        => 'nullable|date',
+            'payment_method'  => 'nullable|string|max:50',
+            'notes'           => 'nullable|string|max:1000',
+            'total_amount'    => 'nullable|numeric|min:0',
+            'items'           => 'nullable|array',
+            'items.*.product_id'          => 'required_with:items|exists:products,id',
+            'items.*.quantity'            => 'required_with:items|numeric|min:0.001',
+            'items.*.unit'                => 'required_with:items|string|max:50',
+            'items.*.unit_cost'           => 'required_with:items|numeric|min:0',
+            'items.*.update_product_cost' => 'nullable|boolean',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // 1. Find or create supplier
+            $supplier = null;
+            if (!empty($validated['supplier_name'])) {
+                $supplier = Supplier::firstOrCreate(
+                    ['name' => trim($validated['supplier_name'])],
+                    ['phone' => $validated['supplier_phone'] ?? null]
+                );
+            }
+
+            $oldLocationId = $purchase->location_id;
+            $newLocationId = (int) $validated['location_id'];
+
+            // 2. If purchase has items and updated items are provided
+            if (isset($validated['items']) && is_array($validated['items']) && count($validated['items']) > 0) {
+                // A. Revert old stock from old location
+                foreach ($purchase->items as $oldItem) {
+                    $oldProductStock = ProductStock::where('product_id', $oldItem->product_id)
+                        ->where('location_id', $oldLocationId)
+                        ->first();
+                    if ($oldProductStock) {
+                        $oldProductStock->stock = max(0, (float)$oldProductStock->stock - (float)$oldItem->quantity);
+                        $oldProductStock->save();
+                    }
+
+                    $oldProd = Product::find($oldItem->product_id);
+                    if ($oldProd) {
+                        $oldProd->stock = max(0, (float)$oldProd->stock - (float)$oldItem->quantity);
+                        $oldProd->save();
+                    }
+                }
+
+                // Delete old items
+                $purchase->items()->delete();
+
+                // B. Insert updated items and apply new stock to new location
+                $calculatedTotal = 0;
+                $itemsSummaryArr = [];
+
+                foreach ($validated['items'] as $itemData) {
+                    $prod = Product::find($itemData['product_id']);
+                    $subtotal = round((float) $itemData['quantity'] * (float) $itemData['unit_cost'], 2);
+                    $calculatedTotal += $subtotal;
+                    $shouldUpdateCost = !isset($itemData['update_product_cost']) || (bool) $itemData['update_product_cost'];
+
+                    PurchaseItem::create([
+                        'purchase_id'         => $purchase->id,
+                        'product_id'          => $prod->id,
+                        'product_name'        => $prod->name,
+                        'quantity'            => $itemData['quantity'],
+                        'unit'                => $itemData['unit'],
+                        'unit_cost'           => $itemData['unit_cost'],
+                        'subtotal'            => $subtotal,
+                        'update_product_cost' => $shouldUpdateCost,
+                    ]);
+
+                    // Update location stock
+                    $newProductStock = ProductStock::firstOrCreate([
+                        'product_id'  => $prod->id,
+                        'location_id' => $newLocationId,
+                    ], [
+                        'stock' => 0,
+                    ]);
+                    $qtyBefore = (float) $newProductStock->stock;
+                    $newProductStock->incrementStock((float) $itemData['quantity']);
+                    $qtyAfter = (float) $newProductStock->stock;
+
+                    // Update product total stock
+                    $prod->stock = (float) $prod->stock + (float) $itemData['quantity'];
+
+                    if ($shouldUpdateCost && (float) $itemData['unit_cost'] > 0) {
+                        $prod->cost_price = (int) round($itemData['unit_cost']);
+                    }
+                    $prod->save();
+
+                    $itemsSummaryArr[] = "{$prod->name} ({$itemData['quantity']} {$itemData['unit']})";
+
+                    // Stock Adjustment Log
+                    StockAdjustmentLog::create([
+                        'product_id'      => $prod->id,
+                        'location_id'     => $newLocationId,
+                        'type'            => 'adjustment',
+                        'quantity_before' => $qtyBefore,
+                        'quantity_change' => (float) $itemData['quantity'],
+                        'quantity_after'  => $qtyAfter,
+                        'reference_type'  => 'purchase_edit',
+                        'reference_id'    => $purchase->id,
+                        'created_by'      => auth()->id(),
+                        'notes'           => "Penyesuaian Edit Faktur Pembelian ({$purchase->purchase_code})",
+                        'created_at'      => now(),
+                    ]);
+                }
+
+                $purchase->total_amount = $calculatedTotal;
+                $purchase->items_summary = implode(', ', array_slice($itemsSummaryArr, 0, 3)) . (count($itemsSummaryArr) > 3 ? ' +' . (count($itemsSummaryArr) - 3) . ' lainnya' : '');
+            } elseif ($isManual && isset($validated['total_amount'])) {
+                // If manual debt and total_amount passed
+                $purchase->total_amount = (float) $validated['total_amount'];
+                if (!empty($validated['notes'])) {
+                    $purchase->items_summary = trim($validated['notes']) . ' (Rp ' . number_format($purchase->total_amount, 0, ',', '.') . ')';
+                }
+            }
+
+            // 3. Update payment status based on paid_amount vs new total_amount
+            if ($purchase->paid_amount >= $purchase->total_amount && $purchase->total_amount > 0) {
+                $purchase->payment_status = 'paid';
+            } elseif ($purchase->paid_amount > 0) {
+                $purchase->payment_status = 'partial';
+            } else {
+                $purchase->payment_status = 'unpaid';
+            }
+
+            // 4. Update Header Fields
+            $purchase->supplier_id    = $supplier ? $supplier->id : $purchase->supplier_id;
+            $purchase->supplier_name  = trim($validated['supplier_name']);
+            $purchase->supplier_phone = $validated['supplier_phone'] ?? ($supplier ? $supplier->phone : null);
+            $purchase->invoice_number = $validated['invoice_number'] ?? null;
+            $purchase->location_id    = $newLocationId;
+            $purchase->purchase_date  = $validated['purchase_date'];
+            $purchase->due_date       = $validated['due_date'] ?? null;
+            if (!empty($validated['payment_method'])) {
+                $purchase->payment_method = $validated['payment_method'];
+            }
+            if (isset($validated['notes'])) {
+                $purchase->notes = $validated['notes'];
+            }
+
+            $purchase->save();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Faktur pembelian {$purchase->purchase_code} berhasil diperbarui!",
+                'purchase' => $purchase->load(['items.product', 'supplier', 'location', 'payments']),
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memperbarui faktur pembelian: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * Delete an existing purchase order / manual debt.
+     */
+    public function destroy(Purchase $purchase)
+    {
+        DB::beginTransaction();
+        try {
+            $purchaseCode = $purchase->purchase_code;
+            $supplierName = $purchase->supplier_name;
+            $locationId   = $purchase->location_id;
+
+            // 1. Revert stock if purchase has items
+            if ($purchase->items && $purchase->items->count() > 0) {
+                foreach ($purchase->items as $item) {
+                    $productStock = ProductStock::where('product_id', $item->product_id)
+                        ->where('location_id', $locationId)
+                        ->first();
+
+                    $qtyBefore = $productStock ? (float)$productStock->stock : 0;
+                    $newStock = max(0, $qtyBefore - (float)$item->quantity);
+
+                    if ($productStock) {
+                        $productStock->stock = $newStock;
+                        $productStock->save();
+                    }
+
+                    $prod = Product::find($item->product_id);
+                    if ($prod) {
+                        $prod->stock = max(0, (float)$prod->stock - (float)$item->quantity);
+                        $prod->save();
+                    }
+
+                    StockAdjustmentLog::create([
+                        'product_id'      => $item->product_id,
+                        'location_id'     => $locationId,
+                        'type'            => 'adjustment',
+                        'quantity_before' => $qtyBefore,
+                        'quantity_change' => -(float)$item->quantity,
+                        'quantity_after'  => $newStock,
+                        'reference_type'  => 'purchase_deleted',
+                        'reference_id'    => $purchase->id,
+                        'created_by'      => auth()->id(),
+                        'notes'           => "Penghapusan Faktur Pembelian ({$purchaseCode}) dari {$supplierName}",
+                        'created_at'      => now(),
+                    ]);
+                }
+            }
+
+            // 2. Delete StockAdjustmentLog with reference_type = purchase and reference_id = $purchase->id
+            StockAdjustmentLog::where('reference_type', 'purchase')
+                ->where('reference_id', $purchase->id)
+                ->delete();
+
+            // 3. Delete Purchase (cascade deletes items and payments)
+            $purchase->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Faktur pembelian {$purchaseCode} berhasil dihapus dan stok telah disesuaikan kembali.",
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus faktur pembelian: ' . $e->getMessage(),
             ], 422);
         }
     }

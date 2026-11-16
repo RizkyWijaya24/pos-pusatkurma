@@ -9,6 +9,7 @@ use App\Models\StockLocation;
 use App\Models\StockTransfer;
 use App\Services\StockService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class StockReportController extends Controller
 {
@@ -19,7 +20,9 @@ class StockReportController extends Controller
      */
     public function index(Request $request)
     {
-        $locations = StockLocation::active()->orderByRaw("type = 'gudang' DESC")->orderBy('name')->get();
+        $locations = Cache::remember('active_locations_sorted_report', 600,
+            fn() => StockLocation::active()->orderByRaw("type = 'gudang' DESC")->orderBy('name')->get()
+        );
 
         $query = Product::with(['productStocks.location'])->orderBy('name');
 
@@ -38,7 +41,9 @@ class StockReportController extends Controller
         }
 
         $products   = $query->paginate(30)->withQueryString();
-        $categories = \App\Models\Category::orderBy('name')->get();
+        $categories = Cache::remember('categories_sorted_name', 1800,
+            fn() => \App\Models\Category::orderBy('name')->get()
+        );
 
         // Bangun matrix stok: [product_id][location_id] = stock
         $stockMatrix = [];
@@ -84,7 +89,9 @@ class StockReportController extends Controller
      */
     public function export(Request $request)
     {
-        $locations = StockLocation::active()->orderByRaw("type = 'gudang' DESC")->orderBy('name')->get();
+        $locations = Cache::remember('active_locations_sorted_report', 600,
+            fn() => StockLocation::active()->orderByRaw("type = 'gudang' DESC")->orderBy('name')->get()
+        );
 
         $query = Product::with(['productStocks.location'])->orderBy('name');
         if ($request->filled('category')) {

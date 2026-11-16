@@ -8,6 +8,7 @@ use App\Models\StockLocation;
 use App\Models\StockTransfer;
 use App\Services\StockService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class StockTransferController extends Controller
@@ -62,8 +63,12 @@ class StockTransferController extends Controller
      */
     public function create()
     {
-        $locations = StockLocation::active()->orderBy('name')->get();
-        $products  = Product::orderBy('name')->get();
+        $locations = Cache::remember('active_locations_list', 600,
+            fn() => StockLocation::active()->orderBy('name')->get()
+        );
+        $products  = Cache::remember('products_for_transfer_form', 300,
+            fn() => Product::select('id', 'name', 'sku', 'price_unit', 'stock')->orderBy('name')->get()
+        );
 
         return view('admin.stock-transfers.create', compact('locations', 'products'));
     }

@@ -839,18 +839,47 @@
                                     <!-- Aksi -->
                                     <td class="px-5 py-4 text-center">
                                         <div class="flex items-center justify-center gap-1.5">
+                                            <!-- Detail Button -->
                                             <button type="button"
                                                     @click="openDetailModal({{ $p->id }})"
-                                                    class="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl font-bold text-xs border border-slate-200 transition shadow-sm"
+                                                    class="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl font-bold text-xs border border-slate-200 transition shadow-sm inline-flex items-center gap-1"
                                                     title="Rincian Faktur">
-                                                Detail
+                                                <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                                <span>Detail</span>
                                             </button>
+
+                                            <!-- Edit Button -->
+                                            <button type="button"
+                                                    @click="openEditModal({{ $p->id }})"
+                                                    class="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl font-bold text-xs border border-amber-200 transition shadow-sm inline-flex items-center gap-1"
+                                                    title="Edit Faktur Pembelian">
+                                                <svg class="w-3.5 h-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                                <span>Edit</span>
+                                            </button>
+
+                                            <!-- Hapus Button -->
+                                            <button type="button"
+                                                    @click="deletePurchase({{ $p->id }}, '{{ $p->purchase_code }}')"
+                                                    class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl font-bold text-xs border border-rose-200 transition shadow-sm inline-flex items-center gap-1"
+                                                    title="Hapus Faktur Pembelian">
+                                                <svg class="w-3.5 h-3.5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                                <span>Hapus</span>
+                                            </button>
+
+                                            <!-- Bayar Utang Button -->
                                             @if(!$p->is_paid)
                                                 <button type="button"
                                                         @click="openPayModal({{ json_encode($p) }})"
-                                                        class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition shadow-sm"
+                                                        class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition shadow-sm inline-flex items-center gap-1"
                                                         title="Bayar Cicilan / Pelunasan">
-                                                    Bayar Utang
+                                                    <span>Bayar Utang</span>
                                                 </button>
                                             @endif
                                         </div>
@@ -994,7 +1023,7 @@
                             </div>
                         </div>
 
-                        <!-- Actions: WA & Pay -->
+                        <!-- Actions: WA, Edit, Delete & Pay -->
                         <div class="pt-2 flex items-center gap-2">
                             @if($pay->supplier_phone)
                                 <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $pay->supplier_phone) }}"
@@ -1007,6 +1036,22 @@
                                     </svg>
                                 </a>
                             @endif
+                            <button type="button"
+                                    @click="openEditModal({{ $pay->id }})"
+                                    class="p-2.5 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition shadow-sm shrink-0 flex items-center justify-center"
+                                    title="Edit Faktur / Utang">
+                                <svg class="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                            </button>
+                            <button type="button"
+                                    @click="deletePurchase({{ $pay->id }}, '{{ $pay->purchase_code }}')"
+                                    class="p-2.5 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition shadow-sm shrink-0 flex items-center justify-center"
+                                    title="Hapus Faktur / Utang">
+                                <svg class="w-4 h-4 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
                             <button type="button"
                                     @click="openPayModal({{ json_encode($pay) }})"
                                     style="background: linear-gradient(135deg, #047857 0%, #0f766e 100%); color: #ffffff;"
@@ -1564,10 +1609,28 @@
                     </div>
 
                     <!-- Footer -->
-                    <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end">
-                        <button type="button" @click="closeDetailModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition">
-                            Tutup
+                    <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                        <button type="button"
+                                @click="deletePurchase(selectedPurchase?.id, selectedPurchase?.purchase_code)"
+                                class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl border border-rose-200 transition inline-flex items-center gap-1.5 shadow-sm">
+                            <svg class="w-4 h-4 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            <span>Hapus Faktur</span>
                         </button>
+                        <div class="flex items-center gap-2">
+                            <button type="button"
+                                    @click="closeDetailModal(); openEditModal(selectedPurchase?.id)"
+                                    class="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-xs rounded-xl border border-amber-200 transition inline-flex items-center gap-1.5 shadow-sm">
+                                <svg class="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                <span>Edit Faktur</span>
+                            </button>
+                            <button type="button" @click="closeDetailModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition">
+                                Tutup
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2240,6 +2303,388 @@
             </div>
         </div>
 
+        <!-- ======================================================= -->
+        <!-- MODAL 7: EDIT FAKTUR PEMBELIAN -->
+        <!-- ======================================================= -->
+        <div x-show="showEditModal"
+             x-cloak
+             class="fixed inset-0 z-50 overflow-y-auto"
+             style="display: none;">
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showEditModal = false"></div>
+
+            <div class="flex min-h-full items-center justify-center p-4">
+                <div class="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-visible" @click.stop>
+                    <!-- Header -->
+                    <div class="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/50 rounded-t-3xl">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200 shadow-sm shrink-0">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-base font-extrabold text-slate-800">Edit Faktur Pembelian</h3>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                          :class="editForm.is_manual ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'"
+                                          x-text="editForm.is_manual ? 'Utang Manual' : 'Faktur Stok'"></span>
+                                </div>
+                                <p class="text-xs font-mono font-bold text-slate-500 mt-0.5" x-text="editForm.purchase_code"></p>
+                            </div>
+                        </div>
+                        <button type="button" @click="showEditModal = false" class="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Loading State -->
+                    <template x-if="editForm.loading">
+                        <div class="p-12 text-center text-slate-400">
+                            <svg class="animate-spin h-8 w-8 text-amber-500 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <p class="text-xs font-semibold text-slate-600">Memuat rincian faktur...</p>
+                        </div>
+                    </template>
+
+                    <!-- Form Body -->
+                    <form x-show="!editForm.loading" @submit.prevent="submitEditPurchase()" class="p-6 space-y-5 max-h-[78vh] overflow-y-auto">
+                        <!-- Section: Header Data -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Nama Supplier (with Assist) -->
+                            <div class="relative" @click.away="editForm.showSupplierDropdown = false">
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label class="block text-xs font-bold text-slate-600">Nama Supplier <span class="text-rose-500">*</span></label>
+                                    <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Auto Assist</span>
+                                </div>
+                                <div class="relative">
+                                    <input type="text"
+                                           x-model="editForm.supplier_name"
+                                           @focus="editForm.showSupplierDropdown = true"
+                                           @keydown.escape="editForm.showSupplierDropdown = false"
+                                           required
+                                           autocomplete="off"
+                                           placeholder="Nama supplier..."
+                                           class="w-full text-xs font-bold border-slate-200 rounded-xl focus:border-amber-500 focus:ring-amber-500 p-2.5 bg-slate-50 pr-8">
+                                    <div class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </div>
+                                </div>
+
+                                <!-- Assist Dropdown -->
+                                <div x-show="editForm.showSupplierDropdown && suppliersList.length > 0"
+                                     x-cloak
+                                     class="absolute left-0 right-0 mt-1 bg-white rounded-2xl shadow-xl border border-slate-200/90 z-50 overflow-hidden">
+                                    <div class="px-3 py-1.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-500">
+                                        <span>Pilih Supplier Terdaftar:</span>
+                                    </div>
+                                    <div class="max-h-40 overflow-y-auto divide-y divide-slate-100">
+                                        <template x-for="s in getFilteredSuppliers(editForm.supplier_name)" :key="s.id">
+                                            <div @click="selectEditSupplier(s)"
+                                                 class="p-2.5 hover:bg-emerald-50 transition cursor-pointer flex items-center justify-between gap-3 group">
+                                                <div class="min-w-0">
+                                                    <div class="font-bold text-xs text-slate-800 group-hover:text-emerald-900 truncate" x-text="s.name"></div>
+                                                    <div class="text-[10px] text-slate-400" x-text="s.phone || 'Tanpa no. WA'"></div>
+                                                </div>
+                                                <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">Pilih</span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- No. WA Supplier -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">No. WhatsApp Supplier</label>
+                                <input type="text"
+                                       x-model="editForm.supplier_phone"
+                                       placeholder="Contoh: 081234567890"
+                                       class="w-full text-xs font-medium border-slate-200 rounded-xl focus:border-amber-500 focus:ring-amber-500 p-2.5 bg-slate-50">
+                            </div>
+
+                            <!-- No. Faktur Fisik -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">No. Faktur / Surat Jalan Fisik</label>
+                                <input type="text"
+                                       x-model="editForm.invoice_number"
+                                       placeholder="Nomor faktur dari supplier..."
+                                       class="w-full text-xs font-medium border-slate-200 rounded-xl focus:border-amber-500 focus:ring-amber-500 p-2.5 bg-slate-50">
+                            </div>
+
+                            <!-- Lokasi Toko / Cabang -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">Lokasi Masuk / Cabang <span class="text-rose-500">*</span></label>
+                                <select x-model="editForm.location_id"
+                                        required
+                                        class="w-full text-xs font-bold border-slate-200 rounded-xl focus:border-amber-500 focus:ring-amber-500 p-2.5 bg-slate-50">
+                                    <template x-for="loc in locationsList" :key="loc.id">
+                                        <option :value="loc.id" x-text="loc.name"></option>
+                                    </template>
+                                </select>
+                            </div>
+
+                            <!-- Tanggal Pembelian -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">Tanggal Pembelian <span class="text-rose-500">*</span></label>
+                                <input type="date"
+                                       x-model="editForm.purchase_date"
+                                       required
+                                       class="w-full text-xs font-medium border-slate-200 rounded-xl focus:border-amber-500 focus:ring-amber-500 p-2.5 bg-slate-50">
+                            </div>
+
+                            <!-- Tanggal Jatuh Tempo -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">Tanggal Jatuh Tempo</label>
+                                <input type="date"
+                                       x-model="editForm.due_date"
+                                       class="w-full text-xs font-medium border-slate-200 rounded-xl focus:border-amber-500 focus:ring-amber-500 p-2.5 bg-slate-50">
+                            </div>
+                        </div>
+
+                        <!-- Case 1: Manual Debt -->
+                        <template x-if="editForm.is_manual">
+                            <div class="space-y-4 pt-2 border-t border-slate-100">
+                                <div class="p-3 bg-amber-50 rounded-2xl border border-amber-200 flex items-start gap-2.5 text-xs text-amber-800">
+                                    <svg class="w-4 h-4 text-amber-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <span><strong>Faktur Utang Manual:</strong> Faktur ini dicatat tanpa item SKU produk sehingga tidak mengubah stok inventori toko.</span>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-600 mb-1.5">Total Tagihan Utang (Rp) <span class="text-rose-500">*</span></label>
+                                        <input type="number"
+                                               min="1"
+                                               x-model="editForm.total_amount"
+                                               required
+                                               class="w-full text-sm font-black border-slate-200 rounded-xl focus:border-amber-500 focus:ring-amber-500 p-2.5 text-rose-600 bg-slate-50">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-600 mb-1.5">Metode Pembayaran</label>
+                                        <input type="text"
+                                               x-model="editForm.payment_method"
+                                               placeholder="Transfer Bank / Tunai / Tempo"
+                                               class="w-full text-xs font-medium border-slate-200 rounded-xl focus:border-amber-500 focus:ring-amber-500 p-2.5 bg-slate-50">
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Case 2: Regular Purchase with Items -->
+                        <template x-if="!editForm.is_manual">
+                            <div class="space-y-3 pt-2 border-t border-slate-100">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-700">Rincian Barang Masuk</h4>
+                                        <p class="text-[11px] text-slate-400">Perubahan kuantitas atau penambahan barang akan otomatis menyesuaikan stok inventori toko.</p>
+                                    </div>
+                                    <button type="button"
+                                            @click="addEditItem()"
+                                            class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl border border-emerald-200 transition inline-flex items-center gap-1">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                                        </svg>
+                                        <span>Tambah Baris</span>
+                                    </button>
+                                </div>
+
+                                <div class="overflow-visible border border-slate-200/80 rounded-2xl">
+                                    <table class="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr class="bg-slate-50 text-[11px] font-bold text-slate-500 border-b border-slate-200">
+                                                <th class="px-3 py-2.5">Produk / SKU</th>
+                                                <th class="px-3 py-2.5 w-24 text-center">Qty</th>
+                                                <th class="px-3 py-2.5 w-20 text-center">Satuan</th>
+                                                <th class="px-3 py-2.5 w-36 text-right">Harga Beli (Rp)</th>
+                                                <th class="px-3 py-2.5 w-36 text-right">Subtotal</th>
+                                                <th class="px-2 py-2.5 w-10 text-center"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-100 text-xs">
+                                            <template x-for="(it, idx) in editForm.items" :key="idx">
+                                                <tr class="hover:bg-slate-50/50">
+                                                    <!-- Product Selector -->
+                                                    <td class="p-2 relative" @click.away="it.is_open = false">
+                                                        <input type="text"
+                                                               x-model="it.search_query"
+                                                               @focus="it.is_open = true"
+                                                               placeholder="Ketik nama produk..."
+                                                               class="w-full text-xs font-bold border-slate-200 rounded-xl focus:border-amber-500 focus:ring-amber-500 p-2 bg-slate-50">
+                                                        <!-- Suggestions list -->
+                                                        <div x-show="it.is_open"
+                                                             x-cloak
+                                                             class="absolute left-2 right-2 mt-1 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 max-h-48 overflow-y-auto divide-y divide-slate-100">
+                                                            <template x-for="p in getFilteredProducts(it.search_query)" :key="p.id">
+                                                                <div @click="selectEditProduct(idx, p)"
+                                                                     class="p-2 hover:bg-emerald-50 cursor-pointer flex justify-between items-center text-xs">
+                                                                    <span class="font-bold text-slate-800" x-text="p.name"></span>
+                                                                    <span class="text-[10px] text-slate-400 font-mono" x-text="formatRupiah(p.cost_price)"></span>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    </td>
+                                                    <!-- Quantity -->
+                                                    <td class="p-2">
+                                                        <input type="number"
+                                                               min="0.01"
+                                                               step="any"
+                                                               x-model="it.quantity"
+                                                               required
+                                                               class="w-full text-xs font-bold text-center border-slate-200 rounded-xl focus:border-amber-500 focus:ring-amber-500 p-2 bg-slate-50">
+                                                    </td>
+                                                    <!-- Unit -->
+                                                    <td class="p-2">
+                                                        <input type="text"
+                                                               x-model="it.unit"
+                                                               class="w-full text-xs font-medium text-center border-slate-200 rounded-xl focus:border-amber-500 focus:ring-amber-500 p-2 bg-slate-50">
+                                                    </td>
+                                                    <!-- Unit Cost -->
+                                                    <td class="p-2">
+                                                        <input type="number"
+                                                               min="0"
+                                                               x-model="it.unit_cost"
+                                                               required
+                                                               class="w-full text-xs font-bold text-right border-slate-200 rounded-xl focus:border-amber-500 focus:ring-amber-500 p-2 bg-slate-50">
+                                                    </td>
+                                                    <!-- Subtotal -->
+                                                    <td class="p-2 text-right font-extrabold text-slate-800">
+                                                        <span x-text="formatRupiah((Number(it.quantity) || 0) * (Number(it.unit_cost) || 0))"></span>
+                                                    </td>
+                                                    <!-- Delete row -->
+                                                    <td class="p-2 text-center">
+                                                        <button type="button"
+                                                                @click="removeEditItem(idx)"
+                                                                class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition"
+                                                                title="Hapus baris">
+                                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Catatan / Keterangan -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5">Catatan / Keterangan Faktur</label>
+                            <textarea x-model="editForm.notes"
+                                      rows="2"
+                                      placeholder="Keterangan faktur atau pembelian..."
+                                      class="w-full text-xs font-medium border-slate-200 rounded-xl focus:border-amber-500 focus:ring-amber-500 p-2.5 bg-slate-50"></textarea>
+                        </div>
+
+                        <!-- Summary Cards -->
+                        <div class="p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-amber-50/50 border border-slate-200/80 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                            <div>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Tagihan Baru</span>
+                                <span class="text-sm font-black text-slate-800 block mt-0.5" x-text="formatRupiah(getEditTotalAmount())"></span>
+                            </div>
+                            <div>
+                                <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Sudah Dibayar</span>
+                                <span class="text-sm font-black text-emerald-700 block mt-0.5" x-text="formatRupiah(editForm.paid_amount)"></span>
+                            </div>
+                            <div>
+                                <span class="text-[10px] font-bold text-rose-600 uppercase tracking-wider block">Sisa Utang</span>
+                                <span class="text-sm font-black text-rose-600 block mt-0.5" x-text="formatRupiah(Math.max(0, getEditTotalAmount() - (editForm.paid_amount || 0)))"></span>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                            <button type="button"
+                                    @click="showEditModal = false"
+                                    :disabled="isSubmittingEdit"
+                                    class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition">
+                                Batal
+                            </button>
+                            <button type="submit"
+                                    :disabled="isSubmittingEdit"
+                                    class="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs rounded-xl transition shadow-md shadow-amber-500/20 inline-flex items-center gap-1.5">
+                                <template x-if="isSubmittingEdit">
+                                    <svg class="animate-spin -ml-1 mr-1.5 h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </template>
+                                <span x-text="isSubmittingEdit ? 'Menyimpan...' : 'Simpan Perubahan'"></span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================================================= -->
+        <!-- MODAL 8: KONFIRMASI HAPUS FAKTUR PEMBELIAN -->
+        <!-- ======================================================= -->
+        <div x-show="showDeleteModal"
+             x-cloak
+             class="fixed inset-0 z-50 overflow-y-auto"
+             style="display: none;">
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showDeleteModal = false"></div>
+
+            <div class="flex min-h-full items-center justify-center p-4">
+                <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden" @click.stop>
+                    <div class="p-6 text-center">
+                        <div class="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-4 border border-rose-100 shadow-inner">
+                            <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </div>
+                        <h3 class="text-base font-extrabold text-slate-800">Hapus Faktur Pembelian?</h3>
+                        <p class="text-xs text-slate-500 mt-1">
+                            Anda akan menghapus faktur <strong class="text-rose-600 font-mono" x-text="deletingPurchase?.code"></strong>.
+                        </p>
+
+                        <div class="mt-4 p-3.5 bg-rose-50/70 rounded-2xl border border-rose-100 text-left text-xs text-rose-800 space-y-1.5">
+                            <div class="flex items-start gap-2">
+                                <svg class="w-4 h-4 text-rose-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                </svg>
+                                <span class="font-bold">Konsekuensi Penghapusan:</span>
+                            </div>
+                            <ul class="list-disc list-inside text-[11px] text-rose-700 space-y-1 pl-1">
+                                <li>Stok barang yang masuk dari faktur ini akan <strong>otomatis ditarik / dikurangkan kembali</strong> dari toko & gudang.</li>
+                                <li>Catatan utang supplier dan seluruh riwayat pembayaran faktur ini akan <strong>terhapus permanen</strong>.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-2.5">
+                        <button type="button" 
+                                @click="showDeleteModal = false" 
+                                :disabled="isSubmittingDelete"
+                                class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition">
+                            Batal
+                        </button>
+                        <button type="button" 
+                                @click="confirmDeletePurchase()" 
+                                :disabled="isSubmittingDelete"
+                                class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-xl transition shadow-md shadow-rose-600/20 inline-flex items-center gap-1.5">
+                            <template x-if="isSubmittingDelete">
+                                <svg class="animate-spin -ml-1 mr-1.5 h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </template>
+                            <span x-text="isSubmittingDelete ? 'Menghapus...' : 'Ya, Hapus Sekarang'"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- ======================================================= -->
@@ -2324,6 +2769,33 @@
                     selling_price: 0
                 },
                 isSubmittingNewProduct: false,
+
+                // Delete Purchase State
+                showDeleteModal: false,
+                deletingPurchase: null,
+                isSubmittingDelete: false,
+
+                // Edit Purchase State
+                showEditModal: false,
+                isSubmittingEdit: false,
+                editForm: {
+                    id: null,
+                    loading: false,
+                    purchase_code: '',
+                    is_manual: false,
+                    supplier_name: '',
+                    supplier_phone: '',
+                    showSupplierDropdown: false,
+                    invoice_number: '',
+                    location_id: '',
+                    purchase_date: '',
+                    due_date: '',
+                    payment_method: 'Transfer Bank',
+                    notes: '',
+                    total_amount: 0,
+                    paid_amount: 0,
+                    items: []
+                },
 
                 // Manual Debt State (Hanya Nominal & Catatan)
                 showManualDebtModal: false,
@@ -2827,6 +3299,245 @@
                     } catch (e) {
                         alert('Terjadi kesalahan jaringan: ' + e);
                         this.isSubmittingPay = false;
+                    }
+                },
+
+                deletePurchase(id, code) {
+                    this.deletingPurchase = { id: id, code: code };
+                    this.showDeleteModal = true;
+                },
+
+                async confirmDeletePurchase() {
+                    if (!this.deletingPurchase) return;
+                    this.isSubmittingDelete = true;
+                    const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+                    try {
+                        const res = await fetch(`/admin/purchases/${this.deletingPurchase.id}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrf
+                            }
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            if (window.showToast) {
+                                window.showToast(data.message, 'success');
+                            } else {
+                                alert(data.message);
+                            }
+                            this.showDeleteModal = false;
+                            setTimeout(() => {
+                                const url = new URL(window.location.href);
+                                url.searchParams.set('tab', this.activeTab);
+                                window.location.href = url.toString();
+                            }, 800);
+                        } else {
+                            alert(data.message || 'Gagal menghapus faktur pembelian.');
+                            this.isSubmittingDelete = false;
+                        }
+                    } catch (err) {
+                        alert('Terjadi kesalahan jaringan: ' + err);
+                        this.isSubmittingDelete = false;
+                    }
+                },
+
+                openEditModal(purchaseId) {
+                    this.isSubmittingEdit = false;
+                    this.editForm = {
+                        id: purchaseId,
+                        loading: true,
+                        purchase_code: '',
+                        is_manual: false,
+                        supplier_name: '',
+                        supplier_phone: '',
+                        showSupplierDropdown: false,
+                        invoice_number: '',
+                        location_id: (this.locationsList && this.locationsList.length > 0) ? this.locationsList[0].id : '',
+                        purchase_date: '',
+                        due_date: '',
+                        payment_method: 'Transfer Bank',
+                        notes: '',
+                        total_amount: 0,
+                        paid_amount: 0,
+                        items: []
+                    };
+                    this.showEditModal = true;
+
+                    fetch(`/admin/purchases/${purchaseId}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.success) {
+                                const p = data.purchase;
+                                const isManual = !p.items || p.items.length === 0;
+                                this.editForm = {
+                                    id: p.id,
+                                    loading: false,
+                                    purchase_code: p.purchase_code,
+                                    is_manual: isManual,
+                                    supplier_name: p.supplier_name || '',
+                                    supplier_phone: p.supplier_phone || '',
+                                    showSupplierDropdown: false,
+                                    invoice_number: p.invoice_number || '',
+                                    location_id: p.location_id,
+                                    purchase_date: p.purchase_date ? p.purchase_date.slice(0, 10) : '',
+                                    due_date: p.due_date ? p.due_date.slice(0, 10) : '',
+                                    payment_method: p.payment_method || 'Transfer Bank',
+                                    notes: p.notes || '',
+                                    total_amount: Number(p.total_amount) || 0,
+                                    paid_amount: Number(p.paid_amount) || 0,
+                                    items: (p.items || []).map(it => ({
+                                        product_id: it.product_id,
+                                        product_name: it.product_name,
+                                        search_query: it.product_name,
+                                        is_open: false,
+                                        quantity: Number(it.quantity) || 1,
+                                        unit: it.unit || 'pcs',
+                                        unit_cost: Number(it.unit_cost) || 0,
+                                        update_product_cost: !!it.update_product_cost
+                                    }))
+                                };
+                            } else {
+                                alert(data.message || 'Gagal memuat rincian faktur.');
+                                this.showEditModal = false;
+                            }
+                        })
+                        .catch(err => {
+                            alert('Gagal mengambil rincian faktur: ' + err);
+                            this.showEditModal = false;
+                        });
+                },
+
+                selectEditSupplier(s) {
+                    this.editForm.supplier_name = s.name;
+                    if (s.phone) {
+                        this.editForm.supplier_phone = s.phone;
+                    }
+                    this.editForm.showSupplierDropdown = false;
+                },
+
+                addEditItem() {
+                    this.editForm.items.push({
+                        product_id: '',
+                        product_name: '',
+                        search_query: '',
+                        is_open: false,
+                        quantity: 1,
+                        unit: 'pcs',
+                        unit_cost: 0,
+                        update_product_cost: true
+                    });
+                },
+
+                removeEditItem(index) {
+                    this.editForm.items.splice(index, 1);
+                },
+
+                selectEditProduct(index, prod) {
+                    if (this.editForm.items[index]) {
+                        this.editForm.items[index].product_id = prod.id;
+                        this.editForm.items[index].product_name = prod.name;
+                        this.editForm.items[index].search_query = prod.name;
+                        this.editForm.items[index].unit = prod.price_unit || 'pcs';
+                        this.editForm.items[index].unit_cost = Number(prod.cost_price) || 0;
+                        this.editForm.items[index].is_open = false;
+                    }
+                },
+
+                getEditTotalAmount() {
+                    if (this.editForm.is_manual) {
+                        return Number(this.editForm.total_amount) || 0;
+                    }
+                    return (this.editForm.items || []).reduce((sum, it) => {
+                        return sum + ((Number(it.quantity) || 0) * (Number(it.unit_cost) || 0));
+                    }, 0);
+                },
+
+                async submitEditPurchase() {
+                    if (!this.editForm.supplier_name.trim()) {
+                        alert('Nama supplier wajib diisi!');
+                        return;
+                    }
+                    if (!this.editForm.purchase_date) {
+                        alert('Tanggal pembelian wajib diisi!');
+                        return;
+                    }
+                    if (!this.editForm.location_id) {
+                        alert('Lokasi penerimaan wajib dipilih!');
+                        return;
+                    }
+
+                    if (!this.editForm.is_manual) {
+                        if (!this.editForm.items || this.editForm.items.length === 0) {
+                            alert('Faktur pembelian harus memiliki minimal 1 item barang!');
+                            return;
+                        }
+                        const invalid = this.editForm.items.find(it => !it.product_id || (Number(it.quantity) || 0) <= 0);
+                        if (invalid) {
+                            alert('Mohon lengkapi produk dan kuantitas valid untuk setiap baris.');
+                            return;
+                        }
+                    } else {
+                        if ((Number(this.editForm.total_amount) || 0) <= 0) {
+                            alert('Nominal total tagihan utang manual harus lebih besar dari 0!');
+                            return;
+                        }
+                    }
+
+                    this.isSubmittingEdit = true;
+                    const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+                    const payload = {
+                        supplier_name: this.editForm.supplier_name,
+                        supplier_phone: this.editForm.supplier_phone,
+                        invoice_number: this.editForm.invoice_number,
+                        location_id: this.editForm.location_id,
+                        purchase_date: this.editForm.purchase_date,
+                        due_date: this.editForm.due_date,
+                        payment_method: this.editForm.payment_method,
+                        notes: this.editForm.notes,
+                        total_amount: this.getEditTotalAmount(),
+                        items: this.editForm.is_manual ? [] : this.editForm.items.map(it => ({
+                            product_id: it.product_id,
+                            quantity: Number(it.quantity) || 0,
+                            unit: it.unit || 'pcs',
+                            unit_cost: Number(it.unit_cost) || 0,
+                            update_product_cost: !!it.update_product_cost
+                        }))
+                    };
+
+                    try {
+                        const res = await fetch(`/admin/purchases/${this.editForm.id}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrf
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            if (window.showToast) {
+                                window.showToast(data.message, 'success');
+                            } else {
+                                alert(data.message);
+                            }
+                            this.showEditModal = false;
+                            setTimeout(() => {
+                                const url = new URL(window.location.href);
+                                url.searchParams.set('tab', this.activeTab);
+                                window.location.href = url.toString();
+                            }, 800);
+                        } else {
+                            alert(data.message || 'Gagal menyimpan perubahan faktur pembelian.');
+                            this.isSubmittingEdit = false;
+                        }
+                    } catch (err) {
+                        alert('Terjadi kesalahan jaringan: ' + err);
+                        this.isSubmittingEdit = false;
                     }
                 },
 

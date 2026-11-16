@@ -78,6 +78,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/purchases/manual-debt', [\App\Http\Controllers\Admin\PurchaseController::class, 'storeManualDebt'])->name('purchases.store-manual-debt');
         Route::post('/purchases/quick-create-product', [\App\Http\Controllers\Admin\PurchaseController::class, 'quickCreateProduct'])->name('purchases.quick-create-product');
         Route::get('/purchases/{purchase}', [\App\Http\Controllers\Admin\PurchaseController::class, 'show'])->name('purchases.show');
+        Route::put('/purchases/{purchase}', [\App\Http\Controllers\Admin\PurchaseController::class, 'update'])->name('purchases.update');
+        Route::delete('/purchases/{purchase}', [\App\Http\Controllers\Admin\PurchaseController::class, 'destroy'])->name('purchases.destroy');
         Route::post('/purchases/{purchase}/pay-debt', [\App\Http\Controllers\Admin\PurchaseController::class, 'payDebt'])->name('purchases.pay-debt');
 
         // Product CRUD
