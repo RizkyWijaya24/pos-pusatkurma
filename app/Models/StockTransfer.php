@@ -156,12 +156,25 @@ class StockTransfer extends Model
                 ? (float)$it->approved_quantity
                 : (float)$it->quantity;
 
+            $unit = $it->unit;
+            if (empty($unit) || strtolower(trim($unit)) === 'pcs') {
+                $unit = $it->product?->price_unit ?? $unit ?? 'pcs';
+            }
+
+            $fmtFinalQty = ((float)$finalQty == (int)$finalQty)
+                ? number_format($finalQty, 0, ',', '.')
+                : number_format($finalQty, 2, ',', '.');
+
+            $fmtReqQty = ((float)$it->quantity == (int)$it->quantity)
+                ? number_format((float)$it->quantity, 0, ',', '.')
+                : number_format((float)$it->quantity, 2, ',', '.');
+
             return [
                 'name'          => $it->product?->name ?? 'Produk',
                 'sku'           => $it->product?->sku ?? '-',
-                'qty'           => number_format($finalQty, 2, ',', '.'),
-                'requested_qty' => number_format((float)$it->quantity, 2, ',', '.'),
-                'unit'          => $it->unit ?? 'pcs',
+                'qty'           => $fmtFinalQty,
+                'requested_qty' => $fmtReqQty,
+                'unit'          => $unit,
                 'is_adjusted'   => $isAdjusted,
             ];
         })->values()->all();

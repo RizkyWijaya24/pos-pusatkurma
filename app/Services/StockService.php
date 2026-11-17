@@ -100,11 +100,16 @@ class StockService
 
             // Buat detail item
             foreach ($data['items'] as $item) {
+                $product = Product::find($item['product_id']);
+                $unit = !empty($item['unit']) && strtolower(trim($item['unit'])) !== 'pcs'
+                    ? trim($item['unit'])
+                    : ($product?->price_unit ?? $item['unit'] ?? 'pcs');
+
                 StockTransferItem::create([
                     'transfer_id' => $transfer->id,
                     'product_id'  => $item['product_id'],
                     'quantity'    => $item['quantity'],
-                    'unit'        => $item['unit'] ?? 'pcs',
+                    'unit'        => $unit,
                     'notes'       => $item['notes'] ?? null,
                 ]);
             }

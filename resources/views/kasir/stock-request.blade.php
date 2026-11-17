@@ -182,19 +182,29 @@
                                 <td class="px-4 py-3">
                                     <div class="flex flex-col sm:flex-row items-center justify-between sm:justify-center gap-2">
                                         <span class="inline sm:hidden text-xs font-bold text-slate-400 dark:text-purple-400 uppercase tracking-wider self-start mb-1">Jumlah Request</span>
-                                        <div class="flex items-center justify-center gap-1.5 sm:gap-2 w-full sm:w-auto">
-                                            <button type="button" onclick="adjustQty({{ $p->id }}, -1)" 
-                                                class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-dp-800 hover:bg-slate-200 dark:hover:bg-dp-750 border border-slate-300 dark:border-dp-700 text-slate-800 dark:text-white flex items-center justify-center font-bold text-sm transition-all focus:outline-none select-none active:scale-90">
-                                                -
-                                            </button>
-                                            <input type="number" id="qty-{{ $p->id }}" min="0" step="0.01" placeholder="0"
-                                                oninput="updateItemQty({{ $p->id }}, this.value)"
-                                                data-name="{{ $p->name }}" data-unit="{{ $p->price_unit }}"
-                                                class="w-16 sm:w-20 bg-slate-50 dark:bg-dp-850 border border-slate-300 dark:border-dp-700 text-slate-900 dark:text-white rounded-lg py-1 px-1.5 text-center text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-bold">
-                                            <button type="button" onclick="adjustQty({{ $p->id }}, 1)" 
-                                                class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-dp-800 hover:bg-slate-200 dark:hover:bg-dp-750 border border-slate-300 dark:border-dp-700 text-slate-800 dark:text-white flex items-center justify-center font-bold text-sm transition-all focus:outline-none select-none active:scale-90">
-                                                +
-                                            </button>
+                                        <div class="flex flex-col items-center">
+                                            <div class="flex items-center justify-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+                                                <button type="button" onclick="adjustQty({{ $p->id }}, {{ strtolower($p->price_unit) === 'gram' ? -100 : -1 }})" 
+                                                    class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-dp-800 hover:bg-slate-200 dark:hover:bg-dp-750 border border-slate-300 dark:border-dp-700 text-slate-800 dark:text-white flex items-center justify-center font-bold text-sm transition-all focus:outline-none select-none active:scale-90">
+                                                    -
+                                                </button>
+                                                <input type="number" id="qty-{{ $p->id }}" min="0" step="any" placeholder="0"
+                                                    oninput="updateItemQty({{ $p->id }}, this.value)"
+                                                    data-name="{{ $p->name }}" data-unit="{{ $p->price_unit }}"
+                                                    class="w-16 sm:w-20 bg-slate-50 dark:bg-dp-850 border border-slate-300 dark:border-dp-700 text-slate-900 dark:text-white rounded-lg py-1 px-1.5 text-center text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-bold">
+                                                <button type="button" onclick="adjustQty({{ $p->id }}, {{ strtolower($p->price_unit) === 'gram' ? 100 : 1 }})" 
+                                                    class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-dp-800 hover:bg-slate-200 dark:hover:bg-dp-750 border border-slate-300 dark:border-dp-700 text-slate-800 dark:text-white flex items-center justify-center font-bold text-sm transition-all focus:outline-none select-none active:scale-90">
+                                                    +
+                                                </button>
+                                            </div>
+                                            @if(strtolower($p->price_unit) === 'gram')
+                                                <div class="flex items-center gap-1 mt-1">
+                                                    <button type="button" onclick="adjustQty({{ $p->id }}, 250)" class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-200 hover:bg-emerald-100">+250g</button>
+                                                    <button type="button" onclick="adjustQty({{ $p->id }}, 500)" class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-200 hover:bg-emerald-100">+500g</button>
+                                                    <button type="button" onclick="adjustQty({{ $p->id }}, 1000)" class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-700 text-white font-bold hover:bg-emerald-800">+1kg</button>
+                                                </div>
+                                            @endif
+                                            <div id="weight-helper-{{ $p->id }}" class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5"></div>
                                         </div>
                                     </div>
                                 </td>
@@ -319,7 +329,7 @@
                                                     return [
                                                         'name' => $it->product->name ?? 'Produk',
                                                         'qty'  => $qtyStr,
-                                                        'unit' => $it->unit ?? 'pcs',
+                                                        'unit' => $it->unit ?: ($it->product?->price_unit ?? 'pcs'),
                                                     ];
                                                 })->values()->all(),
                                             ]) }})"
@@ -465,6 +475,19 @@ function updateItemQty(productId, val) {
     }
 
     input.value = qty > 0 ? qty : ''; // Tampilkan kosong jika 0 untuk kenyamanan mengetik
+
+    // Update weight helper
+    const helper = document.getElementById(`weight-helper-${productId}`);
+    if (helper) {
+        const u = (input.dataset.unit || '').toLowerCase();
+        if (u === 'gram' && qty >= 1000) {
+            helper.textContent = `= ${(qty / 1000).toFixed(2)} kg`;
+        } else if (u === 'kg' && qty > 0) {
+            helper.textContent = `= ${(qty * 1000).toLocaleString('id-ID')} gram`;
+        } else {
+            helper.textContent = '';
+        }
+    }
     
     renderSummary();
     updateInputtedBadge();

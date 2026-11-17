@@ -4374,9 +4374,18 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block mb-1">Berat Produk (gram) <span class="text-xs text-slate-400 font-normal">— untuk kalkulasi ongkir</span></label>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block">Berat Produk (gram) <span class="text-xs text-slate-400 font-normal">— ongkir</span></label>
+                                <span class="text-[11px] text-emerald-700 font-extrabold" x-show="newProduct.weight_grams >= 1000" x-text="'= ' + (newProduct.weight_grams / 1000).toFixed(2) + ' kg'"></span>
+                            </div>
                             <input type="number" x-model="newProduct.weight_grams" min="1" placeholder="Contoh: 500"
                                    class="w-full border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500">
+                            <div class="flex gap-1 mt-1.5 text-[10px] font-bold">
+                                <button type="button" @click="newProduct.weight_grams = 250" class="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-800 border border-slate-200">250g (¼kg)</button>
+                                <button type="button" @click="newProduct.weight_grams = 500" class="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-800 border border-slate-200">500g (½kg)</button>
+                                <button type="button" @click="newProduct.weight_grams = 1000" class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">1.000g (1kg)</button>
+                                <button type="button" @click="newProduct.weight_grams = 5000" class="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-800 border border-slate-200">5kg (Dus)</button>
+                            </div>
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-3">

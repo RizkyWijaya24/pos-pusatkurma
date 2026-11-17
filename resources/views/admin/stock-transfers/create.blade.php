@@ -249,10 +249,20 @@ function addProductRow() {
         </td>
         <td class="py-3 pr-4">
             <label class="block sm:hidden text-[10px] font-bold text-slate-400 dark:text-purple-400 uppercase tracking-wider mb-1">Jumlah Transfer</label>
-            <input type="number" min="0.01" step="0.01" placeholder="0"
-                   id="qty_${rowCount}"
-                   oninput="onQtyChange(${rowCount})"
-                   class="w-full bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-800 dark:text-purple-100 rounded-xl px-3.5 py-2.5 text-xs focus:border-emerald-500 focus:ring-emerald-500 focus:outline-none shadow-inner">
+            <div class="relative flex items-center">
+                <input type="number" min="0.001" step="any" placeholder="0"
+                       id="qty_${rowCount}"
+                       data-input-unit=""
+                       oninput="onQtyChange(${rowCount})"
+                       class="w-full bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-800 dark:text-purple-100 rounded-xl pl-3.5 pr-14 py-2.5 text-xs focus:border-emerald-500 focus:ring-emerald-500 focus:outline-none shadow-inner font-bold">
+                <button type="button" 
+                        id="unit_btn_${rowCount}"
+                        onclick="toggleRowWeightUnit(${rowCount})"
+                        class="absolute right-1.5 px-2 py-1 text-[10px] font-black uppercase rounded-lg border border-slate-200 dark:border-dp-700 bg-white dark:bg-dp-800 text-slate-600 dark:text-purple-200 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300 transition whitespace-nowrap shadow-2xs select-none">
+                    <span id="unit_label_${rowCount}">pcs</span>
+                </button>
+            </div>
+            <div id="qty_helper_${rowCount}" class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1 px-1"></div>
         </td>
         <td class="py-3">
             <button onclick="removeRow(${rowCount})" class="text-slate-450 dark:text-purple-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors text-xl font-bold px-2">×</button>
@@ -367,6 +377,22 @@ function onProductChange(id) {
     const stock = stockByLocation[productId] ?? null;
     const fromLocId = document.getElementById('fromLocation').value;
 
+    const unitLabel = document.getElementById(`unit_label_${id}`);
+    const unitBtn = document.getElementById(`unit_btn_${id}`);
+    const qtyInput = document.getElementById(`qty_${id}`);
+
+    if (unitLabel) unitLabel.textContent = unit;
+    if (qtyInput) qtyInput.dataset.inputUnit = unit;
+    if (unitBtn) {
+        if (['gram', 'kg'].includes(unit.toLowerCase())) {
+            unitBtn.className = 'absolute right-1.5 px-2 py-1 text-[10px] font-black uppercase rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition whitespace-nowrap shadow-xs cursor-pointer';
+            unitBtn.title = 'Klik untuk konversi kg ⇄ gram';
+        } else {
+            unitBtn.className = 'absolute right-1.5 px-2 py-1 text-[10px] font-bold uppercase rounded-lg border border-slate-200 dark:border-dp-700 bg-white dark:bg-dp-800 text-slate-500 dark:text-purple-300 cursor-default select-none';
+            unitBtn.title = 'Satuan: ' + unit;
+        }
+    }
+
     if (fromLocId && stock !== null) {
         avail.textContent = formatStock(stock, unit);
         const isLow = unit === 'gram' ? (stock <= 10000) : (stock <= 10);
@@ -375,7 +401,33 @@ function onProductChange(id) {
         avail.textContent = fromLocId ? '0' : 'Pilih lokasi asal';
         avail.className = 'text-slate-400 dark:text-purple-400 text-xs px-2';
     }
+    onQtyChange(id);
     updateSummary();
+}
+
+function toggleRowWeightUnit(id) {
+    const qtyInput = document.getElementById(`qty_${id}`);
+    const unitLabel = document.getElementById(`unit_label_${id}`);
+    if (!qtyInput || !unitLabel) return;
+    
+    const currentUnit = (qtyInput.dataset.inputUnit || unitLabel.textContent || '').trim().toLowerCase();
+    if (!['gram', 'kg'].includes(currentUnit)) return;
+
+    const val = parseFloat(qtyInput.value) || 0;
+    if (currentUnit === 'kg') {
+        qtyInput.dataset.inputUnit = 'gram';
+        unitLabel.textContent = 'gram';
+        if (val > 0) {
+            qtyInput.value = Math.round(val * 1000);
+        }
+    } else {
+        qtyInput.dataset.inputUnit = 'kg';
+        unitLabel.textContent = 'kg';
+        if (val > 0) {
+            qtyInput.value = parseFloat((val / 1000).toFixed(3));
+        }
+    }
+    onQtyChange(id);
 }
 
 // override global browser alerts with customized premium global toast
@@ -393,10 +445,32 @@ function onQtyChange(id) {
     const productId = parseInt(sel.value);
     const qty = parseFloat(qtyEl.value) || 0;
     const fromLocId = document.getElementById('fromLocation').value;
+    const helper = document.getElementById(`qty_helper_${id}`);
+
+    const currentUnit = (qtyEl.dataset.inputUnit || '').toLowerCase();
+    if (helper) {
+        if (currentUnit === 'gram' && qty >= 1000) {
+            helper.textContent = `= ${(qty / 1000).toFixed(2)} kg`;
+        } else if (currentUnit === 'kg' && qty > 0) {
+            helper.textContent = `= ${(qty * 1000).toLocaleString('id-ID')} gram`;
+        } else {
+            helper.textContent = '';
+        }
+    }
 
     if (fromLocId && productId && stockByLocation[productId] !== undefined) {
         const available = stockByLocation[productId];
-        if (qty > available) {
+        // Konversi pembanding stok jika input unit berbeda dengan base unit
+        const product = allProducts.find(p => p.id === productId);
+        const baseUnit = product ? (product.unit || 'pcs').toLowerCase() : 'pcs';
+        let compareQty = qty;
+        if (baseUnit === 'gram' && currentUnit === 'kg') {
+            compareQty = qty * 1000;
+        } else if (baseUnit === 'kg' && currentUnit === 'gram') {
+            compareQty = qty / 1000;
+        }
+
+        if (compareQty > available) {
             qtyEl.classList.add('border-rose-500', 'focus:border-rose-500', 'focus:ring-rose-500');
         } else {
             qtyEl.classList.remove('border-rose-500', 'focus:border-rose-500', 'focus:ring-rose-500');
@@ -438,16 +512,33 @@ function getValidItems() {
     document.querySelectorAll('[id^="row_"]').forEach(row => {
         const id = row.dataset.rowId;
         const sel = document.getElementById(`product_${id}`);
-        const qty = parseFloat(document.getElementById(`qty_${id}`)?.value) || 0;
-        if (sel?.value && qty > 0) {
-            const productId = parseInt(sel.value);
+        const qtyEl = document.getElementById(`qty_${id}`);
+        const productId = parseInt(sel?.value);
+        let qty = parseFloat(qtyEl?.value) || 0;
+        const inputUnit = (qtyEl?.dataset.inputUnit || '').toLowerCase();
+
+        if (productId && qty > 0) {
             const product = allProducts.find(p => p.id === productId);
+            const baseUnit = product ? (product.unit || 'pcs') : 'pcs';
+
+            // Jika input unit berbeda dari baseUnit produk, konversikan nilainya agar stok database konsisten!
+            let finalQty = qty;
+            let finalUnit = inputUnit || baseUnit;
+
+            if (baseUnit.toLowerCase() === 'gram' && inputUnit === 'kg') {
+                finalQty = Math.round(qty * 1000);
+                finalUnit = 'gram';
+            } else if (baseUnit.toLowerCase() === 'kg' && inputUnit === 'gram') {
+                finalQty = parseFloat((qty / 1000).toFixed(3));
+                finalUnit = 'kg';
+            }
+
             items.push({
                 product_id: productId,
                 name: product ? product.name : '',
-                quantity: qty,
-                qty: qty.toFixed(2),
-                unit: product ? product.unit : 'pcs',
+                quantity: finalQty,
+                qty: finalQty % 1 === 0 ? finalQty.toString() : finalQty.toFixed(2),
+                unit: finalUnit,
             });
         }
     });

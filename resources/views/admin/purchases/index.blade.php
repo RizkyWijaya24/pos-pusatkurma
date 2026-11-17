@@ -460,15 +460,31 @@
                                                        required
                                                        placeholder="0"
                                                        class="w-full text-center text-xs font-bold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 py-2">
+                                                <template x-if="(item.unit||'').trim().toLowerCase() === 'gram' && item.quantity >= 1000">
+                                                    <div class="text-[10px] text-emerald-700 font-bold text-center mt-0.5" x-text="'= ' + (item.quantity / 1000).toFixed(2) + ' kg'"></div>
+                                                </template>
+                                                <template x-if="(item.unit||'').trim().toLowerCase() === 'kg' && item.quantity > 0">
+                                                    <div class="text-[10px] text-emerald-700 font-bold text-center mt-0.5" x-text="'= ' + (item.quantity * 1000).toLocaleString('id-ID') + ' g'"></div>
+                                                </template>
                                             </td>
 
                                             <!-- Unit -->
                                             <td class="px-3 py-3">
-                                                <input type="text"
-                                                       x-model="item.unit"
-                                                       required
-                                                       placeholder="dus / kg / pcs"
-                                                       class="w-full text-center text-xs font-semibold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 py-2">
+                                                <div class="flex items-center gap-1">
+                                                    <input type="text"
+                                                           x-model="item.unit"
+                                                           required
+                                                           placeholder="dus / kg / pcs"
+                                                           class="w-full text-center text-xs font-semibold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 py-2">
+                                                    <template x-if="['gram','gr','g','kg'].includes((item.unit||'').trim().toLowerCase())">
+                                                        <button type="button" 
+                                                                @click="toggleItemUnit(item)"
+                                                                class="px-1.5 py-2 text-[9px] font-black uppercase rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition whitespace-nowrap shadow-xs"
+                                                                title="Ubah kg ⇄ gram (kuantiti & harga otomatis dikonversi)">
+                                                            g ⇄ kg
+                                                        </button>
+                                                    </template>
+                                                </div>
                                             </td>
 
                                             <!-- Unit Cost -->
@@ -2540,9 +2556,19 @@
                                                     </td>
                                                     <!-- Unit -->
                                                     <td class="p-2">
-                                                        <input type="text"
-                                                               x-model="it.unit"
-                                                               class="w-full text-xs font-medium text-center border-slate-200 rounded-xl focus:border-amber-500 focus:ring-amber-500 p-2 bg-slate-50">
+                                                        <div class="flex items-center gap-1">
+                                                            <input type="text"
+                                                                   x-model="it.unit"
+                                                                   class="w-full text-xs font-medium text-center border-slate-200 rounded-xl focus:border-amber-500 focus:ring-amber-500 p-2 bg-slate-50">
+                                                            <template x-if="['gram','gr','g','kg'].includes((it.unit||'').trim().toLowerCase())">
+                                                                <button type="button" 
+                                                                        @click="toggleEditItemUnit(it)"
+                                                                        class="px-1.5 py-2 text-[9px] font-black uppercase rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 transition whitespace-nowrap shadow-xs"
+                                                                        title="Ubah kg ⇄ gram (kuantiti & harga otomatis dikonversi)">
+                                                                    g ⇄ kg
+                                                                </button>
+                                                            </template>
+                                                        </div>
                                                     </td>
                                                     <!-- Unit Cost -->
                                                     <td class="p-2">
@@ -3087,6 +3113,35 @@
 
                 calculateTotals() {
                     // Reactive triggers via getters
+                },
+
+                toggleItemUnit(item) {
+                    if (!item) return;
+                    const u = (item.unit || '').trim().toLowerCase();
+                    if (u === 'kg') {
+                        item.unit = 'gram';
+                        item.quantity = Math.round((Number(item.quantity) || 0) * 1000);
+                        if (item.unit_cost) item.unit_cost = Math.round((Number(item.unit_cost) || 0) / 1000);
+                    } else if (['gram', 'gr', 'g'].includes(u)) {
+                        item.unit = 'kg';
+                        item.quantity = parseFloat(((Number(item.quantity) || 0) / 1000).toFixed(3));
+                        if (item.unit_cost) item.unit_cost = Math.round((Number(item.unit_cost) || 0) * 1000);
+                    }
+                    this.calculateTotals();
+                },
+
+                toggleEditItemUnit(it) {
+                    if (!it) return;
+                    const u = (it.unit || '').trim().toLowerCase();
+                    if (u === 'kg') {
+                        it.unit = 'gram';
+                        it.quantity = Math.round((Number(it.quantity) || 0) * 1000);
+                        if (it.unit_cost) it.unit_cost = Math.round((Number(it.unit_cost) || 0) / 1000);
+                    } else if (['gram', 'gr', 'g'].includes(u)) {
+                        it.unit = 'kg';
+                        it.quantity = parseFloat(((Number(it.quantity) || 0) / 1000).toFixed(3));
+                        if (it.unit_cost) it.unit_cost = Math.round((Number(it.unit_cost) || 0) * 1000);
+                    }
                 },
 
                 formatRupiah(num) {

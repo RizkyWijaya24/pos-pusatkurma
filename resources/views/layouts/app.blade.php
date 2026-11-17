@@ -674,6 +674,18 @@
                         </div>
                     </div>
 
+                    <!-- WEIGHT CONVERTER BUTTON (Gram ⇄ Kg) -->
+                    <button 
+                        type="button"
+                        onclick="window.openWeightConverter()"
+                        title="Kalkulator Konversi Gram ⇄ Kg (Tekan F2)"
+                        aria-label="Konverter Gram ke Kg"
+                        class="h-9 px-2.5 rounded-full border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 hover:border-emerald-300 transition-all duration-150 shadow-xs flex items-center gap-1.5 font-extrabold text-xs active:scale-95 cursor-pointer"
+                    >
+                        <span class="text-sm">⚖️</span>
+                        <span class="hidden md:inline font-bold">g ⇄ kg</span>
+                    </button>
+
                     <!-- DARK MODE TOGGLE BUTTON -->
                     <button 
                         id="dark-mode-toggle"
@@ -926,6 +938,9 @@
             window.showToast = showGlobalToast;
             window.hideToast = hideGlobalToast;
         </script>
+
+        <!-- Global Weight Converter Modal -->
+        <x-weight-converter-modal />
 
     </body>
 </html>

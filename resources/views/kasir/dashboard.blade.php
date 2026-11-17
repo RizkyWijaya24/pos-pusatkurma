@@ -99,6 +99,7 @@
             showQtyModal: false,
             qtyProduct: null,
             qtyValue: '',
+            qtyInputMode: 'kg', // 'kg' or 'gram'
             qtyMode: 'add',
             qtyCartId: null,
             paymentMethod: '',
@@ -411,6 +412,7 @@
                 if (product.price_unit === 'gram' || product.price_unit === 'kg') {
                     this.qtyProduct = product;
                     this.qtyValue = '';
+                    this.qtyInputMode = (product.price_unit || 'kg').toLowerCase();
                     this.qtyMode = 'add';
                     this.qtyCartId = null;
                     this.showQtyModal = true;
@@ -432,9 +434,56 @@
                 }
             },
 
+            switchQtyInputMode(newMode) {
+                if (this.qtyInputMode === newMode) return;
+                const val = parseFloat(this.qtyValue);
+                if (!isNaN(val) && val > 0) {
+                    if (newMode === 'kg') {
+                        // Dari gram ke kg
+                        this.qtyValue = parseFloat((val / 1000).toFixed(4)).toString();
+                    } else {
+                        // Dari kg ke gram
+                        this.qtyValue = Math.round(val * 1000).toString();
+                    }
+                }
+                this.qtyInputMode = newMode;
+            },
+
+            getEffectiveQty() {
+                const rawVal = parseFloat(this.qtyValue);
+                if (isNaN(rawVal) || rawVal <= 0) return 0;
+
+                const baseUnit = (this.qtyProduct?.price_unit || '').toLowerCase();
+                if (baseUnit === 'kg' && this.qtyInputMode === 'gram') {
+                    return rawVal / 1000;
+                } else if (baseUnit === 'gram' && this.qtyInputMode === 'kg') {
+                    return rawVal * 1000;
+                }
+                return rawVal;
+            },
+
+            getQtyEquivalentText() {
+                const rawVal = parseFloat(this.qtyValue);
+                if (isNaN(rawVal) || rawVal <= 0) return '';
+
+                const baseUnit = (this.qtyProduct?.price_unit || '').toLowerCase();
+                if (this.qtyInputMode === 'gram') {
+                    return `= ${(rawVal / 1000).toFixed(3).replace(/\.?0+$/, '')} kg`;
+                } else {
+                    return `= ${(rawVal * 1000).toLocaleString('id-ID')} gram`;
+                }
+            },
+
+            getQtyEstimatedPriceText() {
+                const effQty = this.getEffectiveQty();
+                if (effQty <= 0 || !this.qtyProduct) return '';
+                const price = (this.qtyProduct.selling_price || this.qtyProduct.price || 0) * effQty;
+                return 'Rp ' + Math.round(price).toLocaleString('id-ID');
+            },
+
             confirmQty() {
-                const qty = parseFloat(this.qtyValue);
-                if (isNaN(qty) || qty <= 0) {
+                const qty = this.getEffectiveQty();
+                if (qty <= 0) {
                     this.showToast('Kuantitas tidak valid!', 'warning');
                     return;
                 }
@@ -1565,8 +1614,26 @@
                 <div class="bg-white rounded-3xl p-6 w-full max-w-sm border border-slate-100 shadow-2xl flex flex-col gap-4" @click.away="showQtyModal = false">
                     <div class="text-center">
                         <h3 class="font-extrabold text-slate-800 text-lg" x-text="qtyProduct ? qtyProduct.name : ''"></h3>
-                        <p class="text-xs text-slate-400 font-semibold mt-1" x-text="'Masukkan berat/jumlah (' + (qtyProduct ? qtyProduct.price_unit : '') + ')'"></p>
+                        <p class="text-xs text-slate-400 font-semibold mt-0.5" x-text="'Satuan Produk: ' + (qtyProduct ? qtyProduct.price_unit : '') + ' • Harga: Rp ' + (qtyProduct ? (qtyProduct.selling_price || qtyProduct.price || 0).toLocaleString('id-ID') : 0) + '/' + (qtyProduct ? qtyProduct.price_unit : '')"></p>
                     </div>
+
+                    <!-- WEIGHT UNIT CONVERTER SWITCHER (Gram ⇄ Kg) -->
+                    <template x-if="qtyProduct && (qtyProduct.price_unit === 'kg' || qtyProduct.price_unit === 'gram')">
+                        <div class="flex items-center justify-center p-1 bg-slate-100 rounded-2xl text-xs font-bold gap-1 border border-slate-200/50">
+                            <button type="button" 
+                                    @click="switchQtyInputMode('gram')"
+                                    :class="qtyInputMode === 'gram' ? 'bg-white text-emerald-800 shadow-xs border border-emerald-200/60 font-black' : 'text-slate-500 hover:text-slate-800 font-semibold'"
+                                    class="flex-1 py-1.5 px-3 rounded-xl transition text-center flex items-center justify-center gap-1.5">
+                                <span>⚖️ Input dlm Gram (g)</span>
+                            </button>
+                            <button type="button" 
+                                    @click="switchQtyInputMode('kg')"
+                                    :class="qtyInputMode === 'kg' ? 'bg-white text-emerald-800 shadow-xs border border-emerald-200/60 font-black' : 'text-slate-500 hover:text-slate-800 font-semibold'"
+                                    class="flex-1 py-1.5 px-3 rounded-xl transition text-center flex items-center justify-center gap-1.5">
+                                <span>⚖️ Input dlm Kg</span>
+                            </button>
+                        </div>
+                    </template>
 
                     <!-- Quantity input box -->
                     <div class="relative">
@@ -1574,7 +1641,19 @@
                             readonly
                             x-model="qtyValue"
                             placeholder="0"
-                            class="w-full py-4 px-4 text-center font-extrabold text-2xl border-slate-200 rounded-2xl bg-slate-50 text-emerald-800 focus:outline-none">
+                            class="w-full py-3 px-4 text-center font-extrabold text-2xl border-slate-200 rounded-2xl bg-slate-50 text-emerald-800 focus:outline-none">
+                        <span class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400 uppercase pointer-events-none" x-text="qtyInputMode"></span>
+                    </div>
+
+                    <!-- Live Conversion Equivalent & Price Calculation -->
+                    <div class="flex items-center justify-between text-xs px-2 py-1.5 rounded-xl bg-emerald-50/70 border border-emerald-200/50 text-emerald-900 font-bold" x-show="qtyValue > 0">
+                        <div class="flex items-center gap-1 text-[11px]">
+                            <span class="text-emerald-600 font-semibold">Konversi:</span>
+                            <span x-text="getQtyEquivalentText()"></span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-emerald-700 font-black" x-text="getQtyEstimatedPriceText()"></span>
+                        </div>
                     </div>
 
                     <!-- Numeric On-Screen Keypad -->
@@ -1588,22 +1667,22 @@
                         </template>
                     </div>
 
-                    <!-- Quick selectors for common weights (e.g. 100g, 250g, 500g, 1000g) -->
-                    <template x-if="qtyProduct && qtyProduct.price_unit === 'gram'">
+                    <!-- Quick selectors for common weights when input is gram -->
+                    <template x-if="qtyInputMode === 'gram'">
                         <div class="grid grid-cols-4 gap-1.5 text-xs font-bold text-emerald-800 mt-1">
                             <button type="button" @click="qtyValue = '100'" class="py-2 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-100 transition duration-150">100g</button>
-                            <button type="button" @click="qtyValue = '250'" class="py-2 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-100 transition duration-150">250g</button>
-                            <button type="button" @click="qtyValue = '500'" class="py-2 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-100 transition duration-150">500g</button>
-                            <button type="button" @click="qtyValue = '1000'" class="py-2 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-100 transition duration-150">1000g</button>
+                            <button type="button" @click="qtyValue = '250'" class="py-2 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-100 transition duration-150">250g <span class="text-[9px] font-normal block text-slate-500">¼kg</span></button>
+                            <button type="button" @click="qtyValue = '500'" class="py-2 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-100 transition duration-150">500g <span class="text-[9px] font-normal block text-slate-500">½kg</span></button>
+                            <button type="button" @click="qtyValue = '1000'" class="py-2 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-100 transition duration-150">1000g <span class="text-[9px] font-normal block text-slate-500">1kg</span></button>
                         </div>
                     </template>
 
-                    <!-- Quick selectors for common weights when unit is kg (converts gram to decimal kg) -->
-                    <template x-if="qtyProduct && qtyProduct.price_unit === 'kg'">
+                    <!-- Quick selectors for common weights when input is kg -->
+                    <template x-if="qtyInputMode === 'kg'">
                         <div class="grid grid-cols-4 gap-1.5 text-xs font-bold text-emerald-800 mt-1">
                             <button type="button" @click="qtyValue = '0.1'" class="py-2 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-100 transition duration-150" title="100 gram">100g</button>
-                            <button type="button" @click="qtyValue = '0.25'" class="py-2 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-100 transition duration-150" title="250 gram">250g</button>
-                            <button type="button" @click="qtyValue = '0.5'" class="py-2 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-100 transition duration-150" title="500 gram">500g</button>
+                            <button type="button" @click="qtyValue = '0.25'" class="py-2 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-100 transition duration-150" title="250 gram">250g <span class="text-[9px] font-normal block text-slate-500">¼kg</span></button>
+                            <button type="button" @click="qtyValue = '0.5'" class="py-2 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-100 transition duration-150" title="500 gram">500g <span class="text-[9px] font-normal block text-slate-500">½kg</span></button>
                             <button type="button" @click="qtyValue = '1'" class="py-2 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-100 transition duration-150" title="1 Kilogram">1kg</button>
                         </div>
                     </template>

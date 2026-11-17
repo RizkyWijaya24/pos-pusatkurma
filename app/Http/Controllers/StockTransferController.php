@@ -85,6 +85,7 @@ class StockTransferController extends Controller
             'items'            => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity'   => 'required|numeric|min:0.01',
+            'items.*.unit'       => 'nullable|string|max:50',
         ]);
 
         try {
@@ -377,6 +378,7 @@ class StockTransferController extends Controller
             'items'              => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity'   => 'required|numeric|min:0.01',
+            'items.*.unit'       => 'nullable|string|max:50',
         ]);
 
         // Kasir hanya bisa request ke cabangnya sendiri

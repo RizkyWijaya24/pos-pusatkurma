@@ -39,4 +39,22 @@ class StockTransferItem extends Model
     {
         return $this->belongsTo(Product::class);
     }
+
+    /**
+     * Dapatkan satuan produk yang akurat.
+     * Jika unit yang tersimpan bernilai 'pcs' atau kosong, prioritaskan satuan riil dari produk (misal kg, dus, pack, dll).
+     */
+    public function getUnitAttribute($value): string
+    {
+        if (!empty($value) && strtolower(trim($value)) !== 'pcs') {
+            return $value;
+        }
+
+        $productUnit = $this->product?->price_unit;
+        if (!empty($productUnit)) {
+            return $productUnit;
+        }
+
+        return $value ?: 'pcs';
+    }
 }
