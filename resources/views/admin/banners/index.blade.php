@@ -58,7 +58,7 @@
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Badge Teks</label>
-                        <input name="badge_text" type="text" placeholder="🌙 Ramadan Special" class="w-full border border-slate-200 dark:border-dp-600 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-dp-800 dark:text-white">
+                        <input name="badge_text" type="text" placeholder=" Ramadan Special" class="w-full border border-slate-200 dark:border-dp-600 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-dp-800 dark:text-white">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Teks Tombol</label>

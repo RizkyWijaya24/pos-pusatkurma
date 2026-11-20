@@ -74,13 +74,13 @@
     <div class="info-page-inner">
 
         <div class="info-breadcrumb">
-            <a href="{{ route('shop.index') }}">🏠 Beranda</a>
+            <a href="{{ route('shop.index') }}"> Beranda</a>
             <span>/</span>
             <span>Syarat &amp; Ketentuan</span>
         </div>
 
         <div class="info-page-header">
-            <div class="page-icon">📋</div>
+            <div class="page-icon"></div>
             <h1>Syarat &amp; Ketentuan</h1>
             <p>Berlaku sejak 1 Januari 2024 · Terakhir diperbarui {{ date('d F Y') }}</p>
         </div>
@@ -165,16 +165,16 @@
             <h2>9. Hubungi Kami</h2>
             <p>Jika ada pertanyaan mengenai syarat dan ketentuan ini, silakan hubungi kami:</p>
             <ul>
-                <li>📍 {{ \App\Models\Setting::get('shop_address', 'Cianjur, Jawa Barat') }}</li>
-                <li>📱 WhatsApp: <a href="https://wa.me/{{ \App\Models\Setting::get('shop_whatsapp', '6281234567890') }}" target="_blank" style="color:var(--clr-primary); font-weight:600;">{{ \App\Models\Setting::get('shop_phone', '+62 812-3456-7890') }}</a></li>
-                <li>⏰ {{ \App\Models\Setting::get('shop_operational_hours', 'Senin–Sabtu: 08.00–17.00 WIB') }}</li>
+                <li> {{ \App\Models\Setting::get('shop_address', 'Cianjur, Jawa Barat') }}</li>
+                <li> WhatsApp: <a href="https://wa.me/{{ \App\Models\Setting::get('shop_whatsapp', '6281234567890') }}" target="_blank" style="color:var(--clr-primary); font-weight:600;">{{ \App\Models\Setting::get('shop_phone', '+62 812-3456-7890') }}</a></li>
+                <li> {{ \App\Models\Setting::get('shop_operational_hours', 'Senin–Sabtu: 08.00–17.00 WIB') }}</li>
             </ul>
         </div>
 
         <div style="margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--clr-border); display:flex; gap:12px; flex-wrap:wrap;">
-            <a href="{{ route('shop.privacy') }}" style="color:var(--clr-primary);font-weight:600;font-size:14px;">🔒 Kebijakan Privasi →</a>
-            <a href="{{ route('shop.refund') }}" style="color:var(--clr-primary);font-weight:600;font-size:14px;">🔄 Kebijakan Pengembalian →</a>
-            <a href="{{ route('shop.index') }}" style="color:var(--clr-primary);font-weight:600;font-size:14px;">🛒 Kembali Belanja →</a>
+            <a href="{{ route('shop.privacy') }}" style="color:var(--clr-primary);font-weight:600;font-size:14px;"> Kebijakan Privasi →</a>
+            <a href="{{ route('shop.refund') }}" style="color:var(--clr-primary);font-weight:600;font-size:14px;"> Kebijakan Pengembalian →</a>
+            <a href="{{ route('shop.index') }}" style="color:var(--clr-primary);font-weight:600;font-size:14px;"> Kembali Belanja →</a>
         </div>
 
     </div>

@@ -6,9 +6,9 @@
         </span>
     </div>
     <p class="text-slate-400 dark:text-purple-400 text-xs font-semibold">
-        🔴 Kritis (≤5) &nbsp; 🟡 Rendah (≤10) &nbsp; 🟢 Aman (&gt;10)
+         Kritis (≤5) &nbsp; Rendah (≤10) &nbsp; Aman (&gt;10)
         @if(Auth::user()->isAdmin())
-        &nbsp;|&nbsp; <span class="text-purple-500 dark:text-purple-400 font-bold">✏️ Klik angka untuk edit</span>
+        &nbsp;|&nbsp; <span class="text-purple-500 dark:text-purple-400 font-bold"> Klik angka untuk edit</span>
         @endif
     </p>
 </div>
@@ -20,7 +20,7 @@
                 <th class="px-3 py-3 w-20">Satuan</th>
                 @foreach($locations as $loc)
                 <th class="text-center px-3 py-3 w-28 whitespace-nowrap {{ $loc->type === 'gudang' ? 'text-blue-600 dark:text-blue-400' : '' }}">
-                    {{ $loc->type === 'gudang' ? '🏭' : ($loc->type === 'online' ? '🌐' : '🏪') }}
+                    {{ $loc->type === 'gudang' ? '' : ($loc->type === 'online' ? '' : '') }}
                     <br>{{ Str::limit($loc->name, 14) }}
                 </th>
                 @endforeach
@@ -108,7 +108,7 @@
             @empty
             <tr>
                 <td colspan="{{ count($locations) + 3 }}" class="px-6 py-12 text-center text-slate-400 dark:text-purple-400">
-                    <div class="text-3xl mb-2">🔍</div>
+                    <div class="text-3xl mb-2"></div>
                     <p class="font-extrabold text-sm text-slate-700 dark:text-purple-200">Tidak ada produk yang ditemukan</p>
                     <p class="text-xs text-slate-400 dark:text-purple-400 mt-1">Coba gunakan kata kunci pencarian lain atau pilih kategori berbeda.</p>
                 </td>

@@ -22,7 +22,7 @@
         position: relative;
     }
     .success-header::after {
-        content: '🌴';
+        content: '';
         position: absolute;
         bottom: -15px;
         right: 20px;
@@ -340,7 +340,7 @@
                            . "*Alamat Pengiriman:* " . $order->shipping_address . "\n\n"
                            . "*Rincian Produk:*\n" . $itemsText . "\n"
                            . "*Total Belanja:* *Rp " . number_format($order->total_amount, 0, ',', '.') . "*\n\n"
-                           . "Mohon segera diproses. Terima kasih! 🌴";
+                           . "Mohon segera diproses. Terima kasih! ";
 
                 $waUrl = "https://wa.me/" . ($shop_settings['shop_whatsapp'] ?? '6281234567890') . "?text=" . rawurlencode($waMessage);
             @endphp

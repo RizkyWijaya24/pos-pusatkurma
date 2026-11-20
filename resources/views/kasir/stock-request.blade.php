@@ -72,7 +72,7 @@
     <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
             <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-                <span class="text-3xl">📬</span> Request Stok Barang
+                Request Stok Barang
             </h1>
             <p class="text-slate-500 dark:text-purple-300 mt-1 text-sm">
                 Kirim permintaan pengiriman barang dari
@@ -83,7 +83,7 @@
         </div>
         @if(!$myLocation)
         <div class="bg-red-100 dark:bg-red-500/20 border border-red-200 dark:border-red-500/30 rounded-xl px-4 py-2.5 text-red-700 dark:text-red-350 text-xs sm:text-sm font-semibold max-w-md shadow-sm">
-            ⚠️ Cabang Anda ({{ $kasir->branch }}) tidak terdaftar di lokasi stok sistem. Hubungi Admin.
+            Cabang Anda ({{ $kasir->branch }}) tidak terdaftar di lokasi stok sistem. Hubungi Admin.
         </div>
         @endif
     </div>
@@ -100,7 +100,9 @@
                     {{-- Row 1: Search Bar (Lebar Penuh) --}}
                     <div class="relative w-full">
                         <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                            🔍
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                            </svg>
                         </span>
                         <input type="text" id="searchInput" 
                             oninput="filterProducts()" 
@@ -121,11 +123,11 @@
                         </button>
                         <button type="button" id="tab-low" onclick="setFilterTab('low')" 
                             class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 dark:text-purple-300 hover:text-slate-900 dark:hover:text-white">
-                            🔴 Stok Rendah / Habis
+                            Stok Rendah / Habis
                         </button>
                         <button type="button" id="tab-inputted" onclick="setFilterTab('inputted')" 
                             class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 dark:text-purple-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5">
-                            ✍️ Sudah Di-input
+                            Sudah Di-input
                             <span id="inputtedBadge" class="hidden bg-emerald-500 text-slate-900 px-1.5 py-0.2 rounded-full font-black text-[9px]">0</span>
                         </button>
                     </div>
@@ -213,7 +215,9 @@
                         </tbody>
                     </table>
                     <div id="emptySearch" class="hidden text-center text-slate-500 py-12 bg-white dark:bg-dp-900">
-                        <span class="text-3xl block mb-2">🔍</span>
+                        <svg class="w-8 h-8 mx-auto mb-2 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                        </svg>
                         Tidak ada produk yang cocok dengan pencarian Anda.
                     </div>
                 </div>
@@ -227,7 +231,7 @@
                 {{-- Card Ringkasan --}}
                 <div class="bg-white dark:bg-dp-900 border border-slate-200 dark:border-dp-700/60 rounded-2xl p-4 shadow-md">
                     <h2 class="text-slate-900 dark:text-white font-bold text-base mb-3 flex items-center gap-2">
-                        <span class="text-emerald-500">📬</span> Ringkasan Permintaan
+                        Ringkasan Permintaan
                     </h2>
                     
                     {{-- Selected items container --}}
@@ -259,7 +263,7 @@
                         <div class="pt-2">
                             <button onclick="submitRequest()" id="submitRequestBtn" disabled
                                 class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:hover:bg-emerald-600 disabled:scale-100 text-white py-2.5 rounded-xl font-bold transition-all hover:scale-[1.01] shadow-sm flex items-center justify-center gap-1.5 focus:outline-none cursor-pointer disabled:cursor-not-allowed text-xs">
-                                <span>📬</span> Kirim Admin
+                                Kirim Admin
                             </button>
                         </div>
                     </div>
@@ -268,7 +272,7 @@
                 {{-- Card Riwayat --}}
                 <div class="bg-white dark:bg-dp-900 border border-slate-200 dark:border-dp-700/60 rounded-2xl p-5 shadow-md">
                     <h2 class="text-slate-900 dark:text-white font-bold text-sm mb-4 flex items-center gap-2">
-                        <span>📜</span> Riwayat Request Cabang
+                        Riwayat Request Cabang
                     </h2>
                     <div class="space-y-3 max-h-96 overflow-y-auto pr-1">
                         @forelse($myRequests as $req)
@@ -384,7 +388,11 @@
 {{-- Success Modal --}}
 <div id="successModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-white dark:bg-dp-800 border border-slate-200 dark:border-emerald-500/30 rounded-2xl shadow-2xl w-full max-w-sm text-center p-6">
-        <div class="text-5xl mb-3">✅</div>
+        <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+        </div>
         <h3 class="text-xl font-extrabold text-slate-900 dark:text-white mb-1">Request Terkirim!</h3>
         <p class="text-slate-600 dark:text-slate-350 text-xs font-mono font-bold py-1.5 px-3 bg-slate-100 dark:bg-dp-900 rounded-lg inline-block my-2" id="successCode"></p>
         <p class="text-slate-500 dark:text-slate-400 text-xs mb-4">Request Anda telah tersimpan di sistem. Lanjutkan kirim laporan WhatsApp ke Admin.</p>
@@ -396,7 +404,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 3.75v16.5l6-4.5-6-4.5 6-4.5-6-4.5z"/>
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 15.75l-6-4.5m6-4.5l-6 4.5"/>
                 </svg>
-                🖨️ Cetak Resi Bluetooth
+                Cetak Resi Bluetooth
             </button>
             <button id="successWaBtn" onclick="sendWaFromModal()" style="background-color: #25D366;"
                 class="w-full text-white py-2.5 rounded-xl font-bold transition-all hover:opacity-90 shadow-md flex items-center justify-center gap-2 text-xs">
@@ -415,7 +423,11 @@
 {{-- Cancel Confirm Modal --}}
 <div id="cancelConfirmModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-white dark:bg-dp-800 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl w-full max-w-sm text-center p-8 transform transition-all duration-300 scale-95 opacity-0 active-modal-cancel">
-        <div class="text-5xl mb-4 animate-bounce">🚫</div>
+        <div class="w-12 h-12 mx-auto mb-4 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+        </div>
         <h3 class="text-xl font-extrabold text-slate-900 dark:text-white mb-2">Batalkan Request</h3>
         <p class="text-slate-500 dark:text-slate-400 text-xs px-2 mb-6">
             Apakah Anda yakin ingin membatalkan request stok <span id="cancelRequestCode" class="font-mono font-bold text-slate-900 dark:text-white"></span> ini?
@@ -681,7 +693,7 @@ function submitRequest() {
 
     const btn = document.getElementById('submitRequestBtn');
     btn.disabled = true;
-    btn.textContent = '⏳ Mengirim...';
+    btn.textContent = 'Mengirim...';
 
     const notesVal = document.getElementById('requestNotes').value.trim();
 
@@ -732,13 +744,13 @@ function submitRequest() {
         } else {
             showToast('Gagal: ' + data.message, 'error');
             btn.disabled = false;
-            btn.textContent = '📬 Kirim Admin';
+            btn.textContent = 'Kirim Admin';
         }
     })
     .catch(err => {
         showToast('Terjadi kesalahan koneksi!', 'error');
         btn.disabled = false;
-        btn.textContent = '📬 Kirim Admin';
+        btn.textContent = 'Kirim Admin';
     });
 }
 
@@ -790,7 +802,7 @@ function confirmCancel() {
     const btn = document.getElementById('confirmCancelBtn');
     if (btn) {
         btn.disabled = true;
-        btn.textContent = '⏳ Memproses...';
+        btn.textContent = 'Memproses...';
     }
 
     fetch(`/kasir/stock-request/${currentCancelId}/cancel`, {

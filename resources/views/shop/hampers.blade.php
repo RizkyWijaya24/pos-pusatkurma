@@ -404,7 +404,7 @@
         });
 
         // Toast
-        showToast('🎁 ' + items.length + ' produk berhasil ditambahkan ke keranjang!', 'success');
+        showToast(' ' + items.length + ' produk berhasil ditambahkan ke keranjang!', 'success');
 
         // Redirect to cart / checkout after short delay
         setTimeout(() => {

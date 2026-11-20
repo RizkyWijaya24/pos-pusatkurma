@@ -50,7 +50,7 @@ class StockLocationSeeder extends Seeder
         }
 
         $allLocations = StockLocation::all()->keyBy('name');
-        $this->command->info('✅ 3 Lokasi Cabang berhasil disiapkan:');
+        $this->command->info('[OK] 3 Lokasi Cabang berhasil disiapkan:');
         foreach ($allLocations as $loc) {
             $this->command->line("   - [ID {$loc->id}] {$loc->name} ({$loc->type})");
         }
@@ -61,7 +61,7 @@ class StockLocationSeeder extends Seeder
                    ?? User::first();
 
         if (!$systemUser) {
-            $this->command->error('❌ Tidak ada user untuk audit log!');
+            $this->command->error('[ERROR] Tidak ada user untuk audit log!');
             return;
         }
 
@@ -70,7 +70,7 @@ class StockLocationSeeder extends Seeder
         $stockService = app(\App\Services\StockService::class);
         $totalSeeded  = 0;
 
-        $this->command->info("⏳ Mengisi stok untuk {$products->count()} produk di 3 cabang...");
+        $this->command->info("Mengisi stok untuk {$products->count()} produk di 3 cabang...");
 
         DB::beginTransaction();
         try {
@@ -199,7 +199,7 @@ class StockLocationSeeder extends Seeder
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
-            $this->command->error("❌ Terjadi kesalahan saat seeding stok: " . $e->getMessage());
+            $this->command->error("[ERROR] Terjadi kesalahan saat seeding stok: " . $e->getMessage());
             throw $e;
         }
 
@@ -221,6 +221,6 @@ class StockLocationSeeder extends Seeder
             ));
         }
         $this->command->info('╚═══════════════════════════════════════════════════════════════════╝');
-        $this->command->info("🎉 Total {$totalSeeded} produk telah memiliki stok aktif di ketiga cabang.");
+        $this->command->info("Total {$totalSeeded} produk telah memiliki stok aktif di ketiga cabang.");
     }
 }

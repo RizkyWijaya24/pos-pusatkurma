@@ -49,7 +49,7 @@ class ReferralController extends Controller
 
         return response()->json([
             'success'       => true,
-            'message'       => "Kode referral dari \"{$referral->owner_name}\" berhasil diterapkan! Diskon {$discountLabel} 🎉",
+            'message'       => "Kode referral dari \"{$referral->owner_name}\" berhasil diterapkan! Diskon {$discountLabel}",
             'code'          => $referral->code,
             'owner_name'    => $referral->owner_name,
             'discount_type' => $referral->discount_type,

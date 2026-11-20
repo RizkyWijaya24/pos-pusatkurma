@@ -9,7 +9,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
             <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-purple-100 flex items-center gap-3">
-                <span class="text-3xl">📜</span> Log Mutasi Stok
+                Log Mutasi Stok
             </h1>
             <p class="text-slate-400 dark:text-purple-400 mt-1 text-sm font-medium">Histori setiap perubahan stok di semua lokasi</p>
         </div>
@@ -28,17 +28,20 @@
                 <div class="inline-flex rounded-xl bg-slate-100 dark:bg-dp-900 p-1 border border-slate-200 dark:border-dp-700">
                     <a href="{{ route('owner.stock-adjustment-log', array_merge(request()->query(), ['mode' => 'accumulated'])) }}" 
                        class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 {{ ($mode ?? 'accumulated') === 'accumulated' ? 'bg-white dark:bg-dp-800 text-indigo-700 dark:text-indigo-400 shadow-sm' : 'text-slate-600 dark:text-purple-300 hover:text-slate-900 dark:hover:text-white' }}">
-                        <span>📊</span> Akumulasi Harian (Rekomendasi)
+                        Akumulasi Harian (Rekomendasi)
                     </a>
                     <a href="{{ route('owner.stock-adjustment-log', array_merge(request()->query(), ['mode' => 'detail'])) }}" 
                        class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 {{ ($mode ?? 'accumulated') === 'detail' ? 'bg-white dark:bg-dp-800 text-indigo-700 dark:text-indigo-400 shadow-sm' : 'text-slate-600 dark:text-purple-300 hover:text-slate-900 dark:hover:text-white' }}">
-                        <span>📑</span> Detail Per Transaksi
+                        Detail Per Transaksi
                     </a>
                 </div>
             </div>
             @if(($mode ?? 'accumulated') === 'accumulated')
             <div class="text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-1.5 rounded-xl border border-amber-200/50 flex items-center gap-1.5">
-                <span>💡</span> <span>Stok keluar untuk produk & lokasi yang sama <strong>diakumulasi per hari</strong> agar ringkas dan rapi.</span>
+                <svg class="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                </svg>
+                <span>Stok keluar untuk produk & lokasi yang sama <strong>diakumulasi per hari</strong> agar ringkas dan rapi.</span>
             </div>
             @endif
         </div>
@@ -68,7 +71,7 @@
                 <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2">Tipe</label>
                 <select name="type" class="bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-700 dark:text-purple-200 rounded-xl px-3.5 py-2.5 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-inner">
                     <option value="">Semua Tipe</option>
-                    @foreach(['initial' => '🏭 Stok Awal', 'sale' => '🛒 Penjualan', 'transfer_in' => '📦 Transfer Masuk', 'transfer_out' => '🚚 Transfer Keluar', 'adjustment' => '✏️ Koreksi Manual', 'return' => '↩️ Retur'] as $val => $label)
+                    @foreach(['initial' => ' Stok Awal', 'sale' => ' Penjualan', 'transfer_in' => ' Transfer Masuk', 'transfer_out' => ' Transfer Keluar', 'adjustment' => ' Koreksi Manual', 'return' => '↩ Retur'] as $val => $label)
                     <option value="{{ $val }}" {{ request('type') == $val ? 'selected' : '' }}>{{ $label }}</option>
                     @endforeach
                 </select>
@@ -78,7 +81,7 @@
                 <input type="date" name="date" value="{{ request('date') }}"
                        class="bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-700 dark:text-purple-200 rounded-xl px-3.5 py-2.5 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-inner">
             </div>
-            <button type="submit" class="bg-indigo-700 hover:bg-indigo-800 text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider shadow transition duration-150">🔍 Filter</button>
+            <button type="submit" class="bg-indigo-700 hover:bg-indigo-800 text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider shadow transition duration-150"> Filter</button>
             @if(request()->hasAny(['product_id','location_id','type','date']))
             <a href="{{ route('owner.stock-adjustment-log', ['mode' => $mode ?? 'accumulated']) }}" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 dark:text-purple-300 text-xs font-bold rounded-xl transition duration-150">✕ Reset</a>
             @endif
@@ -89,7 +92,7 @@
     <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl shadow-md overflow-hidden">
         @if($logs->isEmpty())
         <div class="text-center py-16">
-            <div class="text-5xl mb-4">📭</div>
+            <div class="text-5xl mb-4"></div>
             <p class="text-slate-400 dark:text-purple-400 text-lg font-semibold">Belum ada log mutasi stok</p>
         </div>
         @else
@@ -111,14 +114,14 @@
                     @foreach($logs as $log)
                     @php
                         $typeIcons = [
-                            'initial'      => ['icon' => '🏭', 'color' => 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900/40 dark:text-slate-400 dark:border-slate-800/30'],
-                            'sale'         => ['icon' => '🛒', 'color' => 'bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/30'],
-                            'transfer_in'  => ['icon' => '📦', 'color' => 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30'],
-                            'transfer_out' => ['icon' => '🚚', 'color' => 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/30'],
-                            'adjustment'   => ['icon' => '✏️', 'color' => 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30'],
-                            'return'       => ['icon' => '↩️', 'color' => 'bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-900/30'],
+                            'initial' => ['icon' => '', 'color' => 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900/40 dark:text-slate-400 dark:border-slate-800/30'],
+                            'sale' => ['icon' => '', 'color' => 'bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/30'],
+                            'transfer_in' => ['icon' => '', 'color' => 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30'],
+                            'transfer_out' => ['icon' => '', 'color' => 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/30'],
+                            'adjustment' => ['icon' => '', 'color' => 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30'],
+                            'return' => ['icon' => '↩', 'color' => 'bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-900/30'],
                         ];
-                        $typeInfo = $typeIcons[$log->type] ?? ['icon' => '📋', 'color' => 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900/40 dark:text-slate-400 dark:border-slate-800/30'];
+                        $typeInfo = $typeIcons[$log->type] ?? ['icon' => '', 'color' => 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900/40 dark:text-slate-400 dark:border-slate-800/30'];
                         $changePositive = $log->quantity_change >= 0;
                         $isAccumulated = !empty($log->is_accumulated);
                         $dateObj = \Carbon\Carbon::parse($log->log_date ?? $log->created_at);
@@ -128,7 +131,7 @@
                             <div class="font-bold text-slate-800 dark:text-slate-200">{{ $dateObj->translatedFormat('d M Y') }}</div>
                             @if($isAccumulated)
                             <div class="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 px-1.5 py-0.5 rounded border border-indigo-200/50 mt-1">
-                                <span>📅</span> Akumulasi 1 Hari
+                                Akumulasi 1 Hari
                             </div>
                             @else
                             <div class="text-slate-400 dark:text-purple-500 text-[10px] font-semibold mt-0.5">{{ $log->created_at->format('H:i:s') }} WIB</div>
@@ -185,7 +188,7 @@
                                 <p class="text-slate-400 dark:text-purple-400 text-[9px] uppercase font-bold tracking-wider mt-0.5">Total Hari Ini</p>
                                 <a href="{{ route('owner.stock-adjustment-log', array_merge(request()->query(), ['mode' => 'detail', 'product_id' => $log->product_id, 'location_id' => $log->location_id, 'date' => $dateObj->format('Y-m-d')])) }}" 
                                    class="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 hover:underline mt-1.5">
-                                    <span>🔍</span> Lihat rincian per transaksi →
+                                    Lihat rincian per transaksi →
                                 </a>
                             @else
                                 <p class="text-slate-800 dark:text-purple-100 font-bold text-xs">{{ $log->creator?->name ?? 'Sistem' }}</p>

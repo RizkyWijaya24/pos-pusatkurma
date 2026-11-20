@@ -7,7 +7,7 @@
         'cancelled' => 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-900/20 dark:text-slate-400 dark:border-slate-800/30',
     ];
     $statusIcons = [
-        'requested' => '⏳', 'pending' => '🔵', 'approved' => '✅', 'rejected' => '❌', 'cancelled' => '🚫',
+        'requested' => '', 'pending' => '', 'approved' => '', 'rejected' => '', 'cancelled' => '',
     ];
 @endphp
 
@@ -38,7 +38,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 3.75v16.5l6-4.5-6-4.5 6-4.5-6-4.5z"/>
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 15.75l-6-4.5m6-4.5l-6 4.5"/>
                 </svg>
-                <span>🖨️ Cetak Resi Bluetooth</span>
+                <span> Cetak Resi Bluetooth</span>
             </button>
 
             @if(in_array($stockTransfer->status, ['requested', 'pending']))
@@ -46,7 +46,7 @@
                 ✓ Approve Transfer
             </button>
             <button onclick="showRejectModal()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/20 dark:text-rose-400 border border-rose-200 dark:border-rose-900/30 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors shadow-sm">
-                ✗ Tolak
+                 Tolak
             </button>
             @endif
         </div>
@@ -62,7 +62,7 @@
                 <div class="flex items-center justify-between flex-wrap gap-4">
                     <div class="flex items-center gap-4">
                         <div class="text-4xl">
-                            {{ $statusIcons[$stockTransfer->status] ?? '📋' }}
+                            {{ $statusIcons[$stockTransfer->status] ?? '' }}
                         </div>
                         <div>
                             <p class="text-slate-400 dark:text-purple-400 text-xs font-bold uppercase tracking-wider mb-1">Status Transfer</p>
@@ -91,16 +91,16 @@
 
             {{-- Rute Transfer --}}
             <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl p-5 shadow-md">
-                <h2 class="text-slate-800 dark:text-purple-100 font-extrabold mb-4 flex items-center gap-2">🗺️ Rute Transfer</h2>
+                <h2 class="text-slate-800 dark:text-purple-100 font-extrabold mb-4 flex items-center gap-2"> Rute Transfer</h2>
                 <div class="flex items-center gap-4 flex-wrap">
                     <div class="flex-1 min-w-0 bg-slate-50 dark:bg-dp-900 border border-slate-200/50 dark:border-dp-700/50 rounded-2xl p-4 text-center">
-                        <div class="text-2xl mb-2">{{ $stockTransfer->fromLocation?->type === 'gudang' ? '🏭' : '🏪' }}</div>
+                        <div class="text-2xl mb-2">{{ $stockTransfer->fromLocation?->type === 'gudang' ? '' : '' }}</div>
                         <p class="text-slate-400 dark:text-purple-400 text-xs mb-1 font-bold uppercase tracking-wider">Dari</p>
                         <p class="text-slate-800 dark:text-purple-100 font-bold text-sm">{{ $stockTransfer->fromLocation?->name ?? 'Luar Sistem / Pembelian Baru' }}</p>
                     </div>
                     <div class="text-3xl text-slate-400 flex-shrink-0">→</div>
                     <div class="flex-1 min-w-0 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100/50 dark:border-emerald-900/30 rounded-2xl p-4 text-center">
-                        <div class="text-2xl mb-2">{{ $stockTransfer->toLocation->type === 'gudang' ? '🏭' : ($stockTransfer->toLocation->type === 'online' ? '🌐' : '🏪') }}</div>
+                        <div class="text-2xl mb-2">{{ $stockTransfer->toLocation->type === 'gudang' ? '' : ($stockTransfer->toLocation->type === 'online' ? '' : '') }}</div>
                         <p class="text-slate-400 dark:text-purple-400 text-xs mb-1 font-bold uppercase tracking-wider">Ke</p>
                         <p class="text-emerald-800 dark:text-emerald-300 font-bold text-sm">{{ $stockTransfer->toLocation->name }}</p>
                     </div>
@@ -110,7 +110,7 @@
             {{-- Daftar Produk --}}
             <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl overflow-hidden shadow-md">
                 <div class="px-5 py-4 border-b border-slate-100 dark:border-dp-700">
-                    <h2 class="text-slate-800 dark:text-purple-100 font-extrabold">🛍️ Daftar Produk yang Ditransfer</h2>
+                    <h2 class="text-slate-800 dark:text-purple-100 font-extrabold"> Daftar Produk yang Ditransfer</h2>
                 </div>
                 <div class="overflow-x-auto w-full">
                     <table class="min-w-full divide-y divide-slate-100 dark:divide-dp-700 text-left text-sm text-slate-700">
@@ -145,7 +145,7 @@
                                             {{ number_format($item->approved_quantity, 2, ',', '.') }}
                                         </span>
                                         <span class="text-slate-400 dark:text-purple-400 text-xs ml-1 font-bold uppercase">{{ $item->unit }}</span>
-                                        <span class="ml-1 text-[10px] text-amber-500 font-bold">✏️ disesuaikan</span>
+                                        <span class="ml-1 text-[10px] text-amber-500 font-bold"> disesuaikan</span>
                                     @else
                                         <span class="text-emerald-700 dark:text-emerald-400 font-extrabold text-sm">
                                             {{ number_format($item->approved_quantity ?? $item->quantity, 2, ',', '.') }}
@@ -163,7 +163,7 @@
 
             @if($stockTransfer->notes)
             <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl p-5 shadow-md">
-                <h2 class="text-slate-800 dark:text-purple-100 font-extrabold mb-3">📝 Catatan</h2>
+                <h2 class="text-slate-800 dark:text-purple-100 font-extrabold mb-3"> Catatan</h2>
                 <p class="text-slate-700 dark:text-purple-200 text-sm leading-relaxed font-medium">{{ $stockTransfer->notes }}</p>
             </div>
             @endif
@@ -172,7 +172,7 @@
         {{-- Sidebar Info --}}
         <div class="lg:col-span-4 xl:col-span-3 space-y-5">
             <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl p-5 shadow-md">
-                <h2 class="text-slate-800 dark:text-purple-100 font-extrabold mb-4 flex items-center gap-2">👤 Informasi</h2>
+                <h2 class="text-slate-800 dark:text-purple-100 font-extrabold mb-4 flex items-center gap-2"> Informasi</h2>
                 <div class="space-y-4">
                     <div>
                         <p class="text-slate-400 dark:text-purple-400 text-[10px] font-bold uppercase tracking-wider mb-1">Dibuat Oleh</p>
@@ -200,7 +200,7 @@
 <div id="rejectModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all duration-300 scale-95 opacity-0 active-modal-reject">
         <div class="p-6">
-            <h3 class="text-lg font-bold text-slate-800 dark:text-purple-100 mb-2">❌ Tolak Transfer</h3>
+            <h3 class="text-lg font-bold text-slate-800 dark:text-purple-100 mb-2"> Tolak Transfer</h3>
             <p class="text-slate-500 dark:text-purple-400 text-sm mb-2">Alasan penolakan (wajib):</p>
             <textarea id="rejectionReason" rows="3" placeholder="Alasan penolakan..." required
                 class="w-full bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-800 dark:text-purple-100 rounded-xl px-4 py-3 text-sm focus:border-emerald-500 focus:ring-emerald-500 focus:outline-none resize-none shadow-inner"></textarea>
@@ -218,7 +218,7 @@
         {{-- Modal Header --}}
         <div class="px-6 py-5 border-b border-slate-100 dark:border-dp-700 flex items-center justify-between">
             <div>
-                <h3 class="text-lg font-black text-slate-800 dark:text-purple-100">✅ Approve Transfer Stok</h3>
+                <h3 class="text-lg font-black text-slate-800 dark:text-purple-100">Approve Transfer Stok</h3>
                 <p class="text-slate-500 dark:text-purple-400 text-xs mt-0.5">Periksa & sesuaikan jumlah sebelum approve</p>
             </div>
             <button onclick="closeApproveModal()" class="text-slate-400 hover:text-slate-600 dark:text-purple-400 dark:hover:text-white text-xl transition-colors">✕</button>
@@ -227,7 +227,9 @@
         {{-- Info Jumlah --}}
         <div class="px-6 pt-4">
             <div class="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-2xl p-3 flex gap-2 items-start">
-                <span class="text-amber-500 text-lg mt-0.5">⚠️</span>
+                <svg class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                </svg>
                 <p class="text-amber-700 dark:text-amber-300 text-xs font-semibold leading-relaxed">
                     Jika stok di gudang <strong>tidak mencukupi</strong> jumlah yang diminta, ubah jumlah pada kolom
                     <strong>"Disetujui"</strong> menjadi stok yang tersedia. Isi <strong>0</strong> untuk tidak mengirimkan produk tersebut.
@@ -243,7 +245,7 @@
                         <th class="text-left pb-3 pr-4">Produk</th>
                         <th class="text-right pb-3 px-3">Stok Gudang</th>
                         <th class="text-right pb-3 px-3">Diminta</th>
-                        <th class="text-right pb-3 pl-3">Disetujui ✏️</th>
+                        <th class="text-right pb-3 pl-3">Disetujui </th>
                     </tr>
                 </thead>
                 <tbody id="approveItemsBody" class="divide-y divide-slate-100 dark:divide-dp-700">
@@ -349,7 +351,7 @@ async function approveTransfer() {
             : `<span class="text-slate-400">—</span>`;
 
         const warningBadge = isShort
-            ? `<div class="text-rose-500 text-[10px] font-bold mt-0.5">⚠️ Stok tidak cukup</div>`
+            ? `<div class="text-rose-500 text-[10px] font-bold mt-0.5"> Stok tidak cukup</div>`
             : '';
 
         tbody.insertAdjacentHTML('beforeend', `
@@ -435,7 +437,7 @@ function confirmApproveAdjusted() {
     if (hasError) return;
 
     const btn = document.getElementById('confirmApproveBtn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ MEMPROSES...'; }
+    if (btn) { btn.disabled = true; btn.textContent = ' MEMPROSES...'; }
 
     fetch(`/${rolePrefix}/stock-transfers/${transferId}/approve-adjusted`, {
         method: 'POST',
@@ -483,7 +485,7 @@ function confirmReject() {
     const btn = document.querySelector('#rejectModal button[onclick="confirmReject()"]');
     if (btn) {
         btn.disabled = true;
-        btn.textContent = '⏳ MEMPROSES...';
+        btn.textContent = ' MEMPROSES...';
     }
 
     fetch(`/${rolePrefix}/stock-transfers/{{ $stockTransfer->id }}/reject`, {

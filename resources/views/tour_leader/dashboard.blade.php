@@ -120,7 +120,7 @@
 
         <!-- ═══ HERO CARD 1: KOMISI TERSEDIA ═══ -->
         <div class="relative overflow-hidden rounded-3xl tl-bg-hero p-5 text-white shadow-2xl">
-            <div class="absolute -right-6 -bottom-6 text-[80px] select-none pointer-events-none" style="opacity: 0.08;">💎</div>
+            <div class="absolute -right-6 -bottom-6 text-[80px] select-none pointer-events-none" style="opacity: 0.08;"></div>
             <div class="relative z-10">
                 <div class="flex items-center justify-between">
                     <span class="text-[11px] font-extrabold uppercase tracking-widest flex items-center gap-1.5" style="color: #a7f3d0;">
@@ -155,7 +155,9 @@
             <div class="rounded-2xl tl-bg-card p-4 shadow-lg">
                 <div class="flex items-center justify-between">
                     <span class="text-[10px] font-extrabold uppercase tracking-wider" style="color: #64748b;">Total Jamaah</span>
-                    <span class="text-lg">👥</span>
+                    <svg class="w-5 h-5" style="color: #34d399;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+                    </svg>
                 </div>
                 <div class="mt-3">
                     <div class="text-3xl font-black text-white tracking-tight">{{ number_format($totalJamaah, 0, ',', '.') }}</div>
@@ -165,7 +167,9 @@
             <div class="rounded-2xl tl-bg-card p-4 shadow-lg">
                 <div class="flex items-center justify-between">
                     <span class="text-[10px] font-extrabold uppercase tracking-wider" style="color: #64748b;">Akumulasi Omset</span>
-                    <span class="text-lg">💰</span>
+                    <svg class="w-5 h-5" style="color: #fbbf24;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6H2.25m0 0v8.25m0 0a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V14.25m-17.25-9.75v10.5m17.25-10.5v10.5m0-10.5a.75.75 0 0 1 .75.75v.75m0 0a60.07 60.07 0 0 0-15.797-2.101c-.727-.198-1.453.342-1.453 1.096V4.5m17.25 0v.75" />
+                    </svg>
                 </div>
                 <div class="mt-3">
                     <div class="text-xl font-black text-white tracking-tight tl-truncate" title="Rp {{ number_format($akumulasiOmset, 0, ',', '.') }}">
@@ -179,7 +183,7 @@
         <!-- ═══ REKENING BANK ═══ -->
         <div class="rounded-2xl tl-bg-card p-3.5 flex items-center justify-between">
             <div class="flex items-center gap-3 min-w-0">
-                <div class="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0" style="background: #1e293b;">🏦</div>
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0" style="background: #1e293b;"></div>
                 <div class="min-w-0">
                     <div class="text-[10px] font-bold uppercase tracking-wider" style="color: #64748b;">Rekening Pencairan</div>
                     <div class="text-xs font-black text-white tl-truncate">
@@ -243,7 +247,7 @@
                     </div>
                 @empty
                     <div class="py-12 text-center rounded-2xl" style="background: rgba(17,24,39,0.5); border: 1px dashed #1e293b;">
-                        <div class="text-3xl mb-2">🛒</div>
+                        <div class="text-3xl mb-2"></div>
                         <div class="font-bold text-xs" style="color: #64748b;">Belum ada transaksi rombongan</div>
                         <p class="text-[11px] mt-1" style="color: #475569;">Saat kasir memasukkan kode <strong style="color: #94a3b8;">{{ $affiliate->code }}</strong>, data akan muncul di sini.</p>
                     </div>
@@ -282,7 +286,7 @@
                     </div>
                 @empty
                     <div class="py-12 text-center rounded-2xl" style="background: rgba(17,24,39,0.5); border: 1px dashed #1e293b;">
-                        <div class="text-3xl mb-2">📑</div>
+                        <div class="text-3xl mb-2"></div>
                         <div class="font-bold text-xs" style="color: #64748b;">Belum ada mutasi komisi</div>
                     </div>
                 @endforelse
@@ -330,7 +334,9 @@
 
             <div class="flex items-center justify-between pb-3" style="border-bottom: 1px solid #1e293b;">
                 <div class="flex items-center gap-2">
-                    <span class="text-xl">💸</span>
+                    <svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
                     <h3 class="font-black text-base text-white">Tarik Komisi</h3>
                 </div>
                 <button type="button" @click="isWithdrawOpen = false" class="p-1.5 rounded-lg transition" style="color: #94a3b8;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">✕</button>

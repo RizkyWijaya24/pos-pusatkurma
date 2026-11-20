@@ -812,7 +812,7 @@
                 </div>
             </div>
         </div>
-        <div class="hero-deco" aria-hidden="true">🌴</div>
+        <div class="hero-deco" aria-hidden="true"></div>
     </div>
 </section>
 

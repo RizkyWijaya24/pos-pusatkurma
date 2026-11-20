@@ -82,12 +82,12 @@
             @endphp
             @if(in_array($product->id, $freeShippingIds))
                 <span class="badge" style="background: linear-gradient(135deg, #059669, #10b981); color: #fff;">
-                    🚚 Gratis Ongkir
+                     Gratis Ongkir
                 </span>
             @endif
             @if(isset($isFeatured) && $isFeatured)
                 <span class="badge" style="background: linear-gradient(135deg, var(--clr-gold), var(--clr-gold-dark)); color: #fff;">
-                    🌟 UNGGULAN
+                     UNGGULAN
                 </span>
             @endif
             @if($priceUnit === 'gram')

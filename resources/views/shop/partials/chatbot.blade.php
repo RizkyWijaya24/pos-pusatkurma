@@ -43,7 +43,7 @@
                 <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
                 <div class="msg-content">
                     <div class="msg-bubble">
-                        Assalamualaikum! 👋 Selamat datang di <strong>Pusat Kurma Cianjur</strong>.<br><br>
+                        Assalamualaikum! Selamat datang di <strong>Pusat Kurma Cianjur</strong>.<br><br>
                         Saya adalah **Asisten Rekomendasi**. Bingung memilih kurma yang tepat untuk keluarga, bumil, atau oleh-oleh? Silakan ketik pertanyaan Anda atau pilih topik di bawah ini:
                     </div>
                     <span class="msg-time">{{ date('H:i') }}</span>
@@ -53,13 +53,13 @@
 
         {{-- Quick Reply Chips --}}
         <div id="chatbot-quick-replies" class="chatbot-quick-replies">
-            <button type="button" class="chip-btn" data-query="Rekomendasi Kurma">🌴 Rekomendasi Kurma</button>
-            <button type="button" class="chip-btn" data-query="Ibu Hamil & Promil">🥑 Ibu Hamil & Promil</button>
-            <button type="button" class="chip-btn" data-query="Oleh-oleh & Hampers">🎁 Oleh-oleh & Hampers</button>
-            <button type="button" class="chip-btn" data-query="Kurma Ajwa">👑 Kurma Ajwa</button>
-            <button type="button" class="chip-btn" data-query="Kurma Sukari">🍯 Kurma Sukari</button>
-            <button type="button" class="chip-btn" data-query="Lokasi Toko">📍 Lokasi Toko</button>
-            <button type="button" class="chip-btn" data-query="Info Ongkir">🚚 Info Ongkir</button>
+            <button type="button" class="chip-btn" data-query="Rekomendasi Kurma"> Rekomendasi Kurma</button>
+            <button type="button" class="chip-btn" data-query="Ibu Hamil & Promil"> Ibu Hamil & Promil</button>
+            <button type="button" class="chip-btn" data-query="Oleh-oleh & Hampers"> Oleh-oleh & Hampers</button>
+            <button type="button" class="chip-btn" data-query="Kurma Ajwa"> Kurma Ajwa</button>
+            <button type="button" class="chip-btn" data-query="Kurma Sukari"> Kurma Sukari</button>
+            <button type="button" class="chip-btn" data-query="Lokasi Toko"> Lokasi Toko</button>
+            <button type="button" class="chip-btn" data-query="Info Ongkir"> Info Ongkir</button>
         </div>
 
         {{-- Footer Input Form --}}
@@ -560,13 +560,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
                 <div class="msg-content">
                     <div class="msg-bubble">
-                        Assalamualaikum! 👋 Chat telah diperbarui.<br>Silakan tanyakan sesuatu atau pilih topik di bawah ini:
+                        Assalamualaikum! Chat telah diperbarui.<br>Silakan tanyakan sesuatu atau pilih topik di bawah ini:
                     </div>
                     <span class="msg-time">${getCurrentTime()}</span>
                 </div>
             </div>
         `;
-        renderQuickReplies(['🌴 Rekomendasi Kurma', '🥑 Ibu Hamil & Promil', '🎁 Oleh-oleh & Hampers', '📍 Lokasi Toko', '🚚 Info Ongkir']);
+        renderQuickReplies([' Rekomendasi Kurma', ' Ibu Hamil & Promil', ' Oleh-oleh & Hampers', ' Lokasi Toko', ' Info Ongkir']);
     });
 
     // Quick Reply Buttons Listener

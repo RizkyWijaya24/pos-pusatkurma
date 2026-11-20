@@ -17,11 +17,11 @@
             </div>
             <div class="flex items-center gap-2">
                 @if($order->payment_status === 'paid')
-                    <span class="px-3 py-1.5 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold">✅ LUNAS</span>
+                    <span class="px-3 py-1.5 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold"> LUNAS</span>
                 @elseif($order->payment_status === 'pending')
-                    <span class="px-3 py-1.5 bg-amber-100 text-amber-800 rounded-full text-xs font-bold">⏳ PENDING</span>
+                    <span class="px-3 py-1.5 bg-amber-100 text-amber-800 rounded-full text-xs font-bold"> PENDING</span>
                 @else
-                    <span class="px-3 py-1.5 bg-rose-100 text-rose-800 rounded-full text-xs font-bold">❌ GAGAL</span>
+                    <span class="px-3 py-1.5 bg-rose-100 text-rose-800 rounded-full text-xs font-bold"> GAGAL</span>
                 @endif
             </div>
         </div>
@@ -240,12 +240,12 @@
                         <select
                             onchange="window.updateOrderStatus(this.value)"
                             class="w-full bg-slate-50 dark:bg-dp-700 border border-slate-200 dark:border-dp-600 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500">
-                            <option value="pending" {{ $order->status === 'pending' ? 'selected' : '' }}>⏳ 1. Menunggu Pembayaran</option>
-                            <option value="paid" {{ $order->status === 'paid' ? 'selected' : '' }}>💳 2. Pembayaran Lunas</option>
-                            <option value="processing" {{ $order->status === 'processing' ? 'selected' : '' }}>📦 3. Diproses &amp; Dikemas</option>
-                            <option value="shipped" {{ $order->status === 'shipped' ? 'selected' : '' }}>🚚 4. Dalam Pengiriman (Dikirim)</option>
-                            <option value="completed" {{ $order->status === 'completed' ? 'selected' : '' }}>🎉 5. Pesanan Selesai</option>
-                            <option value="cancelled" {{ $order->status === 'cancelled' ? 'selected' : '' }}>❌ Dibatalkan / Gagal</option>
+                            <option value="pending" {{ $order->status === 'pending' ? 'selected' : '' }}> 1. Menunggu Pembayaran</option>
+                            <option value="paid" {{ $order->status === 'paid' ? 'selected' : '' }}> 2. Pembayaran Lunas</option>
+                            <option value="processing" {{ $order->status === 'processing' ? 'selected' : '' }}> 3. Diproses &amp; Dikemas</option>
+                            <option value="shipped" {{ $order->status === 'shipped' ? 'selected' : '' }}> 4. Dalam Pengiriman (Dikirim)</option>
+                            <option value="completed" {{ $order->status === 'completed' ? 'selected' : '' }}> 5. Pesanan Selesai</option>
+                            <option value="cancelled" {{ $order->status === 'cancelled' ? 'selected' : '' }}> Dibatalkan / Gagal</option>
                         </select>
                     </div>
 
@@ -267,7 +267,7 @@
                         {{ $order->payment_status === 'paid' ? 'bg-emerald-50 border border-emerald-200' :
                            ($order->payment_status === 'pending' ? 'bg-amber-50 border border-amber-200' : 'bg-rose-50 border border-rose-200') }}">
                         <div class="text-2xl mb-1">
-                            {{ $order->payment_status === 'paid' ? '✅' : ($order->payment_status === 'pending' ? '⏳' : '❌') }}
+                            {{ $order->payment_status === 'paid' ? '' : ($order->payment_status === 'pending' ? '' : '') }}
                         </div>
                         <div class="font-black text-sm
                             {{ $order->payment_status === 'paid' ? 'text-emerald-700' :
@@ -280,17 +280,17 @@
                         <div class="flex flex-col gap-2">
                             <button @click="openStatus('paid')"
                                     class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition flex items-center justify-center gap-2">
-                                ✅ Tandai Lunas (Paid)
+                                 Tandai Lunas (Paid)
                             </button>
                             <button @click="openStatus('failed')"
                                     class="w-full py-2.5 bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold rounded-xl transition flex items-center justify-center gap-2">
-                                ❌ Tandai Gagal/Batal
+                                 Tandai Gagal/Batal
                             </button>
                         </div>
                     @elseif($order->payment_status === 'paid')
                         <button @click="openStatus('pending')"
                                 class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-xl transition">
-                            ↩️ Kembalikan ke Pending
+                            ↩ Kembalikan ke Pending
                         </button>
                     @endif
                 </div>
@@ -305,9 +305,9 @@
                         }
 
                         if ($order->payment_status === 'paid') {
-                            $waMessage = 'Halo ' . $order->customer_name . ', kami dari Pusat Kurma ingin mengonfirmasi bahwa pembayaran untuk pesanan Anda dengan kode *' . $order->order_code . '* sebesar Rp ' . number_format($order->total_amount, 0, ',', '.') . ' telah kami terima (Lunas). Pesanan Anda akan segera kami proses dan kirimkan. Terima kasih! 🌴';
+                            $waMessage = 'Halo ' . $order->customer_name . ', kami dari Pusat Kurma ingin mengonfirmasi bahwa pembayaran untuk pesanan Anda dengan kode *' . $order->order_code . '* sebesar Rp ' . number_format($order->total_amount, 0, ',', '.') . ' telah kami terima (Lunas). Pesanan Anda akan segera kami proses dan kirimkan. Terima kasih! ';
                         } else {
-                            $waMessage = 'Halo ' . $order->customer_name . ', kami dari Pusat Kurma ingin mengonfirmasi pesanan Anda dengan kode *' . $order->order_code . '*. Total yang perlu dibayar: Rp ' . number_format($order->total_amount, 0, ',', '.') . '. Mohon segera lakukan pembayaran agar dapat kami proses. Terima kasih! 🌴';
+                            $waMessage = 'Halo ' . $order->customer_name . ', kami dari Pusat Kurma ingin mengonfirmasi pesanan Anda dengan kode *' . $order->order_code . '*. Total yang perlu dibayar: Rp ' . number_format($order->total_amount, 0, ',', '.') . '. Mohon segera lakukan pembayaran agar dapat kami proses. Terima kasih! ';
                         }
                     @endphp
                     <a href="https://wa.me/{{ $formattedPhone }}?text={{ urlencode($waMessage) }}"
@@ -347,7 +347,7 @@
             <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showStatusModal=false"></div>
             <div class="relative bg-white dark:bg-dp-800 rounded-2xl shadow-2xl p-6 w-full max-w-sm">
                 <div class="text-center mb-4">
-                    <div class="text-4xl mb-2" x-text="newStatus==='paid' ? '✅' : (newStatus==='failed' ? '❌' : '⏳')"></div>
+                    <div class="text-4xl mb-2" x-text="newStatus==='paid' ? '' : (newStatus==='failed' ? '' : '')"></div>
                     <h3 class="font-extrabold text-slate-800 dark:text-purple-100 text-base">Ubah Status Pesanan?</h3>
                     <p class="text-sm text-slate-500 mt-1">
                         Status pesanan akan diperbarui menjadi

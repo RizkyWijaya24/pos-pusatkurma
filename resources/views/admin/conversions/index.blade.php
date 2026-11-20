@@ -9,7 +9,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
             <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-purple-100 flex items-center gap-2">
-                🔄 Aturan Konversi Produk
+                 Aturan Konversi Produk
             </h1>
             <p class="text-slate-400 dark:text-purple-400 text-sm font-medium">Hubungkan produk bulk/dus ke produk retail eceran untuk alur repacking otomatis</p>
         </div>
@@ -18,7 +18,7 @@
     {{-- Alert Messages --}}
     @if(session('success'))
     <div class="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-2">
-        <span>✅</span> {{ session('success') }}
+        <svg class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg> {{ session('success') }}
     </div>
     @endif
 
@@ -39,7 +39,7 @@
             <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl p-6 shadow-md">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-slate-800 dark:text-purple-100 font-extrabold flex items-center gap-2">
-                        📋 Aturan Konversi Terdaftar
+                         Aturan Konversi Terdaftar
                     </h2>
                     <span class="text-xs bg-slate-100 dark:bg-dp-900 text-slate-600 dark:text-purple-300 px-2.5 py-1 rounded-full font-bold">
                         Total: {{ $conversions->total() }}
@@ -89,7 +89,7 @@
                                         @method('DELETE')
                                         <button type="submit" 
                                                 class="text-rose-600 hover:text-rose-800 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 dark:hover:bg-rose-950/40 p-2 rounded-xl text-xs font-extrabold transition-colors">
-                                            🗑️ Hapus
+                                             Hapus
                                         </button>
                                     </form>
                                 </td>
@@ -97,7 +97,7 @@
                             @empty
                             <tr>
                                 <td colspan="4" class="py-8 text-center text-slate-400 font-semibold">
-                                    📭 Belum ada aturan konversi terdaftar.
+                                     Belum ada aturan konversi terdaftar.
                                 </td>
                             </tr>
                             @endforelse
@@ -116,7 +116,7 @@
         <div class="lg:col-span-4">
             <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl p-6 shadow-md sticky top-6">
                 <h2 class="text-slate-800 dark:text-purple-100 font-extrabold mb-4 flex items-center gap-2">
-                    ➕ Tambah Aturan Baru
+                     Tambah Aturan Baru
                 </h2>
 
                 <form action="{{ route('admin.conversions.store') }}" method="POST" class="space-y-4">
@@ -124,14 +124,14 @@
 
                     {{-- Source Product Selection --}}
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2">📦 Produk Asal (Bulk/Dus/Pack) <span class="text-rose-500">*</span></label>
+                        <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2"> Produk Asal (Bulk/Dus/Pack) <span class="text-rose-500">*</span></label>
                         <div class="relative" @click.outside="showSourceDropdown = false">
                             <input type="hidden" name="source_product_id" :value="sourceProductId">
                             <input type="text" 
                                    x-model="sourceSearch" 
                                    @focus="showSourceDropdown = true"
                                    @input="filterSource()"
-                                   placeholder="🔍 Cari nama atau SKU produk asal..."
+                                   placeholder=" Cari nama atau SKU produk asal..."
                                    class="w-full bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-800 dark:text-purple-100 rounded-xl px-4 py-3 text-sm focus:border-emerald-500 focus:ring-emerald-500 focus:outline-none shadow-inner"
                                    autocomplete="off" required>
                             
@@ -155,14 +155,14 @@
 
                     {{-- Target Product Selection --}}
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2">🎯 Produk Target (Eceran/Retail) <span class="text-rose-500">*</span></label>
+                        <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2"> Produk Target (Eceran/Retail) <span class="text-rose-500">*</span></label>
                         <div class="relative" @click.outside="showTargetDropdown = false">
                             <input type="hidden" name="target_product_id" :value="targetProductId">
                             <input type="text" 
                                    x-model="targetSearch" 
                                    @focus="showTargetDropdown = true"
                                    @input="filterTarget()"
-                                   placeholder="🔍 Cari nama atau SKU produk target..."
+                                   placeholder=" Cari nama atau SKU produk target..."
                                    class="w-full bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-800 dark:text-purple-100 rounded-xl px-4 py-3 text-sm focus:border-emerald-500 focus:ring-emerald-500 focus:outline-none shadow-inner"
                                    autocomplete="off" required>
                             
@@ -186,7 +186,7 @@
 
                     {{-- Conversion Rate Input --}}
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2">🔢 Rasio Konversi</label>
+                        <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2"> Rasio Konversi</label>
                         <div class="relative">
                             <input type="number" step="0.0001" min="0.0001" name="conversion_rate" value="{{ old('conversion_rate', '10.00') }}" required
                                    placeholder="Contoh: 10 atau 3"
@@ -200,7 +200,7 @@
 
                     <button type="submit" 
                             class="w-full bg-emerald-700 hover:bg-emerald-800 text-white py-3.5 rounded-xl font-bold uppercase tracking-wider text-xs transition duration-150 shadow-sm mt-2">
-                        💾 Simpan Aturan Konversi
+                         Simpan Aturan Konversi
                     </button>
                 </form>
             </div>

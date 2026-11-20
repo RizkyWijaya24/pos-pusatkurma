@@ -53,7 +53,7 @@ class CouponController extends Controller
 
         return response()->json([
             'success'      => true,
-            'message'      => 'Kode promo berhasil diterapkan! 🎉',
+            'message'      => 'Kode promo berhasil diterapkan!',
             'code'         => $coupon->code,
             'description'  => $coupon->description,
             'type'         => $coupon->type,

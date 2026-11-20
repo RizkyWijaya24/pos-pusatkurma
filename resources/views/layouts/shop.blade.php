@@ -997,7 +997,7 @@
                 <div class="nav-logo-icon"><i class="fa-solid fa-seedling"></i></div>
                 <div class="nav-logo-text">
                     <div class="brand">{{ $shop_settings['shop_name'] ?? 'Pusat Kurma' }}</div>
-                    <div class="tagline">{{ $shop_settings['shop_tagline'] ?? 'Cianjur ✦ Premium Dates' }}</div>
+                    <div class="tagline">{{ $shop_settings['shop_tagline'] ?? 'Cianjur Premium Dates' }}</div>
                 </div>
             </a>
 
@@ -1461,7 +1461,7 @@
             showWishlistToast('Dihapus dari wishlist', 'remove');
         } else {
             list.push(product);
-            showWishlistToast('Ditambahkan ke wishlist ❤️', 'add');
+            showWishlistToast('Ditambahkan ke wishlist ', 'add');
         }
         saveWishlist(list);
         updateAllWishlistButtons();
@@ -1493,7 +1493,7 @@
         const list    = getWishlist();
 
         if (list.length === 0) {
-            body.innerHTML = '<div style="text-align:center;padding:48px 0;color:#9ca3af;"><i class="fa-regular fa-heart" style="font-size:52px;display:block;margin-bottom:12px;color:#d1d5db;"></i><p>Wishlist Anda kosong.<br>Klik ❤ pada produk untuk menyimpannya.</p></div>';
+            body.innerHTML = '<div style="text-align:center;padding:48px 0;color:#9ca3af;"><i class="fa-regular fa-heart" style="font-size:52px;display:block;margin-bottom:12px;color:#d1d5db;"></i><p>Wishlist Anda kosong.<br>Klik pada produk untuk menyimpannya.</p></div>';
         } else {
             body.innerHTML = list.map(p => `
                 <div style="display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #f3f4f6;">

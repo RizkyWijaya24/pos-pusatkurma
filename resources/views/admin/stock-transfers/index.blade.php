@@ -7,11 +7,11 @@
         'cancelled' => 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-900/20 dark:text-slate-400 dark:border-slate-800/30',
     ];
     $statusLabels = [
-        'requested' => '⏳ Menunggu Proses',
-        'pending'   => '🔵 Diproses Admin',
-        'approved'  => '✅ Disetujui',
-        'rejected'  => '❌ Ditolak',
-        'cancelled' => '🚫 Dibatalkan',
+        'requested' => ' Menunggu Proses',
+        'pending' => ' Diproses Admin',
+        'approved' => ' Disetujui',
+        'rejected' => ' Ditolak',
+        'cancelled' => ' Dibatalkan',
     ];
 @endphp
 
@@ -26,14 +26,17 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
             <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-purple-100 flex items-center gap-3">
-                <span class="text-3xl">📦</span> Manajemen Transfer Stok
+                Manajemen Transfer Stok
             </h1>
             <p class="text-slate-400 dark:text-purple-400 mt-1 text-sm font-medium">Distribusi stok dari gudang ke cabang-cabang</p>
         </div>
         <div class="flex gap-3">
             @if($pendingCount > 0)
             <div class="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 px-4 py-2 rounded-xl text-sm font-semibold animate-pulse">
-                <span>⏳</span> {{ $pendingCount }} Menunggu Proses
+                <svg class="w-4 h-4 shrink-0 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+                <span>{{ $pendingCount }} Menunggu Proses</span>
             </div>
             @endif
             <a href="{{ route('admin.stock-transfers.create') }}"
@@ -50,7 +53,7 @@
                 <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2">Status</label>
                 <select name="status" class="bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-700 dark:text-purple-200 rounded-xl px-3.5 py-2.5 text-sm focus:border-emerald-500 focus:ring-emerald-500 shadow-inner">
                     <option value="">Semua Status</option>
-                    @foreach(['requested' => '⏳ Menunggu', 'pending' => '🔵 Diproses', 'approved' => '✅ Disetujui', 'rejected' => '❌ Ditolak', 'cancelled' => '🚫 Dibatalkan'] as $val => $label)
+                    @foreach(['requested' => ' Menunggu', 'pending' => ' Diproses', 'approved' => ' Disetujui', 'rejected' => ' Ditolak', 'cancelled' => ' Dibatalkan'] as $val => $label)
                         <option value="{{ $val }}" {{ request('status') == $val ? 'selected' : '' }}>{{ $label }}</option>
                     @endforeach
                 </select>
@@ -79,7 +82,7 @@
                        class="bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-700 dark:text-purple-200 rounded-xl px-3.5 py-2.5 text-sm focus:border-emerald-500 focus:ring-emerald-500 shadow-inner">
             </div>
             <button type="submit" class="bg-emerald-700 hover:bg-emerald-800 text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider shadow transition duration-150">
-                🔍 Filter
+                 Filter
             </button>
             @if(request()->hasAny(['status','from','to','date']))
             <a href="{{ route('admin.stock-transfers.index') }}" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 dark:text-purple-300 text-xs font-bold rounded-xl transition duration-150">
@@ -93,7 +96,7 @@
     <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl shadow-md overflow-hidden">
         @if($transfers->isEmpty())
         <div class="text-center py-16">
-            <div class="text-5xl mb-4">📭</div>
+            <div class="text-5xl mb-4"></div>
             <p class="text-slate-400 dark:text-purple-400 text-lg font-semibold">Belum ada transfer stok</p>
             <a href="{{ route('admin.stock-transfers.create') }}" class="mt-4 inline-block text-emerald-600 hover:text-emerald-500 font-bold underline">
                 Buat transfer pertama
@@ -187,7 +190,7 @@
                                 </button>
                                 <button onclick="rejectTransfer({{ $transfer->id }}, '{{ $transfer->transfer_code }}')"
                                         class="text-rose-700 dark:text-rose-400 hover:text-rose-900 dark:hover:text-rose-300 transition-colors text-xs font-bold px-3 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-100 dark:border-rose-900/30 shadow-sm">
-                                    ✗ Tolak
+                                     Tolak
                                 </button>
                                 @endif
                             </div>
@@ -212,7 +215,7 @@
 <div id="rejectModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all duration-300 scale-95 opacity-0 active-modal-reject">
         <div class="p-6">
-            <h3 class="text-lg font-bold text-slate-800 dark:text-purple-100 mb-2">❌ Tolak Transfer</h3>
+            <h3 class="text-lg font-bold text-slate-800 dark:text-purple-100 mb-2"> Tolak Transfer</h3>
             <p class="text-slate-500 dark:text-purple-400 text-sm mb-4">Alasan penolakan (wajib):</p>
             <textarea id="rejectionReason" rows="3" placeholder="Contoh: Stok gudang tidak mencukupi untuk saat ini..." required
                 class="w-full bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-800 dark:text-purple-100 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none resize-none"></textarea>
@@ -235,7 +238,10 @@
         <div class="px-6 py-5 border-b border-slate-100 dark:border-dp-700 flex justify-between items-center bg-slate-50/50 dark:bg-dp-900/50 shrink-0">
             <div>
                 <h3 class="text-base font-black text-slate-800 dark:text-purple-100 flex items-center gap-2">
-                    <span>⚡</span> Review & Sesuaikan Request Stok
+                    <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
+                    </svg>
+                    Review & Sesuaikan Request Stok
                 </h3>
                 <p class="text-xs text-slate-400 dark:text-purple-400 font-medium mt-0.5">
                     Tiket: <span id="approveTransferCode" class="font-mono font-bold text-slate-700 dark:text-purple-200"></span> • 
@@ -257,7 +263,9 @@
         {{-- Modal Body (Items Table) --}}
         <div id="approveModalContent" class="p-6 overflow-y-auto space-y-4 flex-1 hidden">
             <div id="approveWarningBanner" class="hidden bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-2xl p-3.5 text-xs text-amber-800 dark:text-amber-300 font-medium flex items-center gap-2.5">
-                <span class="text-lg shrink-0">⚠️</span>
+                <svg class="w-5 h-5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                </svg>
                 <span>Stok di gudang tidak mencukupi permintaan kasir. Kolom kuantitas telah disesuaikan otomatis dengan sisa stok maksimal yang tersedia.</span>
             </div>
 
@@ -394,7 +402,7 @@ function approveTransfer(id, code) {
                 : `<span class="text-slate-400">—</span>`;
 
             const warningText = isShort
-                ? `<div class="text-rose-500 text-[10px] font-bold">⚠️ Sisa: ${formatNum(warehouseQty)}</div>`
+                ? `<div class="text-rose-500 text-[10px] font-bold"> Sisa: ${formatNum(warehouseQty)}</div>`
                 : '';
 
             tbody.insertAdjacentHTML('beforeend', `
@@ -488,7 +496,7 @@ function confirmApproveAdjusted() {
     const btn = document.getElementById('confirmApproveBtn');
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<span>⏳ Memproses...</span>';
+        btn.innerHTML = '<span> Memproses...</span>';
     }
 
     fetch(`/${rolePrefix}/stock-transfers/${currentTransferId}/approve-adjusted`, {
@@ -546,7 +554,7 @@ function confirmReject() {
     const btn = document.querySelector('#rejectModal button[onclick="confirmReject()"]');
     if (btn) {
         btn.disabled = true;
-        btn.textContent = '⏳ MEMPROSES...';
+        btn.textContent = ' MEMPROSES...';
     }
 
     fetch(`/${rolePrefix}/stock-transfers/${currentTransferId}/reject`, {

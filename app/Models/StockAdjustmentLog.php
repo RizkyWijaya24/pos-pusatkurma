@@ -81,13 +81,13 @@ class StockAdjustmentLog extends Model
     public function getTypeIconAttribute(): array
     {
         return match ($this->type) {
-            'initial'      => ['icon' => '🏭', 'color' => 'gray'],
-            'sale'         => ['icon' => '🛒', 'color' => 'red'],
-            'transfer_in'  => ['icon' => '📦', 'color' => 'green'],
-            'transfer_out' => ['icon' => '🚚', 'color' => 'blue'],
-            'adjustment'   => ['icon' => '✏️', 'color' => 'yellow'],
-            'return'       => ['icon' => '↩️', 'color' => 'purple'],
-            default        => ['icon' => '📋', 'color' => 'gray'],
+            'initial'      => ['icon' => '', 'color' => 'gray'],
+            'sale'         => ['icon' => '', 'color' => 'red'],
+            'transfer_in'  => ['icon' => '', 'color' => 'green'],
+            'transfer_out' => ['icon' => '', 'color' => 'blue'],
+            'adjustment'   => ['icon' => '', 'color' => 'yellow'],
+            'return'       => ['icon' => '', 'color' => 'purple'],
+            default        => ['icon' => '', 'color' => 'gray'],
         };
     }
 }

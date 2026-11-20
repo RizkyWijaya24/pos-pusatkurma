@@ -92,21 +92,21 @@
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {{-- Tunai --}}
                     <div class="bg-emerald-50/40 border border-emerald-100 rounded-2xl p-4 flex flex-col justify-between">
-                        <span class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1">💵 Bayar Tunai</span>
+                        <span class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1"> Bayar Tunai</span>
                         <p class="text-xl font-black text-slate-800 tracking-tight">
                             Rp {{ number_format((int)$todayStats->cash_total, 0, ',', '.') }}
                         </p>
                     </div>
                     {{-- Non-Tunai QRIS --}}
                     <div class="bg-teal-50/40 border border-teal-100 rounded-2xl p-4 flex flex-col justify-between">
-                        <span class="text-[10px] font-bold text-teal-800 uppercase tracking-wider mb-1">📱 Non-Tunai (QRIS)</span>
+                        <span class="text-[10px] font-bold text-teal-800 uppercase tracking-wider mb-1"> Non-Tunai (QRIS)</span>
                         <p class="text-xl font-black text-slate-800 tracking-tight">
                             Rp {{ number_format((int)$todayStats->qris_total, 0, ',', '.') }}
                         </p>
                     </div>
                     {{-- Non-Tunai Debit/TF --}}
                     <div class="bg-sky-50/40 border border-sky-100 rounded-2xl p-4 flex flex-col justify-between">
-                        <span class="text-[10px] font-bold text-sky-800 uppercase tracking-wider mb-1">💳 Non-Tunai (Debit/TF)</span>
+                        <span class="text-[10px] font-bold text-sky-800 uppercase tracking-wider mb-1"> Non-Tunai (Debit/TF)</span>
                         <p class="text-xl font-black text-slate-800 tracking-tight">
                             Rp {{ number_format((int)$todayStats->debit_total, 0, ',', '.') }}
                         </p>

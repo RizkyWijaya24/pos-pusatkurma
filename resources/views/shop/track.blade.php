@@ -445,7 +445,7 @@
                 @if($currentStep === 5)
                 <p style="font-size:13px;color:var(--clr-success);margin-top:20px;text-align:center;background:#f0fdf4;padding:12px;border-radius:8px;border:1px solid rgba(16,185,129,.3);">
                     <i class="fas fa-circle-check"></i>
-                    Pesanan Anda telah selesai dan sampai di tujuan. Terima kasih telah berbelanja di Pusat Kurma! 🌴
+                    Pesanan Anda telah selesai dan sampai di tujuan. Terima kasih telah berbelanja di Pusat Kurma! 
                 </p>
                 @elseif($currentStep === 4)
                 <p style="font-size:13px;color:var(--clr-primary-dark);margin-top:20px;text-align:center;background:#f0fdf4;padding:12px;border-radius:8px;border:1px solid rgba(16,185,129,.3);">

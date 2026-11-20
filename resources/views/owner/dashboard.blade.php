@@ -287,6 +287,9 @@
     <!-- Alpine.js Owner State -->
     <div x-data="{
         revenue: {{ (int) $activeRevenue }},
+        realizedCash: {{ (int) $realizedCash }},
+        outstandingReceivables: {{ (int) $outstandingReceivables }},
+        activePeriodReceivables: {{ (int) $activePeriodReceivables }},
         transactions: {{ (int) $activeTransactionsCount }},
         expenses: {{ (int) $activeExpenses }},
         lowStockCount: {{ (int) $lowStockCount }},
@@ -473,7 +476,7 @@
                     </h3>
                     @if($selectedBranch)
                         <span class="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                            📍 {{ $selectedBranch }}
+                             {{ $selectedBranch }}
                         </span>
                     @endif
                 </div>
@@ -487,11 +490,11 @@
                     <!-- Dropdown Filter Cabang -->
                     <select name="branch" onchange="this.form.submit()" 
                             class="w-full sm:w-auto text-xs font-bold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner px-4 py-2.5 bg-slate-50 text-slate-700 hover:bg-slate-100/50 transition cursor-pointer">
-                        <option value="">🌐 Semua Cabang</option>
+                        <option value=""> Semua Cabang</option>
                         @foreach($branches as $branchName)
                             @if($branchName)
                                 <option value="{{ $branchName }}" {{ $selectedBranch === $branchName ? 'selected' : '' }}>
-                                    📍 {{ $branchName }}
+                                     {{ $branchName }}
                                 </option>
                             @endif
                         @endforeach
@@ -500,9 +503,9 @@
                     <!-- Dropdown Filter Tipe Waktu -->
                     <select name="filter_type" x-model="filterType" onchange="this.form.submit()"
                             class="w-full sm:w-auto text-xs font-bold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner px-4 py-2.5 bg-slate-50 text-slate-700 hover:bg-slate-100/50 transition cursor-pointer">
-                        <option value="harian">📅 Harian</option>
-                        <option value="mingguan">📅 Mingguan</option>
-                        <option value="bulanan">📅 Bulanan</option>
+                        <option value="harian"> Harian</option>
+                        <option value="mingguan"> Mingguan</option>
+                        <option value="bulanan"> Bulanan</option>
                     </select>
 
                     <!-- Input Tanggal Spesifik (Harian) -->
@@ -524,10 +527,12 @@
         <div class="bg-gradient-to-r from-emerald-800 via-teal-900 to-emerald-950 text-white px-6 py-4 rounded-3xl shadow-lg border border-emerald-700/25 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
             <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/10 shadow-inner">
-                    <span class="animate-pulse text-emerald-300 font-extrabold text-sm">🧠</span>
+                    <svg class="w-4 h-4 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                    </svg>
                 </div>
                 <div>
-                    <h4 class="text-xs font-black tracking-wider uppercase text-emerald-300">Konsultan Bisnis AI ✨</h4>
+                    <h4 class="text-xs font-black tracking-wider uppercase text-emerald-300">Konsultan Bisnis AI</h4>
                     <p class="text-xs text-emerald-100 font-semibold leading-snug">Klik tombol analisis untuk mendapatkan laporan taktis, strategi produk, dan analisis performa dari Gemini AI.</p>
                 </div>
             </div>
@@ -536,28 +541,61 @@
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" fill="none"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                <span>✨ Analisis Performa AI</span>
+                <span>Analisis Performa AI</span>
             </button>
         </div>
 
         <!-- 1. TOP ROW: Summary Metrics Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             
-            <!-- Card 1: Total Omset -->
+            <!-- Card 1: Total Omset & Kas Masuk Riil -->
             <div id="card-omset"
                  x-on:click="toggleCard('omset')"
                  style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0;"
                  :class="activeCard === 'omset' ? 'ring-4 ring-emerald-500/40 scale-[1.03] shadow-xl border-emerald-500' : 'hover:scale-[1.02] shadow-md border-emerald-200/50'"
-                 class="p-5 sm:p-6 rounded-3xl flex flex-col justify-between gap-4 group transition duration-300 cursor-pointer select-none relative overflow-hidden">
+                 class="p-5 sm:p-6 rounded-3xl flex flex-col justify-between gap-3.5 group transition duration-300 cursor-pointer select-none relative overflow-hidden">
                 <!-- Soft Glow Backdrop Decoration -->
                 <div class="absolute -right-10 -top-10 w-24 h-24 rounded-full bg-emerald-500/10 blur-2xl group-hover:bg-emerald-500/20 transition duration-300"></div>
                 <div class="flex flex-col gap-1 min-w-0 flex-1 z-10 pr-10">
-                    <span class="text-[10px] font-black text-emerald-700 uppercase tracking-widest pr-10">Total Omset</span>
-                    <h3 class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight mt-0.5 whitespace-nowrap" x-text="formatRupiah({{ (int) $activeRevenue }})">Rp {{ number_format($activeRevenue, 0, ',', '.') }}</h3>
-                    <div class="flex items-center gap-1 select-none whitespace-nowrap bg-emerald-100/50 border border-emerald-200/40 rounded-lg px-2 py-0.5 mt-1 self-start text-[10px] font-bold text-emerald-800">
-                        <span>🛡️ Kas Bersih:</span>
-                        <span class="font-extrabold" x-text="formatRupiah({{ (int) ($activeRevenue - $activeExpenses) }})">Rp {{ number_format($activeRevenue - $activeExpenses, 0, ',', '.') }}</span>
+                    <div class="flex items-center gap-1.5 pr-10">
+                        <span class="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Total Omset Penjualan</span>
+                        <span class="text-[8px] font-black text-emerald-700 leading-none bg-emerald-100/80 border border-emerald-300/70 px-1 py-0.5 rounded tracking-wide shrink-0">FAKTUR</span>
                     </div>
+                    <h3 class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight mt-0.5 whitespace-nowrap" x-text="formatRupiah({{ (int) $activeRevenue }})">Rp {{ number_format($activeRevenue, 0, ',', '.') }}</h3>
+
+                    <!-- Dual Metric Badges: Realisasi Kas Masuk & Piutang Tempo -->
+                    <div class="flex flex-col gap-1 mt-1">
+                        <div class="flex items-center justify-between gap-1.5 select-none whitespace-nowrap bg-emerald-200/50 border border-emerald-300/60 rounded-lg px-2 py-0.5 text-[10px] font-bold text-emerald-900" title="Uang riil yang masuk dari penjualan cash/lunas serta DP dan cicilan tempo yang dibayar">
+                            <span class="flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5 text-emerald-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6H2.25m0 0v8.25m0 0a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V14.25m-17.25-9.75v10.5m17.25-10.5v10.5m0-10.5a.75.75 0 0 1 .75.75v.75m0 0a60.07 60.07 0 0 0-15.797-2.101c-.727-.198-1.453.342-1.453 1.096V4.5m17.25 0v.75" />
+                                </svg>
+                                Kas Masuk Riil:
+                            </span>
+                            <span class="font-extrabold text-emerald-800" x-text="formatRupiah({{ (int) $realizedCash }})">Rp {{ number_format($realizedCash, 0, ',', '.') }}</span>
+                        </div>
+                        @if($outstandingReceivables > 0)
+                            <div class="flex items-center justify-between gap-1.5 select-none whitespace-nowrap bg-amber-100/70 border border-amber-300/70 rounded-lg px-2 py-0.5 text-[10px] font-bold text-amber-900" title="Total saldo piutang tempo yang belum dibayar pelanggan">
+                                <span class="flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5 text-amber-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                    </svg>
+                                    Piutang Tempo:
+                                </span>
+                                <span class="font-extrabold text-amber-800" x-text="formatRupiah({{ (int) $outstandingReceivables }})">Rp {{ number_format($outstandingReceivables, 0, ',', '.') }}</span>
+                            </div>
+                        @endif
+                        <div class="flex items-center justify-between gap-1.5 select-none whitespace-nowrap bg-white/70 border border-emerald-200/50 rounded-lg px-2 py-0.5 text-[10px] font-bold text-slate-700" title="Kas masuk riil setelah dikurangi beban pengeluaran operasional">
+                            <span class="flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5 text-slate-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+                                </svg>
+                                Kas Bersih Riil:
+                            </span>
+                            <span class="font-extrabold text-slate-900" x-text="formatRupiah({{ (int) ($realizedCash - $activeExpenses) }})">Rp {{ number_format($realizedCash - $activeExpenses, 0, ',', '.') }}</span>
+                        </div>
+                    </div>
+
                     <div class="flex items-center gap-1 text-[11px] font-extrabold {{ $revenueGrowthPercent >= 0 ? 'text-emerald-600' : 'text-rose-600' }} mt-1">
                         @if($revenueGrowthPercent > 0)
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
@@ -1091,8 +1129,14 @@
                                              {{ $trx->payment_method === 'Cash' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : '' }}
                                              {{ $trx->payment_method === 'QRIS' ? 'bg-teal-50 text-teal-700 border-teal-100' : '' }}
                                              {{ $trx->payment_method === 'Debit' ? 'bg-sky-50 text-sky-700 border-sky-100' : '' }}
+                                             {{ $trx->payment_method === 'Piutang / Tempo' && $trx->payment_status === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : '' }}
+                                             {{ $trx->payment_method === 'Piutang / Tempo' && $trx->payment_status !== 'paid' ? 'bg-amber-50 text-amber-700 border-amber-200' : '' }}
                                         ">
-                                            {{ $trx->payment_method }}
+                                            @if($trx->payment_method === 'Piutang / Tempo')
+                                                Tempo {{ $trx->payment_status === 'paid' ? '(Lunas)' : '(Belum Lunas)' }}
+                                            @else
+                                                {{ $trx->payment_method }}
+                                            @endif
                                         </span>
                                     </td>
                                     <td data-focus="omset" class="px-5 py-4 text-right font-extrabold whitespace-nowrap transition-colors duration-150 text-emerald-700" :class="activeCard === 'omset' || activeCard === 'transactions' ? 'bg-emerald-50/30 text-emerald-800' : 'text-emerald-700'">
@@ -1178,7 +1222,11 @@
                 <!-- Header -->
                 <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
                     <div class="flex items-center gap-2.5">
-                        <span class="text-xl">🧠</span>
+                        <div class="w-7 h-7 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center shrink-0">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                            </svg>
+                        </div>
                         <div>
                             <h3 class="text-sm font-black text-slate-800 dark:text-violet-100 leading-tight">Analisis Kinerja Bisnis AI</h3>
                             <p class="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mt-0.5">Powered by Google Gemini</p>
@@ -1232,42 +1280,42 @@
                     <button @click="switchSkill('general')"
                             :class="activeSkill === 'general' ? 'bg-violet-600 text-white shadow-sm font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 font-semibold'"
                             class="px-3 py-1.5 rounded-xl text-[11px] whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer border border-slate-200/50 dark:border-slate-700/50">
-                        <span>📊</span> Analisis Umum
+                        Analisis Umum
                     </button>
                     <button @click="switchSkill('forecast')"
                             :class="activeSkill === 'forecast' ? 'bg-violet-600 text-white shadow-sm font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 font-semibold'"
                             class="px-3 py-1.5 rounded-xl text-[11px] whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer border border-slate-200/50 dark:border-slate-700/50">
-                        <span>🔮</span> Forecast Penjualan
+                        Forecast Penjualan
                     </button>
                     <button @click="switchSkill('branch_comparison')"
                             :class="activeSkill === 'branch_comparison' ? 'bg-violet-600 text-white shadow-sm font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 font-semibold'"
                             class="px-3 py-1.5 rounded-xl text-[11px] whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer border border-slate-200/50 dark:border-slate-700/50">
-                        <span>🏪</span> Perbandingan Cabang
+                        Perbandingan Cabang
                     </button>
                     <button @click="switchSkill('restock')"
                             :class="activeSkill === 'restock' ? 'bg-violet-600 text-white shadow-sm font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 font-semibold'"
                             class="px-3 py-1.5 rounded-xl text-[11px] whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer border border-slate-200/50 dark:border-slate-700/50">
-                        <span>📦</span> Saran Restok
+                        Saran Restok
                     </button>
                     <button @click="switchSkill('slow_moving')"
                             :class="activeSkill === 'slow_moving' ? 'bg-violet-600 text-white shadow-sm font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 font-semibold'"
                             class="px-3 py-1.5 rounded-xl text-[11px] whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer border border-slate-200/50 dark:border-slate-700/50">
-                        <span>🎯</span> Slow-Moving
+                        Slow-Moving
                     </button>
                     <button @click="switchSkill('expense_analysis')"
                             :class="activeSkill === 'expense_analysis' ? 'bg-violet-600 text-white shadow-sm font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 font-semibold'"
                             class="px-3 py-1.5 rounded-xl text-[11px] whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer border border-slate-200/50 dark:border-slate-700/50">
-                        <span>💸</span> Efisiensi Pengeluaran
+                        Efisiensi Pengeluaran
                     </button>
                     <button @click="switchSkill('peak_hours')"
                             :class="activeSkill === 'peak_hours' ? 'bg-violet-600 text-white shadow-sm font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 font-semibold'"
                             class="px-3 py-1.5 rounded-xl text-[11px] whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer border border-slate-200/50 dark:border-slate-700/50">
-                        <span>🕒</span> Pola Waktu
+                        Pola Waktu
                     </button>
                     <button @click="switchSkill('product_bundling')"
                             :class="activeSkill === 'product_bundling' ? 'bg-violet-600 text-white shadow-sm font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 font-semibold'"
                             class="px-3 py-1.5 rounded-xl text-[11px] whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer border border-slate-200/50 dark:border-slate-700/50">
-                        <span>🛒</span> Rekomendasi Bundling
+                        Rekomendasi Bundling
                     </button>
                 </div>
 
@@ -1291,7 +1339,9 @@
                     <!-- Error State (initial analysis) -->
                     <div x-show="!aiLoading && aiError" class="p-5 rounded-2xl bg-rose-50 border border-rose-200/50 text-rose-800 text-xs font-semibold flex flex-col gap-2">
                         <div class="flex items-center gap-2">
-                            <span class="text-base">⚠️</span>
+                            <svg class="w-5 h-5 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                            </svg>
                             <span class="font-extrabold text-sm text-rose-800">Gagal Memuat Analisis AI</span>
                         </div>
                         <p class="text-rose-600 font-semibold" x-text="aiError"></p>
@@ -1324,7 +1374,7 @@
                                 <!-- AI bubble (left) -->
                                 <template x-if="msg.role === 'model'">
                                     <div class="flex items-start gap-2.5 max-w-[88%]">
-                                        <div class="w-7 h-7 shrink-0 rounded-full bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center text-sm mt-0.5">🧠</div>
+                                        <div class="w-7 h-7 shrink-0 rounded-full bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center text-sm mt-0.5"></div>
                                         <div class="rounded-2xl rounded-tl-none bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 px-4 py-3 text-xs text-slate-700 dark:text-slate-300 font-semibold leading-relaxed shadow-sm prose prose-slate dark:prose-invert prose-xs max-w-none"
                                              x-html="renderMarkdown(msg.text)">
                                         </div>
@@ -1335,7 +1385,7 @@
                                 <template x-if="msg.role === 'user'">
                                     <div class="flex items-end gap-2.5 max-w-[80%]">
                                         <div class="rounded-2xl rounded-br-none bg-emerald-500 dark:bg-emerald-600 px-4 py-3 text-xs text-white font-semibold leading-relaxed shadow-sm" x-text="msg.text"></div>
-                                        <div class="w-7 h-7 shrink-0 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-sm mb-0.5">👤</div>
+                                        <div class="w-7 h-7 shrink-0 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-sm mb-0.5"></div>
                                     </div>
                                 </template>
                             </div>
@@ -1344,7 +1394,7 @@
                         <!-- Chat reply loading indicator -->
                         <div x-show="chatLoading" class="flex justify-start">
                             <div class="flex items-start gap-2.5 max-w-[88%]">
-                                <div class="w-7 h-7 shrink-0 rounded-full bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center text-sm mt-0.5">🧠</div>
+                                <div class="w-7 h-7 shrink-0 rounded-full bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center text-sm mt-0.5"></div>
                                 <div class="rounded-2xl rounded-tl-none bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 px-4 py-3 shadow-sm">
                                     <div class="flex items-center gap-1.5">
                                         <div class="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style="animation-delay: 0ms"></div>
@@ -1358,7 +1408,9 @@
                         <!-- Chat error -->
                         <div x-show="chatError" class="flex justify-center">
                             <div class="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-50 dark:bg-rose-900/20 border border-rose-200/60 dark:border-rose-800/40 rounded-xl text-[10px] font-bold text-rose-600 dark:text-rose-400">
-                                <span>⚠️</span>
+                                <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                                </svg>
                                 <span x-text="chatError"></span>
                             </div>
                         </div>
@@ -1376,7 +1428,7 @@
                     
                     <!-- Hint text -->
                     <p class="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-2 px-1">
-                        💬 Tanyakan lebih lanjut tentang laporan ini
+                         Tanyakan lebih lanjut tentang laporan ini
                     </p>
 
                     <div class="flex items-end gap-2">
@@ -1419,7 +1471,7 @@
                 <!-- Static footer (shown when analysis not loaded yet) -->
                 <div x-show="aiLoading || aiError || !aiAnalysis"
                      class="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500 font-bold shrink-0">
-                    <span>💡 Tips: Filter tanggal atau cabang di dashboard untuk menganalisis data spesifik.</span>
+                    <span> Tips: Filter tanggal atau cabang di dashboard untuk menganalisis data spesifik.</span>
                     <span class="text-slate-500">Pusat Kurma Premium AI</span>
                 </div>
             </div>

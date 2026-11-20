@@ -747,7 +747,7 @@
                             {{-- QRIS --}}
                             <div class="payment-method-card" :class="selectedPaymentChannel === 'QRIS' ? 'selected' : ''"
                                  @click="selectedPaymentChannel = 'QRIS'">
-                                <div class="pm-icon">📱</div>
+                                <div class="pm-icon"></div>
                                 <div class="pm-name">QRIS</div>
                                 <div class="pm-fee" x-text="'+ Rp ' + formatNumber(calcFee('QRIS'))"></div>
                                 <div class="pm-note">GoPay, OVO, Dana, ShopeePay, BSI, dll</div>
@@ -756,7 +756,7 @@
                             {{-- Transfer Bank --}}
                             <div class="payment-method-card" :class="selectedPaymentChannel === 'VIRTUAL_ACCOUNT' ? 'selected' : ''"
                                  @click="selectedPaymentChannel = 'VIRTUAL_ACCOUNT'">
-                                <div class="pm-icon">🏦</div>
+                                <div class="pm-icon"></div>
                                 <div class="pm-name">Transfer Bank</div>
                                 <div class="pm-fee" x-text="'+ Rp ' + formatNumber(calcFee('VIRTUAL_ACCOUNT'))"></div>
                                 <div class="pm-note">BCA, BRI, BNI, Mandiri, dll</div>
@@ -765,7 +765,7 @@
                             {{-- E-Wallet --}}
                             <div class="payment-method-card" :class="selectedPaymentChannel === 'EMONEY' ? 'selected' : ''"
                                  @click="selectedPaymentChannel = 'EMONEY'">
-                                <div class="pm-icon">💳</div>
+                                <div class="pm-icon"></div>
                                 <div class="pm-name">E-Wallet / OVO</div>
                                 <div class="pm-fee" x-text="'+ Rp ' + formatNumber(calcFee('EMONEY'))"></div>
                                 <div class="pm-note">OVO, DANA, LinkAja</div>
@@ -774,7 +774,7 @@
                             {{-- Minimarket --}}
                             <div class="payment-method-card" :class="selectedPaymentChannel === 'RETAIL' ? 'selected' : ''"
                                  @click="selectedPaymentChannel = 'RETAIL'">
-                                <div class="pm-icon">🏪</div>
+                                <div class="pm-icon"></div>
                                 <div class="pm-name">Minimarket</div>
                                 <div class="pm-fee" x-text="'+ Rp ' + formatNumber(calcFee('RETAIL'))"></div>
                                 <div class="pm-note">Alfamart, Indomaret</div>

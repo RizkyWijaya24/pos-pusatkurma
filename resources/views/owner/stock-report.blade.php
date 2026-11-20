@@ -9,13 +9,13 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
             <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-purple-100 flex items-center gap-3">
-                <span class="text-3xl">📊</span> Laporan Stok Antar Cabang
+                Laporan Stok Antar Cabang
             </h1>
             <p class="text-slate-400 dark:text-purple-400 mt-1 text-sm font-medium">
                 Saldo stok per produk di setiap lokasi
                 @if(Auth::user()->isAdmin())
                 <span class="ml-2 inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
-                    ✏️ Klik angka stok untuk edit
+                    Klik angka stok untuk edit
                 </span>
                 @endif
             </p>
@@ -24,16 +24,16 @@
             @if($pendingRequests > 0)
             <a href="{{ route('admin.stock-transfers.index') }}?status=requested"
                class="w-full sm:w-auto flex items-center justify-center gap-2 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-amber-500/20 transition-colors animate-pulse shadow-sm text-center">
-                ⏳ {{ $pendingRequests }} Request Kasir
+                {{ $pendingRequests }} Request Kasir
             </a>
             @endif
             <a href="{{ route('owner.stock-report.export', request()->query()) }}"
                class="flex-1 sm:flex-initial bg-emerald-700 hover:bg-emerald-800 text-white px-4 sm:px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm transition duration-150 text-center">
-                📤 Export Excel
+                Export Excel
             </a>
             <a href="{{ route('owner.stock-report.export', array_merge(request()->query(), ['format' => 'pdf'])) }}"
                class="flex-1 sm:flex-initial bg-rose-700 hover:bg-rose-800 text-white px-4 sm:px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm transition duration-150 text-center">
-                📄 Export PDF
+                Export PDF
             </a>
         </div>
     </div>
@@ -42,12 +42,15 @@
     @if(!empty($lowStockAlerts))
     <div class="bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-3xl p-5 shadow-sm">
         <h3 class="text-rose-700 dark:text-rose-400 font-extrabold mb-3 flex items-center gap-2 text-sm uppercase tracking-wider">
-            <span>🚨</span> Peringatan Stok Kritis (≤ 10)
+            <svg class="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+            </svg>
+            Peringatan Stok Kritis (≤ 10)
         </h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             @foreach($lowStockAlerts as $locName => $alerts)
             <div class="bg-rose-500/5 dark:bg-rose-950/40 border border-rose-100/50 dark:border-rose-900/20 rounded-2xl p-4 shadow-inner">
-                <p class="text-rose-800 dark:text-rose-300 font-bold text-xs mb-2 uppercase tracking-wide">📍 {{ $locName }}</p>
+                <p class="text-rose-800 dark:text-rose-300 font-bold text-xs mb-2 uppercase tracking-wide"> {{ $locName }}</p>
                 @foreach($alerts as $alert)
                 @php
                     $displayAlertStock = $alert['stock'];
@@ -111,7 +114,7 @@
         @foreach($locations as $loc)
         @php $total = $locationTotals[$loc->id] ?? 0; @endphp
         <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl p-5 text-center shadow-md hover:scale-[1.02] transition duration-150">
-            <div class="text-2xl mb-2">{{ $loc->type === 'gudang' ? '🏭' : ($loc->type === 'online' ? '🌐' : '🏪') }}</div>
+            <div class="text-2xl mb-2">{{ $loc->type === 'gudang' ? '' : ($loc->type === 'online' ? '' : '') }}</div>
             <p class="text-slate-500 dark:text-purple-400 text-xs font-bold uppercase tracking-wider mb-1">{{ $loc->name }}</p>
             <p class="font-extrabold text-2xl tracking-tight {{ $loc->type === 'gudang' ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400' }}" id="loc-total-{{ $loc->id }}">
                 {{ number_format($total, 0, ',', '.') }}
@@ -130,7 +133,7 @@
     <div class="mt-4 text-center">
         <a href="{{ route('owner.stock-adjustment-log') }}"
            class="text-purple-700 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 text-sm font-bold underline underline-offset-2 transition duration-150">
-            📜 Lihat Histori Log Mutasi Stok →
+             Lihat Histori Log Mutasi Stok →
         </a>
     </div>
 </div>
@@ -187,7 +190,7 @@ async function saveEdit(productId, locationId) {
     }
 
     saveBtn.disabled    = true;
-    saveBtn.textContent = '⏳';
+    saveBtn.textContent = '';
 
     try {
         const res  = await fetch('/admin/stock-adjust', {
@@ -215,7 +218,7 @@ async function saveEdit(productId, locationId) {
             void cell.offsetWidth;
             cell.classList.add('flash-success');
             setTimeout(() => cell.classList.remove('flash-success'), 1400);
-            showStockToast('✅ ' + cell.dataset.productName + ' @ ' + cell.dataset.locationName + ' diperbarui → ' + newStock + ' ' + cell.dataset.unit, 'success');
+            showStockToast(' ' + cell.dataset.productName + ' @ ' + cell.dataset.locationName + ' diperbarui → ' + newStock + ' ' + cell.dataset.unit, 'success');
         } else {
             showStockToast(data.message || 'Gagal menyimpan stok!', 'error');
             cell.classList.remove('flash-error', 'flash-success');

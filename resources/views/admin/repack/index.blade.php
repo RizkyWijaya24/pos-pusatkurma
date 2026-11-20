@@ -9,7 +9,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
             <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-purple-100 flex items-center gap-3">
-                <span class="text-3xl">🔄</span> Riwayat Repack & Pecah Stok
+                Riwayat Repack & Pecah Stok
             </h1>
             <p class="text-slate-400 dark:text-purple-400 mt-1 text-sm font-medium">Log pemrosesan pemecahan unit produk bulk ke eceran/repack</p>
         </div>
@@ -39,7 +39,7 @@
                        class="bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-700 dark:text-purple-200 rounded-xl px-3.5 py-2.5 text-sm focus:border-emerald-500 focus:ring-emerald-500 shadow-inner">
             </div>
             <button type="submit" class="bg-emerald-700 hover:bg-emerald-800 text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider shadow transition duration-150">
-                🔍 Filter
+                 Filter
             </button>
             @if(request()->hasAny(['location_id','date']))
             <a href="{{ route('admin.repack.index') }}" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 dark:text-purple-300 text-xs font-bold rounded-xl transition duration-150">
@@ -53,7 +53,7 @@
     <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl shadow-md overflow-hidden">
         @if($repacks->isEmpty())
         <div class="text-center py-16">
-            <div class="text-5xl mb-4">📭</div>
+            <div class="text-5xl mb-4"></div>
             <p class="text-slate-400 dark:text-purple-400 text-lg font-semibold">Belum ada riwayat repack</p>
             <a href="{{ route('admin.repack.create') }}" class="mt-4 inline-block text-emerald-600 hover:text-emerald-500 font-bold underline">
                 Mulai proses repack pertama

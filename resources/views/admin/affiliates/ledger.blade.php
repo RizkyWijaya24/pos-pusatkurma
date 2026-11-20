@@ -87,7 +87,7 @@
                                     @if($ledger->status === 'paid' || $ledger->status === 'approved')
                                         <span class="text-[10px] font-bold text-emerald-600">✓ Selesai</span>
                                     @elseif($ledger->status === 'pending')
-                                        <span class="text-[10px] font-bold text-amber-600 animate-pulse">⏳ Menunggu</span>
+                                        <span class="text-[10px] font-bold text-amber-600 animate-pulse"> Menunggu</span>
                                     @else
                                         <span class="text-[10px] font-bold text-rose-600">✕ Batal</span>
                                     @endif

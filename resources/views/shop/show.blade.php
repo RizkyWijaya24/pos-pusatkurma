@@ -114,7 +114,7 @@
         overflow: hidden;
     }
     .price-card::after {
-        content: '🌴';
+        content: '';
         position: absolute;
         right: -10px;
         bottom: -10px;
@@ -667,7 +667,7 @@
                 <div style="margin-bottom:20px;padding:12px 16px;background:linear-gradient(135deg, rgba(5,150,105,.1), rgba(16,185,129,.15));border:1.5px solid #059669;border-radius:12px;display:flex;align-items:center;gap:12px;color:#065f46;">
                     <i class="fa-solid fa-truck-fast" style="font-size:24px;color:#059669;"></i>
                     <div>
-                        <div style="font-weight:800;font-size:14px;">🚚 Gratis Ongkos Kirim!</div>
+                        <div style="font-weight:800;font-size:14px;"> Gratis Ongkos Kirim!</div>
                         <div style="font-size:12px;color:var(--clr-text-muted);">Produk ini dibebaskan dari biaya pengiriman saat checkout.</div>
                     </div>
                 </div>

@@ -79,10 +79,10 @@
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
             @php
                 $statusCards = [
-                    ['key'=>'all',     'label'=>'Total Pesanan',  'icon'=>'📋', 'bg'=>'bg-slate-50',   'text'=>'text-slate-700',   'border'=>'border-slate-200'],
-                    ['key'=>'pending', 'label'=>'Menunggu Bayar', 'icon'=>'⏳', 'bg'=>'bg-amber-50',   'text'=>'text-amber-700',   'border'=>'border-amber-200'],
-                    ['key'=>'paid',    'label'=>'Sudah Lunas',    'icon'=>'✅', 'bg'=>'bg-emerald-50', 'text'=>'text-emerald-700', 'border'=>'border-emerald-200'],
-                    ['key'=>'failed',  'label'=>'Gagal/Batal',   'icon'=>'❌', 'bg'=>'bg-rose-50',    'text'=>'text-rose-700',    'border'=>'border-rose-200'],
+                    ['key'=>'all', 'label'=>'Total Pesanan', 'icon'=>'', 'bg'=>'bg-slate-50', 'text'=>'text-slate-700', 'border'=>'border-slate-200'],
+                    ['key'=>'pending', 'label'=>'Menunggu Bayar', 'icon'=>'', 'bg'=>'bg-amber-50',   'text'=>'text-amber-700',   'border'=>'border-amber-200'],
+                    ['key'=>'paid', 'label'=>'Sudah Lunas', 'icon'=>'', 'bg'=>'bg-emerald-50', 'text'=>'text-emerald-700', 'border'=>'border-emerald-200'],
+                    ['key'=>'failed', 'label'=>'Gagal/Batal', 'icon'=>'', 'bg'=>'bg-rose-50', 'text'=>'text-rose-700', 'border'=>'border-rose-200'],
                 ];
             @endphp
             @foreach($statusCards as $card)
@@ -108,7 +108,7 @@
                            class="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:border-emerald-400 focus:ring-emerald-400 bg-slate-50 dark:bg-dp-700 dark:border-dp-600 dark:text-purple-100">
                 </div>
                 <button type="submit" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl shadow transition whitespace-nowrap">
-                    🔍 Cari
+                     Cari
                 </button>
                 @if($search || $status !== 'all')
                     <a href="{{ route('admin.orders.index') }}" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-bold rounded-xl transition text-center whitespace-nowrap">
@@ -135,7 +135,7 @@
         <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700 rounded-2xl shadow-sm overflow-hidden">
             @if($orders->isEmpty())
                 <div class="flex flex-col items-center justify-center py-20 text-center">
-                    <div class="text-5xl mb-4">📭</div>
+                    <div class="text-5xl mb-4"></div>
                     <h3 class="font-bold text-slate-600 dark:text-purple-200 text-base">Tidak ada pesanan ditemukan</h3>
                     <p class="text-sm text-slate-400 mt-1">Coba ubah filter atau kata kunci pencarian</p>
                 </div>
@@ -171,11 +171,11 @@
                                     </td>
                                     <td class="px-4 py-3.5 text-center">
                                         @if($order->payment_status === 'paid')
-                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold">✅ LUNAS</span>
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold"> LUNAS</span>
                                         @elseif($order->payment_status === 'pending')
-                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold">⏳ PENDING</span>
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold"> PENDING</span>
                                         @else
-                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-100 text-rose-800 rounded-full text-xs font-bold">❌ GAGAL</span>
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-100 text-rose-800 rounded-full text-xs font-bold"> GAGAL</span>
                                         @endif
                                     </td>
                                     <td class="px-4 py-3.5 hidden lg:table-cell text-xs text-slate-400 font-medium">
@@ -242,7 +242,7 @@
             <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showDeleteModal=false"></div>
             <div class="relative bg-white dark:bg-dp-800 rounded-2xl shadow-2xl p-6 w-full max-w-sm">
                 <div class="text-center mb-4">
-                    <div class="text-4xl mb-2">🗑️</div>
+                    <div class="text-4xl mb-2"></div>
                     <h3 class="font-extrabold text-slate-800 dark:text-purple-100 text-base">Hapus Pesanan?</h3>
                     <p class="text-sm text-slate-500 mt-1">Pesanan <strong x-text="selectedOrderCode"></strong> akan dihapus permanen.</p>
                 </div>
@@ -264,7 +264,7 @@
             <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showStatusModal=false"></div>
             <div class="relative bg-white dark:bg-dp-800 rounded-2xl shadow-2xl p-6 w-full max-w-sm">
                 <div class="text-center mb-4">
-                    <div class="text-4xl mb-2" x-text="newStatus==='paid' ? '✅' : '❌'"></div>
+                    <div class="text-4xl mb-2" x-text="newStatus==='paid' ? '' : ''"></div>
                     <h3 class="font-extrabold text-slate-800 dark:text-purple-100 text-base">
                         <span x-text="newStatus==='paid' ? 'Tandai Pesanan Lunas?' : 'Tandai Pesanan Gagal?'"></span>
                     </h3>

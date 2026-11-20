@@ -20,11 +20,11 @@
                     <!-- Dropdown Filter Cabang -->
                     <select name="branch" 
                             class="text-sm border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner px-3.5 py-2.5 bg-slate-50 text-slate-700 font-medium">
-                        <option value="">🌐 Semua Cabang</option>
+                        <option value=""> Semua Cabang</option>
                         @foreach($branches as $branchName)
                             @if($branchName)
                                 <option value="{{ $branchName }}" {{ request('branch') === $branchName ? 'selected' : '' }}>
-                                    📍 {{ $branchName }}
+                                     {{ $branchName }}
                                 </option>
                             @endif
                         @endforeach
@@ -33,9 +33,9 @@
                     <!-- Dropdown Filter Periode -->
                     <select name="filter_type" 
                             class="text-sm border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner px-3.5 py-2.5 bg-slate-50 text-slate-700 font-medium">
-                        <option value="harian" {{ request('filter_type') === 'harian' ? 'selected' : '' }}>📅 Harian</option>
-                        <option value="mingguan" {{ request('filter_type') === 'mingguan' ? 'selected' : '' }}>📅 Mingguan</option>
-                        <option value="bulanan" {{ request('filter_type') === 'bulanan' ? 'selected' : '' }}>📅 Bulanan</option>
+                        <option value="harian" {{ request('filter_type') === 'harian' ? 'selected' : '' }}> Harian</option>
+                        <option value="mingguan" {{ request('filter_type') === 'mingguan' ? 'selected' : '' }}> Mingguan</option>
+                        <option value="bulanan" {{ request('filter_type') === 'bulanan' ? 'selected' : '' }}> Bulanan</option>
                     </select>
 
                     <div class="flex items-center gap-2">
@@ -86,7 +86,7 @@
                     </svg>
                 </div>
                 <div class="z-10">
-                    <span class="text-xs font-bold uppercase tracking-wider text-amber-300">☀ Omset {{ $targetDate->isToday() ? 'Hari Ini' : 'Terfilter' }}</span>
+                    <span class="text-xs font-bold uppercase tracking-wider text-amber-300"> Omset {{ $targetDate->isToday() ? 'Hari Ini' : 'Terfilter' }}</span>
                     <h3 class="text-3xl font-black mt-2 leading-none text-white">Rp {{ number_format($todayOmset, 0, ',', '.') }}</h3>
                 </div>
                 <div class="mt-4 flex items-center z-10">
@@ -104,7 +104,7 @@
                     </svg>
                 </div>
                 <div class="z-10">
-                    <span class="text-xs font-bold uppercase tracking-wider text-violet-300">⚡ Profit {{ $targetDate->isToday() ? 'Hari Ini' : 'Terfilter' }}</span>
+                    <span class="text-xs font-bold uppercase tracking-wider text-violet-300"> Profit {{ $targetDate->isToday() ? 'Hari Ini' : 'Terfilter' }}</span>
                     <h3 class="text-3xl font-black mt-2 leading-none text-white">Rp {{ number_format($todayProfit, 0, ',', '.') }}</h3>
                 </div>
                 <div class="mt-4 flex items-center z-10">
@@ -130,21 +130,21 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {{-- Tunai --}}
                 <div class="bg-emerald-50/40 border border-emerald-100 rounded-2xl p-4 flex flex-col justify-between">
-                    <span class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1">💵 Bayar Tunai</span>
+                    <span class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1"> Bayar Tunai</span>
                     <p class="text-xl font-black text-slate-800 tracking-tight">
                         Rp {{ number_format((int)$todayCash, 0, ',', '.') }}
                     </p>
                 </div>
                 {{-- Non-Tunai QRIS --}}
                 <div class="bg-teal-50/40 border border-teal-100 rounded-2xl p-4 flex flex-col justify-between">
-                    <span class="text-[10px] font-bold text-teal-800 uppercase tracking-wider mb-1">📱 Non-Tunai (QRIS)</span>
+                    <span class="text-[10px] font-bold text-teal-800 uppercase tracking-wider mb-1"> Non-Tunai (QRIS)</span>
                     <p class="text-xl font-black text-slate-800 tracking-tight">
                         Rp {{ number_format((int)$todayQris, 0, ',', '.') }}
                     </p>
                 </div>
                 {{-- Non-Tunai Debit/TF --}}
                 <div class="bg-sky-50/40 border border-sky-100 rounded-2xl p-4 flex flex-col justify-between">
-                    <span class="text-[10px] font-bold text-sky-800 uppercase tracking-wider mb-1">💳 Non-Tunai (Debit/TF)</span>
+                    <span class="text-[10px] font-bold text-sky-800 uppercase tracking-wider mb-1"> Non-Tunai (Debit/TF)</span>
                     <p class="text-xl font-black text-slate-800 tracking-tight">
                         Rp {{ number_format((int)$todayDebit, 0, ',', '.') }}
                     </p>

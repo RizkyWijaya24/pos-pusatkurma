@@ -868,9 +868,9 @@
                 msg += `--------------------------------------\n\n`;
                 
                 msg += `*RINGKASAN KAS BERSIH*\n`;
-                msg += `💵 *Omset Hari Ini:* ${this.formatRupiah(this.todaySalesTotal)}\n`;
-                msg += `💸 *Total Pengeluaran:* ${this.formatRupiah(this.todayExpensesTotal)}\n`;
-                msg += `💰 *Uang di Laci (Kas Bersih):* ${this.formatRupiah(this.todayNetCash)}\n`;
+                msg += `*Omset Hari Ini:* ${this.formatRupiah(this.todaySalesTotal)}\n`;
+                msg += `*Total Pengeluaran:* ${this.formatRupiah(this.todayExpensesTotal)}\n`;
+                msg += `*Uang di Laci (Kas Bersih):* ${this.formatRupiah(this.todayNetCash)}\n`;
                 msg += `--------------------------------------\n\n`;
                 
                 msg += `*RINCIAN METODE PEMBAYARAN*\n`;
@@ -1578,8 +1578,8 @@
                             <div class="flex flex-col gap-1.5 pb-2 border-t border-slate-100 pt-3">
                                 <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Metode Cetak Struk</label>
                                 <select x-model="printMethod" class="w-full border-slate-200 rounded-xl text-xs font-bold focus:border-emerald-500 focus:ring-emerald-500 py-2.5 px-3 shadow-inner bg-slate-50 text-slate-700">
-                                    <option value="iframe">🖥️ Sistem Browser (Iframe/Default)</option>
-                                    <option value="bluetooth">🔌 Direct Bluetooth API (WebBLE)</option>
+                                    <option value="iframe">Sistem Browser (Iframe/Default)</option>
+                                    <option value="bluetooth">Direct Bluetooth API (WebBLE)</option>
                                 </select>
                             </div>
 
@@ -1624,13 +1624,13 @@
                                     @click="switchQtyInputMode('gram')"
                                     :class="qtyInputMode === 'gram' ? 'bg-white text-emerald-800 shadow-xs border border-emerald-200/60 font-black' : 'text-slate-500 hover:text-slate-800 font-semibold'"
                                     class="flex-1 py-1.5 px-3 rounded-xl transition text-center flex items-center justify-center gap-1.5">
-                                <span>⚖️ Input dlm Gram (g)</span>
+                                <span>Input dlm Gram (g)</span>
                             </button>
                             <button type="button" 
                                     @click="switchQtyInputMode('kg')"
                                     :class="qtyInputMode === 'kg' ? 'bg-white text-emerald-800 shadow-xs border border-emerald-200/60 font-black' : 'text-slate-500 hover:text-slate-800 font-semibold'"
                                     class="flex-1 py-1.5 px-3 rounded-xl transition text-center flex items-center justify-center gap-1.5">
-                                <span>⚖️ Input dlm Kg</span>
+                                <span>Input dlm Kg</span>
                             </button>
                         </div>
                     </template>
@@ -1747,11 +1747,11 @@
                         <div class="flex flex-col gap-1">
                             <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Kategori Pengeluaran</label>
                             <select x-model="newExpense.category" class="w-full border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner px-4 py-2.5">
-                                <option value="Operasional Toko">⚙️ Operasional Toko</option>
-                                <option value="Transportasi">🚚 Transportasi</option>
-                                <option value="Alat Tulis & Kebersihan">🧼 Alat Tulis & Kebersihan</option>
-                                <option value="Konsumsi">🍜 Konsumsi / Makan</option>
-                                <option value="Lain-lain">📦 Lain-lain</option>
+                                <option value="Operasional Toko">Operasional Toko</option>
+                                <option value="Transportasi">Transportasi</option>
+                                <option value="Alat Tulis & Kebersihan">Alat Tulis & Kebersihan</option>
+                                <option value="Konsumsi">Konsumsi / Makan</option>
+                                <option value="Lain-lain">Lain-lain</option>
                             </select>
                         </div>
 
@@ -1879,12 +1879,12 @@
                             
                             <!-- Tombol Bagikan ke Grup (Tanpa No Telp) -->
                             <button type="button" @click="sendWaReport(true)" class="py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-bold text-xs shadow-md shadow-teal-600/10 transition duration-150 flex items-center justify-center gap-1">
-                                👥 Bagikan ke Grup
+                                Bagikan ke Grup
                             </button>
                             
                             <!-- Tombol Kirim ke Nomor (Dengan No Telp) -->
                             <button type="button" @click="sendWaReport(false)" class="py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl font-bold text-xs shadow-md shadow-emerald-700/10 transition duration-150 flex items-center justify-center gap-1">
-                                🟢 Kirim Nomor
+                                Kirim Nomor
                             </button>
                         </div>
                     </div>

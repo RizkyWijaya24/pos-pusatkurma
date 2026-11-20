@@ -25,33 +25,33 @@ if (is_dir($viewsPath)) {
             $count++;
         }
     }
-    $results[] = "✅ View cache: $count file dihapus dari storage/framework/views/";
+    $results[] = "[OK] View cache: $count file dihapus dari storage/framework/views/";
 } else {
-    $results[] = "❌ Folder storage/framework/views tidak ditemukan di: $viewsPath";
+    $results[] = "[ERROR] Folder storage/framework/views tidak ditemukan di: $viewsPath";
 }
 
 // 2. Clear Config Cache
 $configCache = __DIR__ . '/../bootstrap/cache/config.php';
 if (file_exists($configCache)) {
     unlink($configCache);
-    $results[] = "✅ Config cache dihapus";
+    $results[] = "[OK] Config cache dihapus";
 } else {
-    $results[] = "ℹ️  Config cache tidak ada (OK)";
+    $results[] = "[INFO]  Config cache tidak ada (OK)";
 }
 
 // 3. Clear Route Cache
 $routeCache = __DIR__ . '/../bootstrap/cache/routes-v7.php';
 if (file_exists($routeCache)) {
     unlink($routeCache);
-    $results[] = "✅ Route cache dihapus";
+    $results[] = "[OK] Route cache dihapus";
 } else {
     // try other route cache filenames
     $routeCache2 = __DIR__ . '/../bootstrap/cache/routes.php';
     if (file_exists($routeCache2)) {
         unlink($routeCache2);
-        $results[] = "✅ Route cache dihapus";
+        $results[] = "[OK] Route cache dihapus";
     } else {
-        $results[] = "ℹ️  Route cache tidak ada (OK)";
+        $results[] = "[INFO]  Route cache tidak ada (OK)";
     }
 }
 
@@ -59,23 +59,23 @@ if (file_exists($routeCache)) {
 $dashboardFile = __DIR__ . '/../resources/views/kasir/dashboard.blade.php';
 if (file_exists($dashboardFile)) {
     $mtime = date('d-m-Y H:i:s', filemtime($dashboardFile));
-    $results[] = "ℹ️  dashboard.blade.php: last modified $mtime";
+    $results[] = "[INFO]  dashboard.blade.php: last modified $mtime";
     
     // Check if our fix is in the file
     $content = file_get_contents($dashboardFile);
     if (strpos($content, 'background-color: #1b4332') !== false) {
-        $results[] = "✅ Fix gambar produk (hijau gelap) SUDAH ada di file";
+        $results[] = "[OK] Fix gambar produk (hijau gelap) SUDAH ada di file";
     } else {
-        $results[] = "❌ Fix gambar produk BELUM ada - upload dashboard.blade.php terbaru!";
+        $results[] = "[ERROR] Fix gambar produk BELUM ada - upload dashboard.blade.php terbaru!";
     }
     
     if (strpos($content, 'return this.products.filter') !== false && strpos($content, 'return this.products;') === false) {
-        $results[] = "✅ Fix filteredProducts (Semua category) SUDAH ada";
+        $results[] = "[OK] Fix filteredProducts (Semua category) SUDAH ada";
     } else {
-        $results[] = "❌ Fix filteredProducts BELUM ada - upload dashboard.blade.php terbaru!";
+        $results[] = "[ERROR] Fix filteredProducts BELUM ada - upload dashboard.blade.php terbaru!";
     }
 } else {
-    $results[] = "❌ dashboard.blade.php tidak ditemukan!";
+    $results[] = "[ERROR] dashboard.blade.php tidak ditemukan!";
 }
 
 ?>
@@ -94,11 +94,11 @@ if (file_exists($dashboardFile)) {
     </style>
 </head>
 <body>
-    <h1>🌴 Cache Clear - Pusat Kurma POS</h1>
+    <h1> Cache Clear - Pusat Kurma POS</h1>
     <?php foreach ($results as $r): ?>
         <div class="result"><?= htmlspecialchars($r) ?></div>
     <?php endforeach; ?>
-    <p style="color:#6b7280; font-size:12px; margin-top:20px;">⚠️ Setelah selesai, HAPUS file clear-cache.php dari public/ untuk keamanan!</p>
+    <p style="color:#6b7280; font-size:12px; margin-top:20px;">[WARN]️ Setelah selesai, HAPUS file clear-cache.php dari public/ untuk keamanan!</p>
     <a href="/kasir/dashboard">→ Buka Dashboard Kasir</a>
 </body>
 </html>

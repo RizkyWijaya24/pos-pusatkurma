@@ -162,13 +162,13 @@
     <div class="info-page-inner">
 
         <div class="info-breadcrumb">
-            <a href="{{ route('shop.index') }}">🏠 Beranda</a>
+            <a href="{{ route('shop.index') }}"> Beranda</a>
             <span>/</span>
             <span>Kebijakan Pengembalian Dana</span>
         </div>
 
         <div class="info-page-header">
-            <div class="page-icon">🔄</div>
+            <div class="page-icon"></div>
             <h1>Kebijakan Pengembalian Dana</h1>
             <p>Berlaku sejak 1 Januari 2024 · Terakhir diperbarui {{ date('d F Y') }}</p>
         </div>
@@ -183,7 +183,7 @@
             <h2>1. Kondisi yang Dapat Dikembalikan vs Tidak</h2>
             <div class="status-card">
                 <div class="status-item status-yes">
-                    <h4>✅ Dapat Dikembalikan / Refund</h4>
+                    <h4> Dapat Dikembalikan / Refund</h4>
                     <ul>
                         <li>Produk rusak / pesok saat diterima</li>
                         <li>Produk salah kirim (tidak sesuai pesanan)</li>
@@ -193,7 +193,7 @@
                     </ul>
                 </div>
                 <div class="status-item status-no">
-                    <h4>❌ Tidak Dapat Dikembalikan</h4>
+                    <h4> Tidak Dapat Dikembalikan</h4>
                     <ul>
                         <li>Produk sudah dibuka dan digunakan</li>
                         <li>Produk rusak akibat kelalaian pembeli</li>
@@ -220,35 +220,35 @@
                 <div class="refund-step">
                     <div class="refund-step-num">1</div>
                     <div class="refund-step-content">
-                        <h3>📸 Dokumentasikan Bukti</h3>
+                        <h3> Dokumentasikan Bukti</h3>
                         <p>Ambil foto/video kondisi produk yang bermasalah berserta kemasan dan label pengiriman. Bukti ini wajib disertakan dalam pengajuan.</p>
                     </div>
                 </div>
                 <div class="refund-step">
                     <div class="refund-step-num">2</div>
                     <div class="refund-step-content">
-                        <h3>💬 Hubungi Kami via WhatsApp</h3>
+                        <h3> Hubungi Kami via WhatsApp</h3>
                         <p>Kirim pesan ke <a href="https://wa.me/{{ \App\Models\Setting::get('shop_whatsapp', '6281234567890') }}" target="_blank" style="color:var(--clr-primary);font-weight:600;">{{ \App\Models\Setting::get('shop_phone', '+62 812-3456-7890') }}</a> dengan menyertakan: Kode Pesanan, alasan pengembalian, dan foto/video bukti.</p>
                     </div>
                 </div>
                 <div class="refund-step">
                     <div class="refund-step-num">3</div>
                     <div class="refund-step-content">
-                        <h3>🔍 Proses Verifikasi</h3>
+                        <h3> Proses Verifikasi</h3>
                         <p>Tim kami akan memverifikasi keluhan Anda dalam <strong>1×24 jam kerja</strong>. Kami akan menginformasikan keputusan apakah pengajuan dapat diproses.</p>
                     </div>
                 </div>
                 <div class="refund-step">
                     <div class="refund-step-num">4</div>
                     <div class="refund-step-content">
-                        <h3>📦 Pengembalian Produk (jika diperlukan)</h3>
+                        <h3> Pengembalian Produk (jika diperlukan)</h3>
                         <p>Jika verifikasi disetujui, kami akan memberikan instruksi pengiriman balik. Biaya ongkir pengembalian ditanggung kami jika kesalahan dari pihak kami.</p>
                     </div>
                 </div>
                 <div class="refund-step">
                     <div class="refund-step-num">5</div>
                     <div class="refund-step-content">
-                        <h3>💰 Pengembalian Dana / Penggantian Produk</h3>
+                        <h3> Pengembalian Dana / Penggantian Produk</h3>
                         <p>Setelah produk diterima dan diperiksa oleh kami, refund atau penggantian produk akan diproses dalam <strong>3–7 hari kerja</strong>.</p>
                     </div>
                 </div>
@@ -286,17 +286,17 @@
             <h2>7. Hubungi Kami</h2>
             <p>Butuh bantuan atau memiliki pertanyaan tentang pengembalian? Kami siap membantu!</p>
             <ul>
-                <li>📍 {{ \App\Models\Setting::get('shop_address', 'Cianjur, Jawa Barat') }}</li>
-                <li>📱 WhatsApp: <a href="https://wa.me/{{ \App\Models\Setting::get('shop_whatsapp', '6281234567890') }}" target="_blank" style="color:var(--clr-primary); font-weight:600;">{{ \App\Models\Setting::get('shop_phone', '+62 812-3456-7890') }}</a></li>
-                <li>⏰ {{ \App\Models\Setting::get('shop_operational_hours', 'Senin–Sabtu: 08.00–17.00 WIB') }}</li>
+                <li> {{ \App\Models\Setting::get('shop_address', 'Cianjur, Jawa Barat') }}</li>
+                <li> WhatsApp: <a href="https://wa.me/{{ \App\Models\Setting::get('shop_whatsapp', '6281234567890') }}" target="_blank" style="color:var(--clr-primary); font-weight:600;">{{ \App\Models\Setting::get('shop_phone', '+62 812-3456-7890') }}</a></li>
+                <li> {{ \App\Models\Setting::get('shop_operational_hours', 'Senin–Sabtu: 08.00–17.00 WIB') }}</li>
             </ul>
             <p style="margin-top:12px; font-size:13px; color: var(--clr-text-muted);">Respon dalam 1×24 jam di hari kerja.</p>
         </div>
 
         <div style="margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--clr-border); display:flex; gap:12px; flex-wrap:wrap;">
-            <a href="{{ route('shop.terms') }}" style="color:var(--clr-primary);font-weight:600;font-size:14px;">📋 Syarat &amp; Ketentuan →</a>
-            <a href="{{ route('shop.privacy') }}" style="color:var(--clr-primary);font-weight:600;font-size:14px;">🔒 Kebijakan Privasi →</a>
-            <a href="{{ route('shop.index') }}" style="color:var(--clr-primary);font-weight:600;font-size:14px;">🛒 Kembali Belanja →</a>
+            <a href="{{ route('shop.terms') }}" style="color:var(--clr-primary);font-weight:600;font-size:14px;"> Syarat &amp; Ketentuan →</a>
+            <a href="{{ route('shop.privacy') }}" style="color:var(--clr-primary);font-weight:600;font-size:14px;"> Kebijakan Privasi →</a>
+            <a href="{{ route('shop.index') }}" style="color:var(--clr-primary);font-weight:600;font-size:14px;"> Kembali Belanja →</a>
         </div>
 
     </div>

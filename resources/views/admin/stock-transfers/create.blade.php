@@ -47,7 +47,7 @@
         </a>
         <div>
             <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-purple-100 flex items-center gap-2">
-                📦 Buat Transfer Stok
+                Buat Transfer Stok
             </h1>
             <p class="text-slate-400 dark:text-purple-400 text-sm font-medium">Pindahkan stok dari satu lokasi ke lokasi lain</p>
         </div>
@@ -61,11 +61,11 @@
             {{-- Lokasi --}}
             <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl p-6 shadow-md">
                 <h2 class="text-slate-800 dark:text-purple-100 font-extrabold mb-4 flex items-center gap-2">
-                    <span class="text-emerald-600 dark:text-emerald-400">🗺️</span> Rute Transfer
+                    Rute Transfer
                 </h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2">📤 Dari Lokasi <span class="text-slate-400">(sumber stok)</span></label>
+                        <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2">Dari Lokasi <span class="text-slate-400">(sumber stok)</span></label>
                         <select id="fromLocation" name="from_location_id"
                                 class="w-full bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-700 dark:text-purple-200 rounded-xl px-4 py-3 focus:border-emerald-500 focus:ring-emerald-500 focus:outline-none shadow-inner">
                             <option value="">-- Pilih Lokasi Asal --</option>
@@ -73,7 +73,6 @@
                             <option value="{{ $loc->id }}"
                                     data-type="{{ $loc->type }}"
                                     {{ $loc->type === 'gudang' ? 'selected' : '' }}>
-                                {{ $loc->type === 'gudang' ? '🏭' : ($loc->type === 'online' ? '🌐' : '🏪') }}
                                 {{ $loc->name }}
                                 @if($loc->type === 'gudang') (Gudang Utama) @endif
                             </option>
@@ -82,13 +81,12 @@
                         <p class="text-slate-400 dark:text-purple-505 text-xs mt-1 font-medium">Kosongkan jika stok berasal dari pembelian baru</p>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2">📥 Ke Lokasi <span class="text-rose-500">*</span></label>
+                        <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2">Ke Lokasi <span class="text-rose-500">*</span></label>
                         <select id="toLocation" name="to_location_id" required
                                 class="w-full bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-700 dark:text-purple-200 rounded-xl px-4 py-3 focus:border-emerald-500 focus:ring-emerald-500 focus:outline-none shadow-inner">
                             <option value="">-- Pilih Lokasi Tujuan --</option>
                             @foreach($locations as $loc)
                             <option value="{{ $loc->id }}">
-                                {{ $loc->type === 'gudang' ? '🏭' : ($loc->type === 'online' ? '🌐' : '🏪') }}
                                 {{ $loc->name }}
                             </option>
                             @endforeach
@@ -101,7 +99,7 @@
             <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl p-6 shadow-md">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-slate-800 dark:text-purple-100 font-extrabold flex items-center gap-2">
-                        <span class="text-emerald-600 dark:text-emerald-400">🛍️</span> Daftar Produk
+                        Daftar Produk
                     </h2>
                     <button type="button" onclick="addProductRow()"
                             class="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors shadow-sm flex items-center gap-1">
@@ -132,7 +130,7 @@
 
             {{-- Catatan --}}
             <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl p-6 shadow-md">
-                <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2">📝 Catatan Transfer</label>
+                <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2"> Catatan Transfer</label>
                 <textarea id="notes" rows="3" placeholder="Opsional: catatan alasan transfer, instruksi khusus, dll."
                     class="w-full bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-800 dark:text-purple-100 rounded-xl px-4 py-3 text-sm focus:border-emerald-500 focus:ring-emerald-500 focus:outline-none resize-none shadow-inner"></textarea>
             </div>
@@ -141,7 +139,7 @@
         {{-- Summary Panel (kanan) --}}
         <div class="lg:col-span-4 xl:col-span-3 space-y-5">
             <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl p-6 shadow-md sticky top-6">
-                <h2 class="text-slate-800 dark:text-purple-100 font-extrabold mb-4">📋 Ringkasan Transfer</h2>
+                <h2 class="text-slate-800 dark:text-purple-100 font-extrabold mb-4"> Ringkasan Transfer</h2>
 
                 <div class="space-y-3 mb-5 border-b border-slate-100 dark:border-dp-700 pb-4">
                     <div class="flex justify-between text-sm">
@@ -163,7 +161,7 @@
 
                 <button id="submitBtn" onclick="submitTransfer()"
                         class="w-full bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3.5 rounded-xl font-bold uppercase tracking-wider text-xs transition duration-150 shadow-sm">
-                    🚀 Buat Transfer Sekarang
+                     Buat Transfer Sekarang
                 </button>
                 <p class="text-slate-400 dark:text-purple-500 text-xs text-center mt-2.5 font-medium">
                     Status akan "Pending" — stok berpindah setelah di-approve
@@ -229,7 +227,7 @@ function addProductRow() {
                 <input type="hidden" id="product_${rowCount}" value="">
                 <input type="text" 
                        id="product_search_${rowCount}" 
-                       placeholder="🔍 Ketik nama atau SKU produk..." 
+                       placeholder=" Ketik nama atau SKU produk..." 
                        onfocus="showDropdown(${rowCount})" 
                        oninput="filterDropdown(${rowCount})" 
                        onclick="event.stopPropagation()"
@@ -557,7 +555,7 @@ function submitTransfer() {
 
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
-    btn.textContent = '⏳ Memproses...';
+    btn.textContent = ' Memproses...';
 
     fetch('/admin/stock-transfers', {
         method: 'POST',
@@ -575,7 +573,7 @@ function submitTransfer() {
         } else {
             showToast('Gagal: ' + data.message, 'error');
             btn.disabled = false;
-            btn.textContent = '🚀 Buat Transfer Sekarang';
+            btn.textContent = ' Buat Transfer Sekarang';
         }
     });
 }

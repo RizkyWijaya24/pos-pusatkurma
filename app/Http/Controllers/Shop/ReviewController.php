@@ -104,7 +104,7 @@ class ReviewController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Ulasan Anda telah dikirim dan sedang menunggu persetujuan admin. Terima kasih! 🌟',
+            'message' => 'Ulasan Anda telah dikirim dan sedang menunggu persetujuan admin. Terima kasih!',
         ]);
     }
 }

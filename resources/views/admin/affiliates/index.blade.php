@@ -97,7 +97,7 @@
                     </div>
                 </div>
                 <div class="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl">
-                    👥
+                    
                 </div>
             </div>
 
@@ -110,7 +110,7 @@
                     </div>
                 </div>
                 <div class="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl">
-                    🛍️
+                    
                 </div>
             </div>
 
@@ -123,7 +123,7 @@
                     </div>
                 </div>
                 <div class="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xl">
-                    💸
+                    
                 </div>
             </div>
 
@@ -136,7 +136,7 @@
                     </div>
                 </div>
                 <div class="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-300 flex items-center justify-center text-xl">
-                    ⏳
+                    
                 </div>
             </div>
         </div>
@@ -216,7 +216,7 @@
                                             @endif
                                             @if($affiliate->bank_name)
                                                 <div class="text-[10px] text-slate-400 dark:text-purple-400 mt-0.5 font-medium">
-                                                    🏦 {{ $affiliate->bank_name }} {{ $affiliate->bank_account_number }} <span class="text-slate-300 dark:text-purple-500">({{ $affiliate->bank_account_name }})</span>
+                                                     {{ $affiliate->bank_name }} {{ $affiliate->bank_account_number }} <span class="text-slate-300 dark:text-purple-500">({{ $affiliate->bank_account_name }})</span>
                                                 </div>
                                             @endif
                                         </div>
@@ -233,7 +233,7 @@
                                         <a href="https://wa.me/{{ $waNumber }}?text=Halo%20{{ urlencode($affiliate->name) }},%20update%20komisi%20Pusat%20Kurma" 
                                            target="_blank"
                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition text-[11px] font-bold border border-emerald-200/50 dark:border-emerald-800/40">
-                                            💬 {{ $affiliate->phone }}
+                                             {{ $affiliate->phone }}
                                         </a>
                                     @else
                                         <span class="text-slate-300 dark:text-purple-500">—</span>
@@ -346,7 +346,7 @@
                         @empty
                             <tr>
                                 <td colspan="7" class="py-10 text-center text-slate-400">
-                                    <div class="text-3xl mb-2">🕌</div>
+                                    <div class="text-3xl mb-2"></div>
                                     <div class="font-bold text-sm">Belum ada data Agen Tour Leader (B2B)</div>
                                     <p class="text-xs mt-1">Daftarkan Tour Leader pertama Anda untuk mulai melacak komisi.</p>
                                 </td>

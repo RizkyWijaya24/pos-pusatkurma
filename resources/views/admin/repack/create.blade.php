@@ -14,7 +14,7 @@
         </a>
         <div>
             <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-purple-100 flex items-center gap-2">
-                🔄 Proses Repack & Pecah Stok
+                 Proses Repack & Pecah Stok
             </h1>
             <p class="text-slate-400 dark:text-purple-400 text-sm font-medium">Buka kemasan dus besar dan kemas ulang ke unit retail/eceran</p>
         </div>
@@ -28,19 +28,19 @@
             {{-- Lokasi & Bahan Asal --}}
             <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl p-6 shadow-md">
                 <h2 class="text-slate-800 dark:text-purple-100 font-extrabold mb-4 flex items-center gap-2">
-                    <span class="text-emerald-600 dark:text-emerald-400">📥</span> 1. Bahan Baku (Produk Asal)
+                    1. Bahan Baku (Produk Asal)
                 </h2>
                 
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {{-- Pilihan Lokasi --}}
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2">📍 Lokasi Proses <span class="text-rose-500">*</span></label>
+                        <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2">Lokasi Proses <span class="text-rose-500">*</span></label>
                         <select x-model="locationId" @change="onLocationChange()"
                                 class="w-full bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-700 dark:text-purple-200 rounded-xl px-4 py-3 focus:border-emerald-500 focus:ring-emerald-500 focus:outline-none shadow-inner text-sm">
                             <option value="">-- Pilih Lokasi --</option>
                             @foreach($locations as $loc)
                             <option value="{{ $loc->id }}">
-                                {{ $loc->type === 'gudang' ? '🏭' : ($loc->type === 'online' ? '🌐' : '🏪') }}
+                                {{ $loc->type === 'gudang' ? '' : ($loc->type === 'online' ? '' : '') }}
                                 {{ $loc->name }}
                             </option>
                             @endforeach
@@ -49,13 +49,13 @@
 
                     {{-- Pilihan Produk Asal --}}
                     <div class="sm:col-span-2">
-                        <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2">📦 Produk Asal (Dus / Bulk) <span class="text-rose-500">*</span></label>
+                        <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2"> Produk Asal (Dus / Bulk) <span class="text-rose-500">*</span></label>
                         <div class="relative" @click.outside="showSourceDropdown = false">
                             <input type="text" 
                                    x-model="sourceProductSearch" 
                                    @focus="showSourceDropdown = true"
                                    @input="filterSourceProducts()"
-                                   placeholder="🔍 Ketik nama atau SKU produk asal..."
+                                   placeholder=" Ketik nama atau SKU produk asal..."
                                    class="w-full bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-800 dark:text-purple-100 rounded-xl px-4 py-3 text-sm focus:border-emerald-500 focus:ring-emerald-500 focus:outline-none shadow-inner"
                                    autocomplete="off">
                             
@@ -91,7 +91,7 @@
 
                     {{-- Jumlah Di-repack --}}
                     <div class="sm:col-span-2">
-                        <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2">🔢 Jumlah Produk Asal yang Dibuka/Di-repack <span class="text-rose-500">*</span></label>
+                        <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2"> Jumlah Produk Asal yang Dibuka/Di-repack <span class="text-rose-500">*</span></label>
                         <div class="flex items-center gap-2">
                             <input type="number" min="0.01" step="0.01" x-model="sourceQty" @input="recalculateYieldEstimations()"
                                    placeholder="Misal: 1 atau 2.5"
@@ -106,18 +106,18 @@
             <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl p-6 shadow-md" x-show="sourceProduct && sourceQty > 0">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-slate-800 dark:text-purple-100 font-extrabold flex items-center gap-2">
-                        <span class="text-emerald-600 dark:text-emerald-400">📤</span> 2. Hasil Repack / Pecah Stok
+                        2. Hasil Repack / Pecah Stok
                     </h2>
                 </div>
 
                 {{-- Indikator Pemuatan Konversi --}}
                 <div x-show="loadingConversions" class="text-center py-6 text-slate-400 font-semibold text-xs">
-                    ⏳ Memuat daftar unit konversi produk...
+                    Memuat daftar unit konversi produk...
                 </div>
 
                 {{-- Daftar target repack --}}
                 <div x-show="!loadingConversions && targets.length === 0" class="text-center py-8 text-rose-500 text-sm font-bold bg-rose-50/50 rounded-2xl border border-rose-100 p-4">
-                    ⚠️ Produk asal ini belum memiliki pemetaan konversi stok terdaftar! <br>
+                     Produk asal ini belum memiliki pemetaan konversi stok terdaftar! <br>
                     <span class="text-xs text-slate-400 font-normal">Daftarkan relasi konversi produk bulk ke eceran terlebih dahulu atau hubungi Admin.</span>
                 </div>
 
@@ -173,7 +173,7 @@
 
             {{-- Catatan --}}
             <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl p-6 shadow-md" x-show="sourceProduct">
-                <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2">📝 Catatan / Alasan Pecah Stok</label>
+                <label class="block text-xs font-bold text-slate-500 dark:text-purple-300 uppercase tracking-wider mb-2"> Catatan / Alasan Pecah Stok</label>
                 <textarea x-model="notes" rows="3" placeholder="Opsional: keterangan alasan repack, catatan penyusutan berat, dll."
                     class="w-full bg-slate-50 dark:bg-dp-900 border border-slate-200 dark:border-dp-700 text-slate-800 dark:text-purple-100 rounded-xl px-4 py-3 text-sm focus:border-emerald-500 focus:ring-emerald-500 focus:outline-none resize-none shadow-inner"></textarea>
             </div>
@@ -182,7 +182,7 @@
         {{-- Summary Panel (kanan) --}}
         <div class="lg:col-span-4 xl:col-span-3 space-y-5">
             <div class="bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700/50 rounded-3xl p-6 shadow-md sticky top-6">
-                <h2 class="text-slate-800 dark:text-purple-100 font-extrabold mb-4">📋 Ringkasan Repacking</h2>
+                <h2 class="text-slate-800 dark:text-purple-100 font-extrabold mb-4"> Ringkasan Repacking</h2>
 
                 <div class="space-y-4 mb-5 border-b border-slate-100 dark:border-dp-700 pb-4 text-xs font-semibold">
                     <div class="flex justify-between">
@@ -216,7 +216,7 @@
 
                 <button id="submitBtn" @click="submitRepack()" :disabled="!isFormValid()"
                         class="w-full bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3.5 rounded-xl font-bold uppercase tracking-wider text-xs transition duration-150 shadow-sm">
-                    🚀 Proses Repack Sekarang
+                     Proses Repack Sekarang
                 </button>
                 <p class="text-slate-400 dark:text-purple-500 text-xs text-center mt-2.5 font-medium leading-relaxed">
                     Stok bahan baku akan langsung berkurang dan stok baru hasil repack beserta HPP barunya akan langsung terupdate.
@@ -400,7 +400,7 @@ function repackFormState() {
             
             const btn = document.getElementById('submitBtn');
             btn.disabled = true;
-            btn.textContent = '⏳ Memproses...';
+            btn.textContent = ' Memproses...';
             
             const payload = {
                 location_id: this.locationId,
@@ -445,7 +445,7 @@ function repackFormState() {
                         alert(data.message);
                     }
                     btn.disabled = false;
-                    btn.textContent = '🚀 Proses Repack Sekarang';
+                    btn.textContent = ' Proses Repack Sekarang';
                 }
             })
             .catch(err => {
@@ -456,7 +456,7 @@ function repackFormState() {
                     alert('Terjadi kesalahan jaringan!');
                 }
                 btn.disabled = false;
-                btn.textContent = '🚀 Proses Repack Sekarang';
+                btn.textContent = ' Proses Repack Sekarang';
             });
         }
     };

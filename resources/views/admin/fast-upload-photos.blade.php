@@ -98,7 +98,7 @@
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-dp-800 border border-slate-100 dark:border-dp-700 rounded-3xl p-5 mb-6 shadow-sm gap-4">
             <div class="flex items-center gap-3.5">
                 <div class="w-12 h-12 rounded-2xl bg-violet-100 dark:bg-violet-950/60 flex items-center justify-center text-xl shadow-inner shrink-0">
-                    ✨
+                    
                 </div>
                 <div>
                     <h3 class="font-extrabold text-sm text-slate-800 dark:text-purple-100">Rebuild Foto dengan Gemini AI</h3>
@@ -154,7 +154,7 @@
 
             {{-- Filter Status Foto --}}
             <div class="flex flex-wrap sm:flex-nowrap items-center gap-2">
-                @foreach(['no_photo' => '📷 Belum Ada Foto', 'has_photo' => '✅ Sudah Ada Foto', 'all' => 'Semua'] as $val => $label)
+                @foreach(['no_photo' => ' Belum Ada Foto', 'has_photo' => ' Sudah Ada Foto', 'all' => 'Semua'] as $val => $label)
                     <button type="button"
                             onclick="setFilter('{{ $val }}')"
                             class="flex-1 sm:flex-initial text-center px-3 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition duration-150 filter-btn {{ $filter === $val ? 'bg-emerald-700 text-white shadow-sm' : 'bg-slate-50 dark:bg-dp-900 text-slate-600 dark:text-purple-300 hover:bg-slate-100 dark:hover:bg-dp-950' }}"
@@ -194,20 +194,20 @@
         {{-- AI Mode Info Banner (shown when AI enabled) --}}
         <div id="ai-banner"
              class="hidden mb-6 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-2xl p-4 flex items-center gap-4 text-white shadow-lg">
-            <div class="text-2xl">✨</div>
+            <div class="text-2xl"></div>
             <div class="flex-1">
                 <p class="font-extrabold text-sm">Mode Gemini AI Aktif</p>
                 <p class="text-xs text-violet-200 mt-0.5">Setiap foto yang Anda unggah akan dianalisis oleh Gemini AI dan dibangun ulang menjadi foto produk studio premium secara otomatis.</p>
             </div>
             <div class="text-xs bg-white/20 rounded-xl px-3 py-1.5 font-bold whitespace-nowrap">
-                🚀 Powered by Gemini + Pollinations.ai
+                 Powered by Gemini + Pollinations.ai
             </div>
         </div>
 
         {{-- Product Cards Grid --}}
         @if($products->count() === 0)
             <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-16 text-center">
-                <div class="text-5xl mb-4">📦</div>
+                <div class="text-5xl mb-4"></div>
                 <h3 class="font-extrabold text-slate-700 text-lg mb-1">Tidak Ada Produk Ditemukan</h3>
                 <p class="text-slate-400 text-sm">Coba ubah filter atau kata kunci pencarian Anda.</p>
             </div>
@@ -258,9 +258,9 @@
                                 <div class="flex items-center justify-between mb-1">
                                     <span class="text-[10px] font-bold text-slate-400 font-mono">{{ $product->sku }}</span>
                                     @if($hasImg)
-                                        <span class="status-badge badge-has" id="badge-{{ $product->id }}">✅ Ada Foto</span>
+                                        <span class="status-badge badge-has" id="badge-{{ $product->id }}"> Ada Foto</span>
                                     @else
-                                        <span class="status-badge badge-none" id="badge-{{ $product->id }}">📷 Belum Ada</span>
+                                        <span class="status-badge badge-none" id="badge-{{ $product->id }}"> Belum Ada</span>
                                     @endif
                                 </div>
                                 <h4 class="font-extrabold text-slate-800 text-sm leading-tight">{{ $product->name }}</h4>
@@ -404,7 +404,7 @@
 
             // Update label
             document.getElementById('ai-toggle-label').textContent = globalAIEnabled
-                ? 'Aktif — rebuild studio AI ✨'
+                ? 'Aktif — rebuild studio AI '
                 : 'Nonaktif — unggah biasa';
 
             // Show/hide banner
@@ -492,9 +492,9 @@
 
                 // Step-by-step progress for AI
                 const stepMessages = [
-                    { icon: '📤', text: 'Mengunggah foto ke server...', delay: 0 },
-                    { icon: '🧠', text: 'Menganalisis produk dengan Gemini AI...', delay: 1200 },
-                    { icon: '🎨', text: 'Membangun ulang foto studio dengan AI...', delay: 3000 },
+                    { icon: '', text: 'Mengunggah foto ke server...', delay: 0 },
+                    { icon: '', text: 'Menganalisis produk dengan Gemini AI...', delay: 1200 },
+                    { icon: '', text: 'Membangun ulang foto studio dengan AI...', delay: 3000 },
                 ];
 
                 stepMessages.forEach(({ icon, text, delay }) => {
@@ -504,7 +504,7 @@
                 });
             } else {
                 card.classList.add('uploading');
-                steps.innerHTML = `<div class="progress-step active">📤 <span>Mengunggah & mengompres foto...</span></div>`;
+                steps.innerHTML = `<div class="progress-step active"> <span>Mengunggah & mengompres foto...</span></div>`;
             }
 
             const formData = new FormData();
@@ -544,7 +544,7 @@
                     const badge = document.getElementById('badge-' + productId);
                     if (badge) {
                         badge.className   = 'status-badge badge-has';
-                        badge.textContent = useAI ? '✨ AI Photo' : '✅ Ada Foto';
+                        badge.textContent = useAI ? ' AI Photo' : ' Ada Foto';
                     }
 
                     // Update button
@@ -563,11 +563,11 @@
                     check.classList.remove('hidden');
                     setTimeout(() => check.classList.add('hidden'), 3000);
 
-                    showToast('success', useAI ? '✨ Foto AI Berhasil!' : '✅ Foto Berhasil Diunggah', data.message);
+                    showToast('success', useAI ? ' Foto AI Berhasil!' : ' Foto Berhasil Diunggah', data.message);
                 } else {
                     card.classList.remove('uploading', 'ai-processing');
                     card.classList.add('error');
-                    showToast('error', '❌ Gagal Mengunggah', data.message || 'Terjadi kesalahan. Silakan coba lagi.');
+                    showToast('error', ' Gagal Mengunggah', data.message || 'Terjadi kesalahan. Silakan coba lagi.');
                     setTimeout(() => { card.classList.remove('error'); }, 3000);
                 }
 
@@ -577,7 +577,7 @@
                 if (camBtn) camBtn.disabled = false;
                 card.classList.remove('uploading', 'ai-processing');
                 card.classList.add('error');
-                showToast('error', '❌ Koneksi Error', 'Gagal menghubungi server. Periksa koneksi internet Anda.');
+                showToast('error', ' Koneksi Error', 'Gagal menghubungi server. Periksa koneksi internet Anda.');
                 setTimeout(() => { card.classList.remove('error'); }, 3000);
             }
         }
@@ -592,11 +592,11 @@
 
             if (type === 'success') {
                 icon.className    = 'w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 bg-emerald-100 text-emerald-600';
-                icon.textContent  = '✅';
+                icon.textContent = '';
                 toast.className   = toast.className.replace('border-red-200', 'border-emerald-200');
             } else {
                 icon.className    = 'w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 bg-red-100 text-red-600';
-                icon.textContent  = '❌';
+                icon.textContent = '';
                 toast.className   = toast.className.replace('border-emerald-200', 'border-red-200');
             }
 

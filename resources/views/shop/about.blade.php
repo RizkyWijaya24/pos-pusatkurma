@@ -19,7 +19,7 @@
     overflow: hidden;
 }
 .about-hero::before {
-    content: '🌴';
+    content: '';
     position: absolute;
     font-size: 120px;
     opacity: .08;
@@ -27,7 +27,7 @@
     top: -20px;
 }
 .about-hero::after {
-    content: '🌴';
+    content: '';
     position: absolute;
     font-size: 80px;
     opacity: .06;
@@ -154,7 +154,7 @@
     <div class="info-page-inner">
 
         <div class="info-breadcrumb">
-            <a href="{{ route('shop.index') }}">🏠 Beranda</a>
+            <a href="{{ route('shop.index') }}"> Beranda</a>
             <span>/</span>
             <span>Tentang Kami</span>
         </div>
@@ -200,22 +200,22 @@
             <h2>Nilai-Nilai Kami</h2>
             <div class="value-grid">
                 <div class="value-card">
-                    <div class="icon">🏅</div>
+                    <div class="icon"></div>
                     <h3>Kualitas Terjamin</h3>
                     <p>Setiap produk dipilih langsung dari sumber terpercaya dan melewati proses seleksi ketat.</p>
                 </div>
                 <div class="value-card">
-                    <div class="icon">💯</div>
+                    <div class="icon"></div>
                     <h3>Harga Transparan</h3>
                     <p>Harga jelas, tidak ada biaya tersembunyi. Harga grosir tersedia untuk pembelian dalam jumlah besar.</p>
                 </div>
                 <div class="value-card">
-                    <div class="icon">🚚</div>
+                    <div class="icon"></div>
                     <h3>Pengiriman Cepat</h3>
                     <p>Pesanan dikemas dan dikirim dalam 1–2 hari kerja ke seluruh Indonesia.</p>
                 </div>
                 <div class="value-card">
-                    <div class="icon">💬</div>
+                    <div class="icon"></div>
                     <h3>Layanan Responsif</h3>
                     <p>Tim CS kami siap membantu via WhatsApp di jam operasional untuk memastikan kepuasan Anda.</p>
                 </div>
@@ -225,12 +225,12 @@
         <div class="info-section">
             <h2>Mengapa Belanja di Sini?</h2>
             <ul>
-                <li>✅ Kurma langsung dari importir — lebih segar, lebih hemat.</li>
-                <li>✅ Pilihan terlengkap: kurma basah (ruthab), kurma kering, kurma olahan, dan kurma premium gift.</li>
-                <li>✅ Tersedia harga grosir untuk pembelian mulai dari 5 kg.</li>
-                <li>✅ Kemasan higienis dan aman untuk perjalanan jauh.</li>
-                <li>✅ Pengiriman ke seluruh Indonesia dengan ekspedisi terpercaya.</li>
-                <li>✅ Pembayaran mudah dan aman melalui berbagai metode pembayaran.</li>
+                <li> Kurma langsung dari importir — lebih segar, lebih hemat.</li>
+                <li> Pilihan terlengkap: kurma basah (ruthab), kurma kering, kurma olahan, dan kurma premium gift.</li>
+                <li> Tersedia harga grosir untuk pembelian mulai dari 5 kg.</li>
+                <li> Kemasan higienis dan aman untuk perjalanan jauh.</li>
+                <li> Pengiriman ke seluruh Indonesia dengan ekspedisi terpercaya.</li>
+                <li> Pembayaran mudah dan aman melalui berbagai metode pembayaran.</li>
             </ul>
         </div>
 
@@ -238,14 +238,14 @@
             <h2>Hubungi Kami</h2>
             <div class="contact-card">
                 <div class="contact-item">
-                    <div class="icon">📍</div>
+                    <div class="icon"></div>
                     <div>
                         <div class="text-label">Alamat</div>
                         <div class="text-val">{!! nl2br(e(\App\Models\Setting::get('shop_address', 'Cianjur, Jawa Barat'))) !!}</div>
                     </div>
                 </div>
                 <div class="contact-item">
-                    <div class="icon">📱</div>
+                    <div class="icon"></div>
                     <div>
                         <div class="text-label">WhatsApp</div>
                         <div class="text-val">
@@ -256,14 +256,14 @@
                     </div>
                 </div>
                 <div class="contact-item">
-                    <div class="icon">⏰</div>
+                    <div class="icon"></div>
                     <div>
                         <div class="text-label">Jam Operasional</div>
                         <div class="text-val">{{ \App\Models\Setting::get('shop_operational_hours', 'Senin–Sabtu: 08.00–17.00 WIB') }}</div>
                     </div>
                 </div>
                 <div class="contact-item">
-                    <div class="icon">📱</div>
+                    <div class="icon"></div>
                     <div>
                         <div class="text-label">Instagram</div>
                         <div class="text-val">
@@ -279,11 +279,11 @@
         <div style="margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--clr-border); display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
             <a href="{{ route('shop.index') }}"
                style="display:inline-flex;align-items:center;gap:8px;padding:12px 24px;background:linear-gradient(135deg,var(--clr-primary),var(--clr-primary-light));color:#fff;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;">
-                🛒 Belanja Sekarang
+                 Belanja Sekarang
             </a>
-            <a href="{{ route('shop.terms') }}" style="color:var(--clr-primary);font-weight:600;font-size:14px;">📋 Syarat &amp; Ketentuan →</a>
-            <a href="{{ route('shop.privacy') }}" style="color:var(--clr-primary);font-weight:600;font-size:14px;">🔒 Kebijakan Privasi →</a>
-            <a href="{{ route('shop.refund') }}" style="color:var(--clr-primary);font-weight:600;font-size:14px;">🔄 Kebijakan Pengembalian →</a>
+            <a href="{{ route('shop.terms') }}" style="color:var(--clr-primary);font-weight:600;font-size:14px;"> Syarat &amp; Ketentuan →</a>
+            <a href="{{ route('shop.privacy') }}" style="color:var(--clr-primary);font-weight:600;font-size:14px;"> Kebijakan Privasi →</a>
+            <a href="{{ route('shop.refund') }}" style="color:var(--clr-primary);font-weight:600;font-size:14px;"> Kebijakan Pengembalian →</a>
         </div>
 
     </div>

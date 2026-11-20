@@ -682,7 +682,9 @@
                         aria-label="Konverter Gram ke Kg"
                         class="h-9 px-2.5 rounded-full border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 hover:border-emerald-300 transition-all duration-150 shadow-xs flex items-center gap-1.5 font-extrabold text-xs active:scale-95 cursor-pointer"
                     >
-                        <span class="text-sm">⚖️</span>
+                        <svg class="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18m-7-5l3.5-7 3.5 7H5zm10 0l3.5-7 3.5 7h-7z" />
+                        </svg>
                         <span class="hidden md:inline font-bold">g ⇄ kg</span>
                     </button>
 

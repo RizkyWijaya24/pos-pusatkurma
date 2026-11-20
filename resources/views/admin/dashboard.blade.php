@@ -447,6 +447,16 @@
             );
         },
 
+        get totalReceivablesOutstanding() {
+            return (this.receivables || []).reduce((sum, c) => sum + (Number(c.total_outstanding) || 0), 0);
+        },
+        get totalReceivablesPaid() {
+            return (this.receivables || []).reduce((sum, c) => sum + (Number(c.total_paid) || 0), 0);
+        },
+        get totalReceivablesOriginal() {
+            return (this.receivables || []).reduce((sum, c) => sum + (Number(c.total_original) || 0), 0);
+        },
+
         openInstallmentModal(trx) {
             this.installmentForm = {
                 transaction_id: trx.id,
@@ -3230,6 +3240,48 @@
                 </div>
             </div>
 
+            <!-- 3 STATS CARDS: REKAP KELOLA PIUTANG -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-gradient-to-br from-rose-600 to-rose-800 p-4 rounded-2xl text-white shadow-md flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-rose-100">Sisa Piutang Berjalan (Belum Cair)</p>
+                        <h4 class="text-xl font-black mt-0.5" x-text="formatRupiah(totalReceivablesOutstanding)"></h4>
+                        <p class="text-[10px] text-rose-200 mt-0.5" x-text="receivables.length + ' Pelanggan Tempo Aktif'"></p>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-br from-emerald-600 to-emerald-800 p-4 rounded-2xl text-white shadow-md flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-100">Total Pembayaran Masuk (DP & Cicilan)</p>
+                        <h4 class="text-xl font-black mt-0.5" x-text="formatRupiah(totalReceivablesPaid)"></h4>
+                        <p class="text-[10px] text-emerald-200 mt-0.5">Sudah terealisasi ke kas</p>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-br from-slate-700 to-slate-900 p-4 rounded-2xl text-white shadow-md flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-300">Total Faktur Tagihan Tempo</p>
+                        <h4 class="text-xl font-black mt-0.5" x-text="formatRupiah(totalReceivablesOriginal)"></h4>
+                        <p class="text-[10px] text-slate-300 mt-0.5">Nilai kotor transaksi tempo</p>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
             <!-- SUB-TAB 1: PIUTANG AKTIF -->
             <div x-show="receivablesSubTab === 'active'" class="receivables-flex-container">
                 
@@ -4735,7 +4787,9 @@
                 <template x-if="anomalyProducts.length > 0">
                     <div class="flex flex-col gap-3">
                         <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center gap-2">
-                            <span>⚠️</span>
+                            <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                            </svg>
                             <span>Ditemukan <strong x-text="anomalyProducts.length"></strong> produk bermasalah. Klik tombol <strong>Perbaiki</strong> untuk mengubah nominal modal atau harga jual yang tepat.</span>
                         </div>
 

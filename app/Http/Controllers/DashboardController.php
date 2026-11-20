@@ -283,6 +283,78 @@ class DashboardController extends Controller
         $comparisonProfit = ($comparisonStats->profit ?? 0) - $comparisonExpenses;
         $comparisonTransactionsCount = $comparisonStats->count ?? 0;
 
+        // Realisasi Kas Masuk (Kas Riil) & Piutang Tempo Berjalan
+        // A. Transaksi non-tempo yang langsung lunas (retail & wholesale tunai/transfer)
+        $directCash = (float) $baseQuery()
+            ->where('payment_status', '!=', 'cancelled')
+            ->where(function ($q) {
+                $q->where('transaction_type', '!=', 'wholesale')
+                  ->orWhere('payment_method', '!=', 'Piutang / Tempo');
+            })
+            ->where('payment_status', 'paid')
+            ->whereBetween('created_at', [$start, $end])
+            ->sum('total_price');
+
+        // B. Penerimaan cicilan & DP dari transaksi tempo yang masuk pada rentang filter ini
+        $installmentCashQuery = \App\Models\InstallmentPayment::whereBetween('installment_payments.created_at', [$start, $end])
+            ->whereHas('transaction', function ($q) use ($selectedBranch) {
+                $q->where('payment_method', 'Piutang / Tempo')
+                  ->where('payment_status', '!=', 'cancelled');
+                if ($selectedBranch && $selectedBranch !== '') {
+                    $q->where('branch', $selectedBranch);
+                }
+            });
+        $installmentCash = (float) $installmentCashQuery->sum('amount');
+        $realizedCash = $directCash + $installmentCash;
+
+        // Perhitungan perbandingan kas masuk untuk periode lalu
+        $compDirectCash = (float) $baseQuery()
+            ->where('payment_status', '!=', 'cancelled')
+            ->where(function ($q) {
+                $q->where('transaction_type', '!=', 'wholesale')
+                  ->orWhere('payment_method', '!=', 'Piutang / Tempo');
+            })
+            ->where('payment_status', 'paid')
+            ->whereBetween('created_at', [$comparisonStart, $comparisonEnd])
+            ->sum('total_price');
+
+        $compInstallmentCashQuery = \App\Models\InstallmentPayment::whereBetween('installment_payments.created_at', [$comparisonStart, $comparisonEnd])
+            ->whereHas('transaction', function ($q) use ($selectedBranch) {
+                $q->where('payment_method', 'Piutang / Tempo')
+                  ->where('payment_status', '!=', 'cancelled');
+                if ($selectedBranch && $selectedBranch !== '') {
+                    $q->where('branch', $selectedBranch);
+                }
+            });
+        $compInstallmentCash = (float) $compInstallmentCashQuery->sum('amount');
+        $comparisonRealizedCash = $compDirectCash + $compInstallmentCash;
+
+        $cashGrowthPercent = 0;
+        if ($comparisonRealizedCash > 0) {
+            $cashGrowthPercent = (($realizedCash - $comparisonRealizedCash) / $comparisonRealizedCash) * 100;
+        } elseif ($realizedCash > 0) {
+            $cashGrowthPercent = 100;
+        }
+
+        // C. Piutang tempo yang belum cair (seluruh transaksi tempo unpaid)
+        $unpaidTempoTrxQuery = $baseQuery()
+            ->where('transaction_type', 'wholesale')
+            ->where('payment_method', 'Piutang / Tempo')
+            ->where('payment_status', 'unpaid');
+        $unpaidTempoTotal = (float) (clone $unpaidTempoTrxQuery)->sum('total_price');
+        $unpaidTempoPaid = (float) \App\Models\InstallmentPayment::whereIn('transaction_id', (clone $unpaidTempoTrxQuery)->select('id'))->sum('amount');
+        $outstandingReceivables = max(0, $unpaidTempoTotal - $unpaidTempoPaid);
+
+        // Piutang yang belum cair khusus dari transaksi yang terjadi di periode aktif yang dipilih:
+        $activePeriodTempoQuery = $baseQuery()
+            ->where('transaction_type', 'wholesale')
+            ->where('payment_method', 'Piutang / Tempo')
+            ->where('payment_status', 'unpaid')
+            ->whereBetween('created_at', [$start, $end]);
+        $activePeriodTempoTotal = (float) (clone $activePeriodTempoQuery)->sum('total_price');
+        $activePeriodTempoPaid = (float) \App\Models\InstallmentPayment::whereIn('transaction_id', (clone $activePeriodTempoQuery)->select('id'))->sum('amount');
+        $activePeriodReceivables = max(0, $activePeriodTempoTotal - $activePeriodTempoPaid);
+
         // Calculate growth percentages
         $revenueGrowthPercent = 0;
         if ($comparisonRevenue > 0) {
@@ -518,7 +590,11 @@ class DashboardController extends Controller
             'startOfWeek',
             'endOfWeek',
             'startOfMonth',
-            'endOfMonth'
+            'endOfMonth',
+            'realizedCash',
+            'cashGrowthPercent',
+            'outstandingReceivables',
+            'activePeriodReceivables'
         ));
     }
 
@@ -1628,7 +1704,7 @@ class DashboardController extends Controller
                         . "1. **Ringkasan Eksekutif**: Tinjauan tajam kesehatan keuangan toko pada periode ini.\n"
                         . "2. **Analisis Mendalam & Tren**: Bahas pertumbuhan omset, profitabilitas, dan pengeluaran secara kritis.\n"
                         . "3. **Saran & Rekomendasi Bisnis**: Minimal 3 saran aksi konkret dan taktis.\n\n"
-                        . "Tone profesional, optimis namun realistis. Mulai langsung dengan judul Markdown.";
+                        . "PENTING: Jangan gunakan emoji apapun dalam respons. Gunakan teks profesional dan format Markdown yang rapi tanpa emoji sama sekali. Tone profesional, optimis namun realistis. Mulai langsung dengan judul Markdown.";
 
                 // ────────────────────────────────────────────────────────────
                 // SKILL: forecast — Prediksi / Forecast Penjualan
@@ -1697,11 +1773,11 @@ class DashboardController extends Controller
                         . "----------------------\n\n"
                         . "Catatan penting untuk bulan yang sedang berjalan: Jangan anggap omset menurun di bulan ini hanya karena angkanya lebih kecil dari bulan sebelumnya. Gunakan angka 'Pro-rata Proyeksi Akhir Bulan' sebagai estimasi performa bulan berjalan ini untuk peramalan/forecasting yang akurat.\n\n"
                         . "Buat laporan prediksi/forecast dalam bahasa Indonesia terformat Markdown. Gunakan struktur:\n"
-                        . "1. **📈 Analisis Tren Historis**: Identifikasi tren, pola musiman, dan konsistensi pertumbuhan.\n"
-                        . "2. **🔮 Prediksi 3 Bulan ke Depan**: Estimasi omset & profit untuk 3 bulan mendatang (optimis vs konservatif).\n"
-                        . "3. **⚠️ Risiko & Peluang**: Faktor risiko dan peluang yang harus diwaspadai.\n"
-                        . "4. **✅ Saran Target & Strategi**: Target omset realistis bulan depan + 2-3 strategi konkret.\n\n"
-                        . "Gunakan angka spesifik dari histori dan proyeksi. Mulai langsung dengan judul Markdown.";
+                        . "1. **Analisis Tren Historis**: Identifikasi tren, pola musiman, dan konsistensi pertumbuhan.\n"
+                        . "2. **Prediksi 3 Bulan ke Depan**: Estimasi omset & profit untuk 3 bulan mendatang (optimis vs konservatif).\n"
+                        . "3. **Risiko & Peluang**: Faktor risiko dan peluang yang harus diwaspadai.\n"
+                        . "4. **Saran Target & Strategi**: Target omset realistis bulan depan + 2-3 strategi konkret.\n\n"
+                        . "PENTING: Jangan gunakan emoji apapun dalam respons. Gunakan format markdown bersih dan profesional. Gunakan angka spesifik dari histori dan proyeksi. Mulai langsung dengan judul Markdown.";
 
                 // ────────────────────────────────────────────────────────────
                 // SKILL: branch_comparison — Perbandingan Antar Cabang
@@ -1748,11 +1824,11 @@ class DashboardController extends Controller
                         . "- Total Omset Seluruh Cabang: Rp " . number_format($totalOmset, 0, ',', '.') . "\n"
                         . "----------------------\n\n"
                         . "Buat laporan perbandingan cabang dalam bahasa Indonesia terformat Markdown. Gunakan struktur:\n"
-                        . "1. **🏆 Ranking & Performa Cabang**: Ranking dari terbaik ke terburuk + kontribusi persentase.\n"
-                        . "2. **📊 Analisis Gap & Kesenjangan**: Apa yang membuat cabang terbaik unggul?\n"
-                        . "3. **💡 Rekomendasi per Cabang**: Saran spesifik untuk setiap cabang.\n"
-                        . "4. **🎯 Strategi Pertumbuhan Jaringan**: Saran strategis untuk meningkatkan performa keseluruhan.\n\n"
-                        . "Gunakan angka spesifik. Bersikap kritis namun konstruktif. Mulai langsung dengan judul Markdown.";
+                        . "1. **Ranking & Performa Cabang**: Ranking dari terbaik ke terburuk + kontribusi persentase.\n"
+                        . "2. **Analisis Gap & Kesenjangan**: Apa yang membuat cabang terbaik unggul?\n"
+                        . "3. **Rekomendasi per Cabang**: Saran spesifik untuk setiap cabang.\n"
+                        . "4. **Strategi Pertumbuhan Jaringan**: Saran strategis untuk meningkatkan performa keseluruhan.\n\n"
+                        . "PENTING: Jangan gunakan emoji apapun dalam respons. Gunakan format markdown bersih dan profesional. Gunakan angka spesifik. Bersikap kritis namun konstruktif. Mulai langsung dengan judul Markdown.";
 
                 // ────────────────────────────────────────────────────────────
                 // SKILL: restock — Saran Restok Cerdas
@@ -1795,11 +1871,11 @@ class DashboardController extends Controller
                         . "- {$branchText}\n"
                         . "--------------------------------------------\n\n"
                         . "Buat laporan saran restok dalam bahasa Indonesia terformat Markdown. Gunakan struktur:\n"
-                        . "1. **🚨 Prioritas Restok Mendesak**: Produk HABIS/KRITIS yang harus direstok SEGERA + estimasi jumlah berdasarkan volume penjualan.\n"
-                        . "2. **⚡ Restok Segera (Minggu Ini)**: Produk stok rendah yang perlu diisi dalam 1 minggu.\n"
-                        . "3. **📦 Strategi Manajemen Stok**: Safety stock minimum per kategori + strategi pengadaan efisien.\n"
-                        . "4. **💰 Estimasi Kebutuhan Modal Restok**: Perkiraan dana berdasarkan harga pokok produk.\n\n"
-                        . "Saran sangat konkret, spesifik per produk. Mulai langsung dengan judul Markdown.";
+                        . "1. **Prioritas Restok Mendesak**: Produk HABIS/KRITIS yang harus direstok SEGERA + estimasi jumlah berdasarkan volume penjualan.\n"
+                        . "2. **Restok Segera (Minggu Ini)**: Produk stok rendah yang perlu diisi dalam 1 minggu.\n"
+                        . "3. **Strategi Manajemen Stok**: Safety stock minimum per kategori + strategi pengadaan efisien.\n"
+                        . "4. **Estimasi Kebutuhan Modal Restok**: Perkiraan dana berdasarkan harga pokok produk.\n\n"
+                        . "PENTING: Jangan gunakan emoji apapun dalam respons. Gunakan format markdown bersih dan profesional. Saran sangat konkret, spesifik per produk. Mulai langsung dengan judul Markdown.";
 
                 // ────────────────────────────────────────────────────────────
                 // SKILL: slow_moving — Analisis Produk Slow-Moving
@@ -1850,10 +1926,10 @@ class DashboardController extends Controller
                         . "- {$branchText}\n"
                         . "-----------------------------------------------\n\n"
                         . "Buat laporan analisis produk slow-moving dalam bahasa Indonesia terformat Markdown. Gunakan struktur:\n"
-                        . "1. **🐌 Identifikasi Produk Bermasalah**: Analisis mengapa produk-produk ini kurang laku.\n"
-                        . "2. **💡 Strategi Promosi per Produk**: Saran spesifik per produk (bundling, diskon, positioning ulang, dll).\n"
-                        . "3. **📦 Manajemen Stok Slow-Moving**: Cegah overstock, optimalkan modal tertahan.\n"
-                        . "Saran promosi kreatif namun realistis. Mulai langsung dengan judul Markdown.";
+                        . "1. **Identifikasi Produk Bermasalah**: Analisis mengapa produk-produk ini kurang laku.\n"
+                        . "2. **Strategi Promosi per Produk**: Saran spesifik per produk (bundling, diskon, positioning ulang, dll).\n"
+                        . "3. **Manajemen Stok Slow-Moving**: Cegah overstock, optimalkan modal tertahan.\n"
+                        . "PENTING: Jangan gunakan emoji apapun dalam respons. Gunakan format markdown bersih dan profesional. Saran promosi kreatif namun realistis. Mulai langsung dengan judul Markdown.";
 
                 // ────────────────────────────────────────────────────────────
                 // SKILL: peak_hours — Analisis Pola Waktu Terlaris
@@ -1886,10 +1962,10 @@ class DashboardController extends Controller
                         . "- Periode: {$titleLabel}\n"
                         . "----------------------------------------------\n\n"
                         . "Buat laporan analisis pola waktu terlaris dalam bahasa Indonesia terformat Markdown. Gunakan struktur:\n"
-                        . "1. **🕒 Identifikasi Pola Jam & Hari Puncak**: Analisis kapan waktu tersibuk toko Anda terjadi dan mengapa (pola makan, sepulang kerja, hari libur, dll).\n"
-                        . "2. **👥 Rekomendasi Alokasi Staf / Kasir**: Berikan saran konkret mengenai penjadwalan kasir/staf toko agar optimal di jam sibuk dan efisien (hemat biaya) di jam sepi.\n"
-                        . "3. **🎯 Strategi Promosi Berdasarkan Waktu**: Usulkan strategi promosi bertarget waktu (misal: happy hour discount, flash sale pada jam sepi untuk menarik pelanggan).\n\n"
-                        . "Berikan analisis yang sangat taktis dan operasional. Mulai langsung dengan judul Markdown.";
+                        . "1. **Identifikasi Pola Jam & Hari Puncak**: Analisis kapan waktu tersibuk toko Anda terjadi dan mengapa (pola makan, sepulang kerja, hari libur, dll).\n"
+                        . "2. **Rekomendasi Alokasi Staf / Kasir**: Berikan saran konkret mengenai penjadwalan kasir/staf toko agar optimal di jam sibuk dan efisien (hemat biaya) di jam sepi.\n"
+                        . "3. **Strategi Promosi Berdasarkan Waktu**: Usulkan strategi promosi bertarget waktu (misal: happy hour discount, flash sale pada jam sepi untuk menarik pelanggan).\n\n"
+                        . "PENTING: Jangan gunakan emoji apapun dalam respons. Gunakan format markdown bersih dan profesional. Berikan analisis yang sangat taktis dan operasional. Mulai langsung dengan judul Markdown.";
 
                 // ────────────────────────────────────────────────────────────
                 // SKILL: product_bundling — Rekomendasi Bundling Produk
@@ -1951,10 +2027,10 @@ class DashboardController extends Controller
                         . "- Periode: {$titleLabel}\n"
                         . "--------------------------------------------------\n\n"
                         . "Buat laporan analisis bundling produk (Market Basket Analysis) dalam bahasa Indonesia terformat Markdown. Gunakan struktur:\n"
-                        . "1. **🛒 Analisis Asosiasi Produk**: Jelaskan hubungan logis mengapa pelanggan membeli produk-produk tersebut bersamaan.\n"
-                        . "2. **🎯 Rekomendasi Paket Bundling Cerdas**: Usulkan minimal 3 paket bundling produk (kasih nama paket menarik) lengkap dengan skema harga promosi yang disarankan.\n"
-                        . "3. **🏪 Rekomendasi Tata Letak Toko (Cross-Merchandising)**: Berikan saran penataan produk di rak toko/display agar produk yang berasosiasi mudah dijangkau pelanggan untuk mendorong dorongan beli (*impulse buying*).\n\n"
-                        . "Berikan ide-ide promosi kreatif yang sangat menjual untuk retail kurma & produk oleh-oleh premium. Mulai langsung dengan judul Markdown.";
+                        . "1. **Analisis Asosiasi Produk**: Jelaskan hubungan logis mengapa pelanggan membeli produk-produk tersebut bersamaan.\n"
+                        . "2. **Rekomendasi Paket Bundling Cerdas**: Usulkan minimal 3 paket bundling produk (kasih nama paket menarik) lengkap dengan skema harga promosi yang disarankan.\n"
+                        . "3. **Rekomendasi Tata Letak Toko (Cross-Merchandising)**: Berikan saran penataan produk di rak toko/display agar produk yang berasosiasi mudah dijangkau pelanggan untuk mendorong dorongan beli (*impulse buying*).\n\n"
+                        . "PENTING: Jangan gunakan emoji apapun dalam respons. Gunakan format markdown bersih dan profesional. Berikan ide-ide promosi kreatif yang sangat menjual untuk retail kurma & produk oleh-oleh premium. Mulai langsung dengan judul Markdown.";
 
                 // ────────────────────────────────────────────────────────────
                 // SKILL: expense_analysis — Efisiensi Pengeluaran
@@ -2008,11 +2084,11 @@ class DashboardController extends Controller
                         . "- {$branchText}\n"
                         . "-------------------------------------------\n\n"
                         . "Buat laporan analisis efisiensi pengeluaran dalam bahasa Indonesia terformat Markdown. Gunakan struktur:\n"
-                        . "1. **💸 Analisis Komposisi Pengeluaran**: Kategori terbesar dan kewajaran rasio terhadap omset.\n"
-                        . "2. **📊 Pengeluaran Abnormal atau Bermasalah**: Kategori dengan pertumbuhan tidak wajar atau rasio terlalu tinggi.\n"
-                        . "3. **✂️ Peluang Efisiensi**: 3-5 langkah konkret memangkas pengeluaran tanpa mengorbankan operasional.\n"
-                        . "4. **🎯 Target Rasio Pengeluaran Ideal**: Benchmark rasio sehat untuk toko retail sejenis + cara mencapainya.\n\n"
-                        . "Bersikap seperti CFO yang kritis dan detail-oriented. Mulai langsung dengan judul Markdown.";
+                        . "1. **Analisis Komposisi Pengeluaran**: Kategori terbesar dan kewajaran rasio terhadap omset.\n"
+                        . "2. **Pengeluaran Abnormal atau Bermasalah**: Kategori dengan pertumbuhan tidak wajar atau rasio terlalu tinggi.\n"
+                        . "3. **Peluang Efisiensi**: 3-5 langkah konkret memangkas pengeluaran tanpa mengorbankan operasional.\n"
+                        . "4. **Target Rasio Pengeluaran Ideal**: Benchmark rasio sehat untuk toko retail sejenis + cara mencapainya.\n\n"
+                        . "PENTING: Jangan gunakan emoji apapun dalam respons. Gunakan format markdown bersih dan profesional. Bersikap seperti CFO yang kritis dan detail-oriented. Mulai langsung dengan judul Markdown.";
                 }
 
                 // ── Call Gemini API with Model Fallback ─────────────────────
@@ -2135,7 +2211,7 @@ class DashboardController extends Controller
                 . $initialAnalysis
                 . "\n--- AKHIR LAPORAN ---\n\n"
                 . "Berdasarkan laporan di atas, jawablah pertanyaan atau tanggapan dari pemilik toko berikut ini dalam bahasa Indonesia. "
-                . "Gunakan format Markdown jika perlu. Jawab secara langsung, padat, dan profesional.";
+                . "PENTING: Jangan gunakan emoji apapun dalam respons. Gunakan teks profesional dan format Markdown jika perlu. Jawab secara langsung, padat, dan profesional.";
 
             // Build multi-turn contents array for Gemini API
             $contents = [];
