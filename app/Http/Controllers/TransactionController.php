@@ -1634,9 +1634,26 @@ class TransactionController extends Controller
             }
         }
 
+        // Self-healing jika transaksi berstatus Piutang / Tempo tapi masih menyimpan installment "Lunas Awal" dari masa lalu
+        if ($transaction->payment_method === 'Piutang / Tempo') {
+            $lunasInstallment = $transaction->installments()
+                ->where('note', 'like', '%Lunas%')
+                ->first();
+            if ($lunasInstallment && $transaction->installments()->count() === 1) {
+                $lunasInstallment->delete();
+                $transaction->update(['payment_status' => 'unpaid']);
+                $transaction->refresh();
+            }
+        }
+
         $totalPaid = (float) $transaction->installments()->sum('amount');
         $firstInstallment = $transaction->installments()->oldest()->first();
-        $dpAmount = $firstInstallment ? (int) $firstInstallment->amount : 0;
+        $isTempo = $transaction->payment_method === 'Piutang / Tempo';
+        $isLunasNote = $firstInstallment && (
+            str_contains(strtolower($firstInstallment->note ?? ''), 'lunas') ||
+            str_contains(strtolower($firstInstallment->note ?? ''), 'penyesuaian')
+        );
+        $dpAmount = ($isTempo && !$isLunasNote && $firstInstallment) ? (int) $firstInstallment->amount : 0;
 
         return response()->json([
             'success' => true,
@@ -1674,6 +1691,7 @@ class TransactionController extends Controller
             'payment_method' => 'required|string',
             'discount' => 'nullable|integer|min:0',
             'shipping_cost' => 'nullable|integer|min:0',
+            'payment_received' => 'nullable|integer|min:0',
             'skip_stock_deduction' => 'nullable|boolean',
             'items' => 'required|array|min:1',
             'items.*.name' => 'required|string',
@@ -1849,20 +1867,71 @@ class TransactionController extends Controller
             }
 
             // 5. UPDATE CICILAN & STATUS PEMBAYARAN
-            $totalPaid = (float) $transaction->installments()->sum('amount');
-            if ($request->payment_method === 'Piutang / Tempo') {
+            $oldPaymentMethod = $transaction->payment_method;
+            $newPaymentMethod = $request->input('payment_method');
+            $receivedInput = intval($request->input('payment_received', 0));
+
+            if ($newPaymentMethod === 'Piutang / Tempo') {
+                if ($oldPaymentMethod !== 'Piutang / Tempo') {
+                    // Kasus A: Berubah dari Lunas (Tunai/Transfer) ke Piutang / Tempo
+                    // Hapus seluruh installment pelunasan otomatis sebelumnya
+                    $transaction->installments()->delete();
+
+                    // Jika ada DP yang dibayarkan saat nota diubah ke tempo
+                    if ($receivedInput > 0) {
+                        $dpAmount = min($receivedInput, $grandTotal);
+                        $transaction->installments()->create([
+                            'amount' => $dpAmount,
+                            'payment_method' => 'Tunai',
+                            'note' => 'Uang Muka / DP'
+                        ]);
+                    }
+                } else {
+                    // Kasus B: Sebelumnya sudah Piutang / Tempo
+                    // Hapus installment lama bertanda "Lunas" jika ada sisa anomali sebelumnya
+                    $transaction->installments()
+                        ->where('note', 'like', '%Lunas%')
+                        ->delete();
+
+                    $firstInstallment = $transaction->installments()->oldest()->first();
+                    $otherInstallmentsSum = (float) $transaction->installments()
+                        ->when($firstInstallment, function ($q) use ($firstInstallment) {
+                            $q->where('id', '!=', $firstInstallment->id);
+                        })->sum('amount');
+
+                    if ($firstInstallment) {
+                        if ($receivedInput > 0) {
+                            $firstInstallment->update([
+                                'amount' => min($receivedInput, max(0, $grandTotal - $otherInstallmentsSum)),
+                                'note' => $firstInstallment->note ?: 'Uang Muka / DP'
+                            ]);
+                        } else {
+                            // Jika DP diisi 0 dan installment ini adalah DP
+                            $firstInstallment->delete();
+                        }
+                    } elseif ($receivedInput > 0) {
+                        $dpAmount = min($receivedInput, max(0, $grandTotal - $otherInstallmentsSum));
+                        $transaction->installments()->create([
+                            'amount' => $dpAmount,
+                            'payment_method' => 'Tunai',
+                            'note' => 'Uang Muka / DP'
+                        ]);
+                    }
+                }
+
+                $totalPaid = (float) $transaction->installments()->sum('amount');
                 $paymentStatus = ($totalPaid >= $grandTotal && $grandTotal > 0) ? 'paid' : 'unpaid';
             } else {
+                // Kasus C: Metode pembayaran Tunai / Transfer (Lunas Penuh)
                 $paymentStatus = 'paid';
-                // Jika metode pembayaran Tunai/Transfer dan belum tercatat lunas di installments
-                if ($totalPaid < $grandTotal) {
-                    $diff = $grandTotal - $totalPaid;
-                    $transaction->installments()->create([
-                        'amount' => $diff,
-                        'payment_method' => $request->payment_method,
-                        'note' => 'Penyesuaian Pelunasan saat Edit Nota'
-                    ]);
-                }
+                
+                // Pastikan cicilan diset persis sama dengan grandTotal
+                $transaction->installments()->delete();
+                $transaction->installments()->create([
+                    'amount' => $grandTotal,
+                    'payment_method' => $newPaymentMethod,
+                    'note' => 'Pembayaran Lunas saat Edit Nota'
+                ]);
             }
 
             // 6. UPDATE DATA TRANSAKSI

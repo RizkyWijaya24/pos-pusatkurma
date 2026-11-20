@@ -44,6 +44,18 @@ class DashboardController extends Controller
         // Ambil semua settings untuk tab Pengaturan
         $settings = \App\Models\Setting::pluck('value', 'key')->all();
 
+        // Auto-heal transaksi wholesale yang tersimpan metode Piutang / Tempo namun statusnya masih lunas akibat installment lama
+        \App\Models\Transaction::where('transaction_type', 'wholesale')
+            ->where('payment_method', 'Piutang / Tempo')
+            ->where('payment_status', 'paid')
+            ->whereHas('installments', function ($q) {
+                $q->where('note', 'like', '%Lunas%');
+            })
+            ->each(function ($t) {
+                $t->installments()->where('note', 'like', '%Lunas%')->delete();
+                $t->update(['payment_status' => 'unpaid']);
+            });
+
         // Ambil riwayat nota partai terbaru
         $wholesaleTransactions = \App\Models\Transaction::where('transaction_type', 'wholesale')
             ->with(['cashier', 'installments'])

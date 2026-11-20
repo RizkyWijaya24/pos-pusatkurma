@@ -310,6 +310,7 @@
             customer_name: '',
             customer_phone: '',
             payment_method: 'Tunai',
+            original_payment_method: 'Tunai',
             discount: '',
             shipping_cost: '',
             paymentReceived: '',
@@ -2048,9 +2049,10 @@
                         this.editWholesaleForm.customer_name = trx.customer_name;
                         this.editWholesaleForm.customer_phone = trx.customer_phone || '';
                         this.editWholesaleForm.payment_method = trx.payment_method || 'Tunai';
+                        this.editWholesaleForm.original_payment_method = trx.payment_method || 'Tunai';
                         this.editWholesaleForm.discount = trx.discount || '';
                         this.editWholesaleForm.shipping_cost = trx.shipping_cost || '';
-                        this.editWholesaleForm.paymentReceived = data.dp_amount || '';
+                        this.editWholesaleForm.paymentReceived = (trx.payment_method === 'Piutang / Tempo') ? (data.dp_amount || 0) : 0;
                         this.editWholesaleForm.skip_stock_deduction = !!trx.skip_stock_deduction;
                         this.editWholesaleForm.items = data.items.map(item => ({
                             name: item.name,
@@ -2176,7 +2178,9 @@
                         payment_method: this.editWholesaleForm.payment_method,
                         discount: parseInt(this.editWholesaleForm.discount) || 0,
                         shipping_cost: parseInt(this.editWholesaleForm.shipping_cost) || 0,
-                        payment_received: parseInt(this.editWholesaleForm.paymentReceived) || 0,
+                        payment_received: this.editWholesaleForm.payment_method === 'Piutang / Tempo'
+                            ? (parseInt(this.editWholesaleForm.paymentReceived) || 0)
+                            : this.calculateEditWholesaleGrandTotal(),
                         skip_stock_deduction: !!this.editWholesaleForm.skip_stock_deduction,
                         items: validItems.map(item => ({
                             name: item.name,
@@ -4938,6 +4942,7 @@
                                 <div>
                                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Metode Pembayaran</label>
                                     <select x-model="editWholesaleForm.payment_method" 
+                                            @change="if(editWholesaleForm.payment_method === 'Piutang / Tempo' && editWholesaleForm.original_payment_method !== 'Piutang / Tempo') { editWholesaleForm.paymentReceived = 0; }"
                                             class="w-full border-slate-200 rounded-xl text-xs font-bold py-2 px-3 focus:border-emerald-500 focus:ring-emerald-500 bg-white">
                                         <option value="Tunai">Tunai / Cash (Lunas)</option>
                                         <option value="Transfer Bank BCA">Transfer BCA (Lunas)</option>
@@ -5085,6 +5090,37 @@
                                     <span class="text-emerald-800 text-lg font-black" x-text="formatRupiah(calculateEditWholesaleGrandTotal())"></span>
                                 </div>
                             </div>
+
+                            <!-- Opsi Pembayaran Piutang / Tempo -->
+                            <template x-if="editWholesaleForm.payment_method === 'Piutang / Tempo'">
+                                <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-300/80 flex flex-col gap-3 animate-fadeIn">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                            </svg>
+                                            <span class="text-xs font-black text-amber-900 uppercase tracking-wider">Status Pembayaran: Piutang / Tempo (Belum Lunas)</span>
+                                        </div>
+                                        <span class="text-[10px] font-black text-amber-800 bg-amber-200/80 border border-amber-300 px-2 py-0.5 rounded-lg uppercase">Tempo</span>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-amber-900 uppercase tracking-wider mb-1">Uang Muka / DP Diterima (Rp)</label>
+                                            <input type="number" 
+                                                   x-model="editWholesaleForm.paymentReceived" 
+                                                   placeholder="0 jika belum ada pembayaran DP..." 
+                                                   class="w-full text-right py-2 px-3 border-amber-300 rounded-xl text-xs font-black text-slate-800 focus:border-amber-500 focus:ring-amber-500 bg-white shadow-inner">
+                                            <span class="text-[10px] text-slate-500 mt-1 block">Ketik 0 jika tempo penuh (tanpa DP), atau isi nominal DP yang telah dibayar.</span>
+                                        </div>
+                                        <div class="flex flex-col justify-center bg-white/90 p-3 rounded-xl border border-amber-200 text-right">
+                                            <span class="text-[10px] font-bold text-slate-500 uppercase">Sisa Piutang / Tagihan Tempo:</span>
+                                            <span class="text-base font-black text-rose-600 font-mono mt-0.5" 
+                                                  x-text="formatRupiah(Math.max(0, calculateEditWholesaleGrandTotal() - (parseInt(editWholesaleForm.paymentReceived) || 0)))"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
 
                         </div>
                     </template>
