@@ -25,6 +25,7 @@ class Transaction extends Model
         'payment_method',
         'branch',
         'payment_status',
+        'created_at',
     ];
 
     /**

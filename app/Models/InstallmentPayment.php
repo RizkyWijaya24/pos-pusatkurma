@@ -14,6 +14,7 @@ class InstallmentPayment extends Model
         'amount',
         'payment_method',
         'note',
+        'created_at',
     ];
 
     /**

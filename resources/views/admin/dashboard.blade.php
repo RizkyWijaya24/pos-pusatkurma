@@ -292,6 +292,7 @@
         wholesaleForm: {
             customer_name: '',
             customer_phone: '',
+            transaction_date: '',
             payment_method: 'Tunai',
             discount: '',
             shipping_cost: '',
@@ -307,6 +308,7 @@
         editWholesaleForm: {
             id: null,
             transaction_code: '',
+            transaction_date: '',
             customer_name: '',
             customer_phone: '',
             payment_method: 'Tunai',
@@ -1898,6 +1900,7 @@
                     const payload = {
                         customer_name: this.wholesaleForm.customer_name,
                         customer_phone: this.wholesaleForm.customer_phone,
+                        transaction_date: this.wholesaleForm.transaction_date,
                         payment_method: this.wholesaleForm.payment_method,
                         discount: parseInt(this.wholesaleForm.discount) || 0,
                         shipping_cost: parseInt(this.wholesaleForm.shipping_cost) || 0,
@@ -1929,6 +1932,7 @@
                             this.wholesaleForm = {
                                 customer_name: '',
                                 customer_phone: '',
+                                transaction_date: '',
                                 payment_method: 'Tunai',
                                 discount: '',
                                 shipping_cost: '',
@@ -2046,6 +2050,7 @@
                     if (data.success) {
                         const trx = data.transaction;
                         this.editWholesaleForm.transaction_code = trx.transaction_code;
+                        this.editWholesaleForm.transaction_date = trx.transaction_date || '';
                         this.editWholesaleForm.customer_name = trx.customer_name;
                         this.editWholesaleForm.customer_phone = trx.customer_phone || '';
                         this.editWholesaleForm.payment_method = trx.payment_method || 'Tunai';
@@ -2175,6 +2180,7 @@
                     const payload = {
                         customer_name: this.editWholesaleForm.customer_name,
                         customer_phone: this.editWholesaleForm.customer_phone,
+                        transaction_date: this.editWholesaleForm.transaction_date,
                         payment_method: this.editWholesaleForm.payment_method,
                         discount: parseInt(this.editWholesaleForm.discount) || 0,
                         shipping_cost: parseInt(this.editWholesaleForm.shipping_cost) || 0,
@@ -2634,7 +2640,7 @@
                     <!-- Customer Information Card -->
                     <div class="admin-card bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-4">
                         <span class="text-xs font-black text-emerald-800 uppercase tracking-wider block border-b border-slate-100 pb-2">Informasi Penerima / Pelanggan</span>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                             <!-- Nama Pelanggan with Live Autocomplete -->
                             <div class="relative" @click.away="customerSuggestionsOpen = false">
                                 <div class="flex items-center justify-between mb-1">
@@ -2695,6 +2701,15 @@
                                        x-model="wholesaleForm.customer_phone" 
                                        placeholder="Contoh: 081234567890" 
                                        class="w-full border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 font-semibold shadow-inner text-sm py-2.5 px-4">
+                            </div>
+
+                            <!-- Tanggal & Waktu Nota (Opsional) -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Tanggal & Waktu Nota (Opsional)</label>
+                                <input type="datetime-local" 
+                                       x-model="wholesaleForm.transaction_date" 
+                                       class="w-full border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 font-semibold shadow-inner text-sm py-2 px-3 bg-white">
+                                <span class="text-[10px] text-slate-400 mt-1 block">Kosongkan jika waktu saat ini.</span>
                             </div>
 
                             <!-- BANNER SISA HUTANG BERJALAN PELANGGAN TERPILIH -->
@@ -4924,20 +4939,26 @@
                         <div class="flex flex-col gap-5">
                             
                             <!-- Customer & Payment Metadata Grid -->
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tanggal & Waktu Nota *</label>
+                                    <input type="datetime-local" 
+                                           x-model="editWholesaleForm.transaction_date" 
+                                           class="w-full border-slate-200 rounded-xl text-xs font-bold py-2 px-3 focus:border-emerald-500 focus:ring-emerald-500 bg-white">
+                                </div>
                                 <div>
                                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Nama Pelanggan *</label>
                                     <input type="text" 
                                            x-model="editWholesaleForm.customer_name" 
                                            placeholder="Nama pembeli / toko..." 
-                                           class="w-full border-slate-200 rounded-xl text-xs font-bold py-2 px-3 focus:border-emerald-500 focus:ring-emerald-500">
+                                           class="w-full border-slate-200 rounded-xl text-xs font-bold py-2 px-3 focus:border-emerald-500 focus:ring-emerald-500 bg-white">
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">No. WhatsApp / HP</label>
                                     <input type="text" 
                                            x-model="editWholesaleForm.customer_phone" 
                                            placeholder="08xxxxxxxxxx" 
-                                           class="w-full border-slate-200 rounded-xl text-xs font-bold py-2 px-3 focus:border-emerald-500 focus:ring-emerald-500">
+                                           class="w-full border-slate-200 rounded-xl text-xs font-bold py-2 px-3 focus:border-emerald-500 focus:ring-emerald-500 bg-white">
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Metode Pembayaran</label>
@@ -4950,7 +4971,7 @@
                                         <option value="Piutang / Tempo">Piutang / Tempo (Belum Lunas)</option>
                                     </select>
                                 </div>
-                                <div class="sm:col-span-3 pt-1">
+                                <div class="sm:col-span-2 lg:col-span-4 pt-1">
                                     <label class="flex items-center gap-2 cursor-pointer select-none">
                                         <input type="checkbox" 
                                                x-model="editWholesaleForm.skip_stock_deduction" 

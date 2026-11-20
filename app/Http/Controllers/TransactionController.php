@@ -1374,6 +1374,7 @@ class TransactionController extends Controller
             'discount' => 'nullable|integer|min:0',
             'shipping_cost' => 'nullable|integer|min:0',
             'payment_received' => 'nullable|integer|min:0',
+            'transaction_date' => 'nullable|date',
             'skip_stock_deduction' => 'nullable|boolean',
             'items' => 'required|array|min:1',
             'items.*.name' => 'required|string',
@@ -1476,12 +1477,16 @@ class TransactionController extends Controller
             $paymentStatus = 'paid';
         }
 
+        $txDate = $request->filled('transaction_date') 
+            ? Carbon::parse($request->transaction_date) 
+            : Carbon::now();
+
         $trxCodePrefix = $skipStock ? 'PRT-NS-' : 'PRT-';
         $transaction = Transaction::create([
             'cashier_id'       => auth()->id(),
             'affiliate_id'     => $request->input('affiliate_id'),
             'pax_count'        => $request->input('pax_count', 0),
-            'transaction_code' => $trxCodePrefix . Carbon::now()->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6)),
+            'transaction_code' => $trxCodePrefix . $txDate->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6)),
             'transaction_type' => 'wholesale',
             'customer_name'    => $request->customer_name,
             'customer_phone'   => $request->customer_phone,
@@ -1493,6 +1498,8 @@ class TransactionController extends Controller
             'payment_method'   => $request->payment_method,
             'branch'           => 'Cabang Rumah', // Defaults to Pusat
             'payment_status'   => $paymentStatus,
+            'created_at'       => $txDate,
+            'updated_at'       => $txDate,
         ]);
 
         if (!$skipStock) {
@@ -1537,6 +1544,10 @@ class TransactionController extends Controller
                     }
                 }
             }
+
+            \App\Models\StockAdjustmentLog::where('reference_type', Transaction::class)
+                ->where('reference_id', $transaction->id)
+                ->update(['created_at' => $txDate]);
         }
 
         if ($request->filled('affiliate_id')) {
@@ -1551,7 +1562,9 @@ class TransactionController extends Controller
             $transaction->installments()->create([
                 'amount' => $received,
                 'payment_method' => $request->payment_method === 'Piutang / Tempo' ? 'Tunai' : $request->payment_method,
-                'note' => $request->payment_method === 'Piutang / Tempo' ? 'Uang Muka / DP' : 'Pembayaran Lunas Awal'
+                'note' => $request->payment_method === 'Piutang / Tempo' ? 'Uang Muka / DP' : 'Pembayaran Lunas Awal',
+                'created_at' => $txDate,
+                'updated_at' => $txDate,
             ]);
         }
 
@@ -1660,6 +1673,7 @@ class TransactionController extends Controller
             'transaction' => [
                 'id' => $transaction->id,
                 'transaction_code' => $transaction->transaction_code,
+                'transaction_date' => $transaction->created_at ? $transaction->created_at->format('Y-m-d\TH:i') : now()->format('Y-m-d\TH:i'),
                 'customer_name' => $transaction->customer_name,
                 'customer_phone' => $transaction->customer_phone,
                 'payment_method' => $transaction->payment_method,
@@ -1692,6 +1706,7 @@ class TransactionController extends Controller
             'discount' => 'nullable|integer|min:0',
             'shipping_cost' => 'nullable|integer|min:0',
             'payment_received' => 'nullable|integer|min:0',
+            'transaction_date' => 'nullable|date',
             'skip_stock_deduction' => 'nullable|boolean',
             'items' => 'required|array|min:1',
             'items.*.name' => 'required|string',
@@ -1935,7 +1950,7 @@ class TransactionController extends Controller
             }
 
             // 6. UPDATE DATA TRANSAKSI
-            $transaction->update([
+            $updateData = [
                 'customer_name' => $request->customer_name,
                 'customer_phone' => $request->customer_phone,
                 'payment_method' => $request->payment_method,
@@ -1945,7 +1960,18 @@ class TransactionController extends Controller
                 'total_price' => $grandTotal,
                 'total_cost' => $totalCost,
                 'items_summary' => $itemsSummary,
-            ]);
+            ];
+
+            if ($request->filled('transaction_date')) {
+                $customDate = Carbon::parse($request->transaction_date);
+                $updateData['created_at'] = $customDate;
+                $transaction->installments()->update(['created_at' => $customDate]);
+                \App\Models\StockAdjustmentLog::where('reference_type', Transaction::class)
+                    ->where('reference_id', $transaction->id)
+                    ->update(['created_at' => $customDate]);
+            }
+
+            $transaction->update($updateData);
 
             return response()->json([
                 'success' => true,
