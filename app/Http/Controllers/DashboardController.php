@@ -268,32 +268,57 @@ class DashboardController extends Controller
             ? \App\Models\Expense::where('branch', $selectedBranch)
             : \App\Models\Expense::query();
 
-        // 3. Fetch dynamically filtered metrics and their comparative historical data
+        // 3. Fetch dynamically filtered metrics and their comparative historical data via Single-Pass SQL Aggregation
         $activeStats = $baseQuery()
-            ->selectRaw('SUM(total_price) as omset, SUM(total_price - total_cost) as profit, COUNT(id) as count')
+            ->selectRaw("
+                SUM(total_price) as omset,
+                SUM(total_price - total_cost) as gross_profit,
+                COUNT(id) as count,
+                AVG(total_price) as aov,
+                SUM(CASE WHEN transaction_type = 'wholesale' THEN total_price ELSE 0 END) as wholesale_omset,
+                COUNT(CASE WHEN transaction_type = 'wholesale' THEN 1 END) as wholesale_count,
+                SUM(CASE WHEN transaction_type = 'wholesale' THEN (total_price - total_cost) ELSE 0 END) as wholesale_profit,
+                SUM(CASE WHEN transaction_type != 'wholesale' OR transaction_type IS NULL THEN total_price ELSE 0 END) as retail_omset,
+                COUNT(CASE WHEN transaction_type != 'wholesale' OR transaction_type IS NULL THEN 1 END) as retail_count,
+                SUM(CASE WHEN transaction_type != 'wholesale' OR transaction_type IS NULL THEN (total_price - total_cost) ELSE 0 END) as retail_profit,
+                SUM(CASE WHEN payment_method = 'Cash' THEN total_price ELSE 0 END) as cash_omset,
+                COUNT(CASE WHEN payment_method = 'Cash' THEN 1 END) as cash_count,
+                SUM(CASE WHEN payment_method = 'Transfer' THEN total_price ELSE 0 END) as transfer_omset,
+                COUNT(CASE WHEN payment_method = 'Transfer' THEN 1 END) as transfer_count,
+                SUM(CASE WHEN payment_method = 'QRIS' THEN total_price ELSE 0 END) as qris_omset,
+                COUNT(CASE WHEN payment_method = 'QRIS' THEN 1 END) as qris_count,
+                SUM(CASE WHEN payment_method = 'Piutang / Tempo' THEN total_price ELSE 0 END) as tempo_omset,
+                COUNT(CASE WHEN payment_method = 'Piutang / Tempo' THEN 1 END) as tempo_count
+            ")
             ->whereBetween('created_at', [$start, $end])
+            ->where('payment_status', '!=', 'cancelled')
             ->first();
 
         $comparisonStats = $baseQuery()
-            ->selectRaw('SUM(total_price) as omset, SUM(total_price - total_cost) as profit, COUNT(id) as count')
+            ->selectRaw('SUM(total_price) as omset, SUM(total_price - total_cost) as gross_profit, COUNT(id) as count, AVG(total_price) as aov')
             ->whereBetween('created_at', [$comparisonStart, $comparisonEnd])
+            ->where('payment_status', '!=', 'cancelled')
             ->first();
 
-        $activeExpenses = $expenseQuery()
+        $activeExpenses = (float) $expenseQuery()
             ->whereBetween('created_at', [$start, $end])
             ->sum('amount');
 
-        $comparisonExpenses = $expenseQuery()
+        $comparisonExpenses = (float) $expenseQuery()
             ->whereBetween('created_at', [$comparisonStart, $comparisonEnd])
             ->sum('amount');
 
-        $activeRevenue = $activeStats->omset ?? 0;
-        $activeProfit = ($activeStats->profit ?? 0) - $activeExpenses;
-        $activeTransactionsCount = $activeStats->count ?? 0;
+        $activeRevenue = (float) ($activeStats->omset ?? 0);
+        $activeGrossProfit = (float) ($activeStats->gross_profit ?? 0);
+        $activeProfit = $activeGrossProfit - $activeExpenses;
+        $activeTransactionsCount = (int) ($activeStats->count ?? 0);
+        $activeAov = (float) ($activeStats->aov ?? 0);
 
-        $comparisonRevenue = $comparisonStats->omset ?? 0;
-        $comparisonProfit = ($comparisonStats->profit ?? 0) - $comparisonExpenses;
-        $comparisonTransactionsCount = $comparisonStats->count ?? 0;
+        $comparisonRevenue = (float) ($comparisonStats->omset ?? 0);
+        $comparisonGrossProfit = (float) ($comparisonStats->gross_profit ?? 0);
+        $comparisonProfit = $comparisonGrossProfit - $comparisonExpenses;
+        $comparisonTransactionsCount = (int) ($comparisonStats->count ?? 0);
+        $comparisonAov = (float) ($comparisonStats->aov ?? 0);
 
         // Realisasi Kas Masuk (Kas Riil) & Piutang Tempo Berjalan
         // A. Transaksi non-tempo yang langsung lunas (retail & wholesale tunai/transfer)
@@ -396,6 +421,117 @@ class DashboardController extends Controller
             $expenseGrowthPercent = 100;
         }
 
+        // Additional Granular Analytical Metrics:
+        $grossMarginPercent = $activeRevenue > 0 ? round(($activeGrossProfit / $activeRevenue) * 100, 1) : 0;
+        $netMarginPercent = $activeRevenue > 0 ? round(($activeProfit / $activeRevenue) * 100, 1) : 0;
+        $oerPercent = $activeRevenue > 0 ? round(($activeExpenses / $activeRevenue) * 100, 1) : 0;
+        $cashRealizationPercent = $activeRevenue > 0 ? round(($realizedCash / $activeRevenue) * 100, 1) : 0;
+
+        $aovGrowthPercent = 0;
+        if ($comparisonAov > 0) {
+            $aovGrowthPercent = (($activeAov - $comparisonAov) / $comparisonAov) * 100;
+        } elseif ($activeAov > 0) {
+            $aovGrowthPercent = 100;
+        }
+
+        $retailStats = [
+            'omset' => (float) ($activeStats->retail_omset ?? 0),
+            'count' => (int) ($activeStats->retail_count ?? 0),
+            'profit' => (float) ($activeStats->retail_profit ?? 0),
+            'share_percent' => $activeRevenue > 0 ? round(((float) ($activeStats->retail_omset ?? 0) / $activeRevenue) * 100, 1) : 0,
+        ];
+
+        $wholesaleStats = [
+            'omset' => (float) ($activeStats->wholesale_omset ?? 0),
+            'count' => (int) ($activeStats->wholesale_count ?? 0),
+            'profit' => (float) ($activeStats->wholesale_profit ?? 0),
+            'share_percent' => $activeRevenue > 0 ? round(((float) ($activeStats->wholesale_omset ?? 0) / $activeRevenue) * 100, 1) : 0,
+        ];
+
+        $paymentBreakdown = [
+            'Cash' => [
+                'omset' => (float) ($activeStats->cash_omset ?? 0),
+                'count' => (int) ($activeStats->cash_count ?? 0),
+                'share_percent' => $activeRevenue > 0 ? round(((float) ($activeStats->cash_omset ?? 0) / $activeRevenue) * 100, 1) : 0,
+            ],
+            'Transfer' => [
+                'omset' => (float) ($activeStats->transfer_omset ?? 0),
+                'count' => (int) ($activeStats->transfer_count ?? 0),
+                'share_percent' => $activeRevenue > 0 ? round(((float) ($activeStats->transfer_omset ?? 0) / $activeRevenue) * 100, 1) : 0,
+            ],
+            'QRIS' => [
+                'omset' => (float) ($activeStats->qris_omset ?? 0),
+                'count' => (int) ($activeStats->qris_count ?? 0),
+                'share_percent' => $activeRevenue > 0 ? round(((float) ($activeStats->qris_omset ?? 0) / $activeRevenue) * 100, 1) : 0,
+            ],
+            'Tempo' => [
+                'omset' => (float) ($activeStats->tempo_omset ?? 0),
+                'count' => (int) ($activeStats->tempo_count ?? 0),
+                'share_percent' => $activeRevenue > 0 ? round(((float) ($activeStats->tempo_omset ?? 0) / $activeRevenue) * 100, 1) : 0,
+            ],
+        ];
+
+        // Multi-Branch Scorecard (when All Branches are selected)
+        $branchScorecard = [];
+        if (!$selectedBranch || $selectedBranch === '') {
+            $branchAggregates = \App\Models\Transaction::selectRaw("
+                    COALESCE(branch, 'Pusat Cianjur') as branch_name,
+                    SUM(total_price) as omset,
+                    SUM(total_price - total_cost) as gross_profit,
+                    COUNT(id) as count,
+                    AVG(total_price) as aov
+                ")
+                ->whereBetween('created_at', [$start, $end])
+                ->where('payment_status', '!=', 'cancelled')
+                ->groupBy('branch_name')
+                ->orderByDesc('omset')
+                ->get();
+
+            $branchExpenses = \App\Models\Expense::selectRaw("
+                    COALESCE(branch, 'Pusat Cianjur') as branch_name,
+                    SUM(amount) as total_expense
+                ")
+                ->whereBetween('created_at', [$start, $end])
+                ->groupBy('branch_name')
+                ->pluck('total_expense', 'branch_name');
+
+            foreach ($branchAggregates as $b) {
+                $exp = (float) ($branchExpenses[$b->branch_name] ?? 0);
+                $gross = (float) $b->gross_profit;
+                $net = $gross - $exp;
+                $share = $activeRevenue > 0 ? round(((float) $b->omset / $activeRevenue) * 100, 1) : 0;
+                $margin = ((float) $b->omset) > 0 ? round(($net / (float) $b->omset) * 100, 1) : 0;
+                $branchScorecard[] = [
+                    'name' => $b->branch_name,
+                    'omset' => (float) $b->omset,
+                    'net_profit' => $net,
+                    'margin_percent' => $margin,
+                    'count' => (int) $b->count,
+                    'aov' => (float) $b->aov,
+                    'share_percent' => $share,
+                ];
+            }
+        }
+
+        // Inventory Capital & Health (cached 15 mins to eliminate overhead)
+        $inventoryMetrics = Cache::remember('owner_inventory_metrics', 900, function () {
+            $stats = Product::selectRaw("
+                COUNT(id) as total_skus,
+                SUM(CASE WHEN stock <= 10 THEN 1 ELSE 0 END) as low_stock_skus,
+                SUM(CASE WHEN stock <= 0 THEN 1 ELSE 0 END) as out_of_stock_skus,
+                SUM(stock * cost_price) as total_cost_value,
+                SUM(stock * selling_price) as total_retail_value
+            ")->first();
+
+            return [
+                'total_skus' => (int) ($stats->total_skus ?? 0),
+                'low_stock_skus' => (int) ($stats->low_stock_skus ?? 0),
+                'out_of_stock_skus' => (int) ($stats->out_of_stock_skus ?? 0),
+                'total_cost_value' => (float) ($stats->total_cost_value ?? 0),
+                'total_retail_value' => (float) ($stats->total_retail_value ?? 0),
+            ];
+        });
+
         // 4. Fetch/Build breakdown table data
         $breakdownData = [];
         if ($filterType === 'harian') {
@@ -466,26 +602,37 @@ class DashboardController extends Controller
         }
 
         // 5. Fetch weekly omset breakdown for the general trend graph
+        $idDayNames = ['Mon' => 'Senin', 'Tue' => 'Selasa', 'Wed' => 'Rabu', 'Thu' => 'Kamis', 'Fri' => 'Jumat', 'Sat' => 'Sabtu', 'Sun' => 'Minggu'];
+        $idShortDayNames = ['Mon' => 'Sen', 'Tue' => 'Sel', 'Wed' => 'Rab', 'Thu' => 'Kam', 'Fri' => 'Jum', 'Sat' => 'Sab', 'Sun' => 'Min'];
         $days = [];
         for ($d = $startOfWeek->copy(); $d->lte($endOfWeek); $d->addDay()) {
+            $enD = $d->format('D');
             $days[$d->format('Y-m-d')] = [
-                'day_name' => $d->translatedFormat('D'),
-                'full_day_name' => $d->translatedFormat('l'),
-                'date' => $d->format('d M'),
+                'day_name' => $idShortDayNames[$enD] ?? $d->translatedFormat('D'),
+                'full_day_name' => $idDayNames[$enD] ?? $d->translatedFormat('l'),
+                'date' => $d->translatedFormat('d M Y'),
+                'raw_date' => $d->format('Y-m-d'),
                 'omset' => 0,
+                'profit' => 0,
+                'count' => 0,
+                'aov' => 0,
                 'is_today' => $d->isToday(),
             ];
         }
 
         $weeklyOmsetDetail = $baseQuery()
-            ->selectRaw('DATE(created_at) as date, SUM(total_price) as total_omset')
+            ->selectRaw('DATE(created_at) as date, SUM(total_price) as total_omset, SUM(total_price - total_cost) as total_profit, COUNT(id) as total_count')
             ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
+            ->where('payment_status', '!=', 'cancelled')
             ->groupBy('date')
             ->get();
 
         foreach ($weeklyOmsetDetail as $stat) {
             if (isset($days[$stat->date])) {
-                $days[$stat->date]['omset'] = (int)$stat->total_omset;
+                $days[$stat->date]['omset'] = (int) $stat->total_omset;
+                $days[$stat->date]['profit'] = (int) $stat->total_profit;
+                $days[$stat->date]['count'] = (int) $stat->total_count;
+                $days[$stat->date]['aov'] = $stat->total_count > 0 ? round($stat->total_omset / $stat->total_count) : 0;
             }
         }
 
@@ -500,13 +647,68 @@ class DashboardController extends Controller
         // 6. Fetch monthly weekly-breakdown for the general trend graph
         $daysInMonth = $startOfMonth->daysInMonth;
         $weeks = [
-            1 => ['label' => 'Minggu 1', 'full_name' => 'Minggu Pertama', 'date' => '01-07', 'omset' => 0, 'is_today' => false],
-            2 => ['label' => 'Minggu 2', 'full_name' => 'Minggu Kedua', 'date' => '08-14', 'omset' => 0, 'is_today' => false],
-            3 => ['label' => 'Minggu 3', 'full_name' => 'Minggu Ketiga', 'date' => '15-21', 'omset' => 0, 'is_today' => false],
-            4 => ['label' => 'Minggu 4', 'full_name' => 'Minggu Keempat', 'date' => '22-28', 'omset' => 0, 'is_today' => false],
+            1 => [
+                'label' => 'Minggu 1',
+                'full_name' => 'Minggu Pertama',
+                'date' => '01-07 ' . $startOfMonth->translatedFormat('M'),
+                'raw_start' => $startOfMonth->copy()->day(1)->format('Y-m-d'),
+                'raw_end' => $startOfMonth->copy()->day(7)->format('Y-m-d'),
+                'omset' => 0,
+                'profit' => 0,
+                'count' => 0,
+                'aov' => 0,
+                'is_today' => false
+            ],
+            2 => [
+                'label' => 'Minggu 2',
+                'full_name' => 'Minggu Kedua',
+                'date' => '08-14 ' . $startOfMonth->translatedFormat('M'),
+                'raw_start' => $startOfMonth->copy()->day(8)->format('Y-m-d'),
+                'raw_end' => $startOfMonth->copy()->day(14)->format('Y-m-d'),
+                'omset' => 0,
+                'profit' => 0,
+                'count' => 0,
+                'aov' => 0,
+                'is_today' => false
+            ],
+            3 => [
+                'label' => 'Minggu 3',
+                'full_name' => 'Minggu Ketiga',
+                'date' => '15-21 ' . $startOfMonth->translatedFormat('M'),
+                'raw_start' => $startOfMonth->copy()->day(15)->format('Y-m-d'),
+                'raw_end' => $startOfMonth->copy()->day(21)->format('Y-m-d'),
+                'omset' => 0,
+                'profit' => 0,
+                'count' => 0,
+                'aov' => 0,
+                'is_today' => false
+            ],
+            4 => [
+                'label' => 'Minggu 4',
+                'full_name' => 'Minggu Keempat',
+                'date' => '22-28 ' . $startOfMonth->translatedFormat('M'),
+                'raw_start' => $startOfMonth->copy()->day(22)->format('Y-m-d'),
+                'raw_end' => $startOfMonth->copy()->day(28)->format('Y-m-d'),
+                'omset' => 0,
+                'profit' => 0,
+                'count' => 0,
+                'aov' => 0,
+                'is_today' => false
+            ],
         ];
         if ($daysInMonth > 28) {
-            $weeks[5] = ['label' => 'Minggu 5', 'full_name' => 'Minggu Kelima', 'date' => '29-' . $daysInMonth, 'omset' => 0, 'is_today' => false];
+            $weeks[5] = [
+                'label' => 'Minggu 5',
+                'full_name' => 'Minggu Kelima',
+                'date' => '29-' . $daysInMonth . ' ' . $startOfMonth->translatedFormat('M'),
+                'raw_start' => $startOfMonth->copy()->day(29)->format('Y-m-d'),
+                'raw_end' => $startOfMonth->copy()->day($daysInMonth)->format('Y-m-d'),
+                'omset' => 0,
+                'profit' => 0,
+                'count' => 0,
+                'aov' => 0,
+                'is_today' => false
+            ];
         }
 
         if ($startOfMonth->isCurrentMonth()) {
@@ -522,8 +724,9 @@ class DashboardController extends Controller
         }
 
         $monthlyOmsetDetail = $baseQuery()
-            ->selectRaw('DAY(created_at) as day, SUM(total_price) as total_omset')
+            ->selectRaw('DAY(created_at) as day, SUM(total_price) as total_omset, SUM(total_price - total_cost) as total_profit, COUNT(id) as total_count')
             ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->where('payment_status', '!=', 'cancelled')
             ->groupBy('day')
             ->get();
 
@@ -534,9 +737,16 @@ class DashboardController extends Controller
                 $wEnd = ($wNum === 5) ? $daysInMonth : $wNum * 7;
                 if ($day >= $wStart && $day <= $wEnd) {
                     $w['omset'] += (int)$stat->total_omset;
+                    $w['profit'] += (int)$stat->total_profit;
+                    $w['count'] += (int)$stat->total_count;
                     break;
                 }
             }
+        }
+        unset($w);
+
+        foreach ($weeks as &$w) {
+            $w['aov'] = $w['count'] > 0 ? round($w['omset'] / $w['count']) : 0;
         }
         unset($w);
 
@@ -548,30 +758,76 @@ class DashboardController extends Controller
 
         $monthlyTrend = array_values($weeks);
 
-        // 7. Best sellers — 3 query ringan hanya ambil kolom yang diperlukan
+        // 6b. Fetch yearly monthly-breakdown (12 months) for the general trend graph
+        $yearlyStats = $baseQuery()
+            ->selectRaw('MONTH(created_at) as month_num, SUM(total_price) as total_omset, SUM(total_price - total_cost) as total_profit, COUNT(id) as total_count')
+            ->whereYear('created_at', $startOfMonth->year)
+            ->where('payment_status', '!=', 'cancelled')
+            ->groupBy('month_num')
+            ->get()
+            ->keyBy('month_num');
+
+        $yearlyMonths = [];
+        $idMonths = [1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'Mei', 6 => 'Jun', 7 => 'Jul', 8 => 'Agu', 9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des'];
+        $idFullMonths = [1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'];
+        $currentMonthNum = (\Carbon\Carbon::now()->year === $startOfMonth->year) ? \Carbon\Carbon::now()->month : 0;
+        for ($m = 1; $m <= 12; $m++) {
+            $mDt = \Carbon\Carbon::create($startOfMonth->year, $m, 1);
+            $stat = $yearlyStats->get($m);
+            $mOmset = $stat ? (int)$stat->total_omset : 0;
+            $mProfit = $stat ? (int)$stat->total_profit : 0;
+            $mCount = $stat ? (int)$stat->total_count : 0;
+            $mShortName = $idMonths[$m] ?? $mDt->format('M');
+            $mFullName = ($idFullMonths[$m] ?? $mDt->format('F')) . ' ' . $startOfMonth->year;
+            $yearlyMonths[] = [
+                'label' => $mShortName,
+                'full_name' => $mFullName,
+                'date' => $mShortName . ' ' . $startOfMonth->year,
+                'raw_month' => $mDt->format('Y-m'),
+                'raw_start' => $mDt->copy()->startOfMonth()->format('Y-m-d'),
+                'raw_end' => $mDt->copy()->endOfMonth()->format('Y-m-d'),
+                'omset' => $mOmset,
+                'profit' => $mProfit,
+                'count' => $mCount,
+                'aov' => $mCount > 0 ? round($mOmset / $mCount) : 0,
+                'is_today' => ($m === $currentMonthNum),
+            ];
+        }
+        $yearlyTrend = $yearlyMonths;
+
+        // 7. Best sellers — Cache 10 menit untuk efisiensi parsing regex string items_summary
         $bestSellerDay = ($filterType === 'harian') ? $dateObj : $start;
+        $bsCacheKey = 'owner_bs_' . md5(($selectedBranch ?? 'all') . '_' . $bestSellerDay->format('Y-m-d') . '_' . $startOfWeek->format('Y-m-d') . '_' . $startOfMonth->format('Y-m'));
 
-        $todayTransactionsForBestSeller = $baseQuery()
-            ->select('items_summary', 'created_at')
-            ->whereBetween('created_at', [
-                $bestSellerDay->copy()->startOfDay(),
-                $bestSellerDay->copy()->endOfDay(),
-            ])
-            ->get();
+        $bestSellersData = Cache::remember($bsCacheKey, 600, function () use ($baseQuery, $bestSellerDay, $startOfWeek, $endOfWeek, $startOfMonth, $endOfMonth) {
+            $todayTransactions = $baseQuery()
+                ->select('items_summary', 'created_at')
+                ->whereBetween('created_at', [
+                    $bestSellerDay->copy()->startOfDay(),
+                    $bestSellerDay->copy()->endOfDay(),
+                ])
+                ->get();
 
-        $weeklyTransactionsForBestSeller = $baseQuery()
-            ->select('items_summary', 'created_at')
-            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
-            ->get();
+            $weeklyTransactions = $baseQuery()
+                ->select('items_summary', 'created_at')
+                ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
+                ->get();
 
-        $monthlyTransactionsForBestSeller = $baseQuery()
-            ->select('items_summary', 'created_at')
-            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-            ->get();
+            $monthlyTransactions = $baseQuery()
+                ->select('items_summary', 'created_at')
+                ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+                ->get();
 
-        $bestSellersToday = $this->getBestSellers($todayTransactionsForBestSeller, 5);
-        $bestSellersWeekly = $this->getBestSellers($weeklyTransactionsForBestSeller, 5);
-        $bestSellersMonthly = $this->getBestSellers($monthlyTransactionsForBestSeller, 5);
+            return [
+                'today' => $this->getBestSellers($todayTransactions, 5),
+                'weekly' => $this->getBestSellers($weeklyTransactions, 5),
+                'monthly' => $this->getBestSellers($monthlyTransactions, 5),
+            ];
+        });
+
+        $bestSellersToday = $bestSellersData['today'];
+        $bestSellersWeekly = $bestSellersData['weekly'];
+        $bestSellersMonthly = $bestSellersData['monthly'];
 
         return view('owner.dashboard', compact(
             'lowStockCount',
@@ -584,12 +840,14 @@ class DashboardController extends Controller
             'branches',
             'activeRevenue',
             'activeProfit',
+            'activeGrossProfit',
             'activeTransactionsCount',
             'revenueGrowthPercent',
             'profitGrowthPercent',
             'transactionGrowthPercent',
             'weeklyTrend',
             'monthlyTrend',
+            'yearlyTrend',
             'breakdownData',
             'activeExpenses',
             'expenseGrowthPercent',
@@ -606,7 +864,18 @@ class DashboardController extends Controller
             'realizedCash',
             'cashGrowthPercent',
             'outstandingReceivables',
-            'activePeriodReceivables'
+            'activePeriodReceivables',
+            'grossMarginPercent',
+            'netMarginPercent',
+            'oerPercent',
+            'activeAov',
+            'aovGrowthPercent',
+            'retailStats',
+            'wholesaleStats',
+            'paymentBreakdown',
+            'cashRealizationPercent',
+            'branchScorecard',
+            'inventoryMetrics'
         ));
     }
 
@@ -679,8 +948,13 @@ class DashboardController extends Controller
             $comparisonStart = $start->copy()->subMonth();
             $comparisonEnd = $end->copy()->subMonth();
 
-            $startOfWeek = $start->copy()->startOfWeek();
-            $endOfWeek = $start->copy()->endOfWeek();
+            if ($monthObj->isCurrentMonth()) {
+                $startOfWeek = \Carbon\Carbon::now()->startOfWeek();
+                $endOfWeek = \Carbon\Carbon::now()->endOfWeek();
+            } else {
+                $startOfWeek = $start->copy()->startOfWeek();
+                $endOfWeek = $start->copy()->endOfWeek();
+            }
             $startOfMonth = $start->copy();
             $endOfMonth = $end->copy();
 
@@ -782,14 +1056,31 @@ class DashboardController extends Controller
 
         $sliced = array_values(array_slice($bestSellers, 0, $limit));
         
-        // Enrich with product image and category if exists
+        // Enrich with product image, category, prices, and revenue/profit calculations
         $names = array_column($sliced, 'name');
         $products = \App\Models\Product::whereIn('name', $names)->get()->keyBy(fn($p) => mb_strtolower($p->name));
         
         foreach ($sliced as &$item) {
             $product = $products->get(mb_strtolower($item['name']));
             $item['image_path'] = $product ? $product->image_path : null;
-            $item['category'] = $product ? $product->category : null;
+            $item['category'] = $product ? $product->category : 'Umum';
+            $item['sku'] = $product ? $product->sku : '-';
+            $item['stock'] = $product ? (float) $product->stock : 0;
+            $item['price_unit'] = $product ? $product->price_unit : $item['unit'];
+            $item['selling_price'] = $product ? (float) $product->selling_price : 0;
+            $item['cost_price'] = $product ? (float) $product->cost_price : 0;
+
+            // Normalize gram to kg for revenue & profit
+            $qtyMultiplier = 1;
+            if ($product && in_array(strtolower($product->price_unit), ['gram', 'g']) && $item['unit'] === 'kg') {
+                $qtyMultiplier = 1000;
+            } elseif ($product && in_array(strtolower($item['unit']), ['gram', 'g']) && strtolower($product->price_unit) === 'kg') {
+                $qtyMultiplier = 0.001;
+            }
+            $calcQty = $item['qty'] * $qtyMultiplier;
+            $item['qty'] = round((float) $item['qty'], 2);
+            $item['estimated_revenue'] = $item['selling_price'] > 0 ? round($calcQty * $item['selling_price']) : 0;
+            $item['estimated_profit'] = ($item['selling_price'] > 0 && $item['cost_price'] > 0) ? max(0, round($calcQty * ($item['selling_price'] - $item['cost_price']))) : 0;
         }
         unset($item);
 
@@ -974,6 +1265,252 @@ class DashboardController extends Controller
             'Cache-Control' => 'no-cache, no-store, must-revalidate',
             'Pragma' => 'no-cache',
             'Expires' => '0',
+        ]);
+    }
+
+    /**
+     * Get detailed analytics and transaction breakdown for a specific best seller product.
+     */
+    public function getBestSellerDetail(Request $request)
+    {
+        $productName = trim($request->query('name', ''));
+        if (empty($productName)) {
+            return response()->json(['success' => false, 'message' => 'Nama produk wajib diisi.'], 400);
+        }
+
+        $activeBranch = $request->query('branch', '');
+        $dateRanges = $this->resolveDateRanges($request);
+        $filterType = $request->query('period_type', $dateRanges['filterType']);
+
+        if ($filterType === 'harian') {
+            $selectedDate = $request->query('date', \Carbon\Carbon::today()->format('Y-m-d'));
+            try {
+                $start = \Carbon\Carbon::parse($selectedDate)->startOfDay();
+            } catch (\Throwable $e) {
+                $start = \Carbon\Carbon::today()->startOfDay();
+            }
+            $end = $start->copy()->endOfDay();
+            $periodLabel = 'Harian: ' . $start->translatedFormat('d M Y');
+        } elseif ($filterType === 'mingguan') {
+            $start = $dateRanges['startOfWeek'];
+            $end = $dateRanges['endOfWeek'];
+            $periodLabel = 'Mingguan: ' . $start->translatedFormat('d M') . ' - ' . $end->translatedFormat('d M Y');
+        } else {
+            $start = $dateRanges['startOfMonth'];
+            $end = $dateRanges['endOfMonth'];
+            $periodLabel = 'Bulanan: ' . $start->translatedFormat('F Y');
+        }
+
+        $baseQuery = fn() => ($activeBranch && $activeBranch !== '')
+            ? \App\Models\Transaction::where('branch', $activeBranch)
+            : \App\Models\Transaction::query();
+
+        // 1. Fetch matching transactions in range with created_at index
+        $transactions = $baseQuery()
+            ->with('cashier')
+            ->whereBetween('created_at', [$start, $end])
+            ->where('payment_status', '!=', 'cancelled')
+            ->where('items_summary', 'LIKE', '%' . $productName . '%')
+            ->orderByDesc('created_at')
+            ->get();
+
+        // 2. Fetch product master
+        $product = \App\Models\Product::where('name', $productName)->first();
+
+        $totalQty = 0.0;
+        $unit = 'pcs';
+        $transactionCount = 0;
+        $totalRevenue = 0.0;
+        $branchBreakdown = [];
+        $transactionList = [];
+
+        foreach ($transactions as $trx) {
+            if (empty($trx->items_summary)) {
+                continue;
+            }
+
+            $parts = explode(', ', $trx->items_summary);
+            $foundInThisTrx = false;
+            $qtyInTrx = 0.0;
+            $itemUnit = 'pcs';
+            $itemPrice = 0.0;
+
+            foreach ($parts as $part) {
+                $trimmed = trim($part);
+                if (stripos($trimmed, $productName) === false) {
+                    continue;
+                }
+
+                if (preg_match('/^(.*?)\s*\(\s*(\d+(?:[.,]\d+)?)\s*([a-zA-Z\s]+?)(?:\s*x\s*([\d.,]+))?\s*\)$/i', $trimmed, $m)) {
+                    $matchedName = trim($m[1]);
+                    if (strcasecmp($matchedName, $productName) === 0 || stripos($matchedName, $productName) !== false) {
+                        $parsedQty = floatval(str_replace(',', '.', $m[2]));
+                        $parsedUnit = strtolower(trim($m[3]));
+                        $parsedPrice = isset($m[4]) ? floatval(str_replace(['.', ','], ['', '.'], $m[4])) : ($product ? (float) $product->selling_price : 0);
+
+                        if ($parsedUnit === 'gram' || $parsedUnit === 'g') {
+                            $parsedQty = $parsedQty / 1000;
+                            $parsedUnit = 'kg';
+                        }
+
+                        $qtyInTrx += $parsedQty;
+                        $itemUnit = $parsedUnit;
+                        $itemPrice = $parsedPrice;
+                        $foundInThisTrx = true;
+                    }
+                } elseif (stripos($trimmed, $productName) !== false) {
+                    $qtyInTrx += 1.0;
+                    $itemPrice = $product ? (float) $product->selling_price : 0;
+                    $foundInThisTrx = true;
+                }
+            }
+
+            if ($foundInThisTrx && $qtyInTrx > 0) {
+                $totalQty += $qtyInTrx;
+                $unit = $itemUnit;
+                $transactionCount++;
+
+                $lineTotal = $itemPrice > 0 ? ($qtyInTrx * $itemPrice) : 0;
+                $totalRevenue += $lineTotal;
+
+                $branchName = $trx->branch ?: 'Pusat Cianjur';
+                if (!isset($branchBreakdown[$branchName])) {
+                    $branchBreakdown[$branchName] = [
+                        'branch' => $branchName,
+                        'qty' => 0.0,
+                        'unit' => $unit,
+                        'trx_count' => 0,
+                        'revenue' => 0.0,
+                    ];
+                }
+                $branchBreakdown[$branchName]['qty'] += $qtyInTrx;
+                $branchBreakdown[$branchName]['trx_count'] += 1;
+                $branchBreakdown[$branchName]['revenue'] += $lineTotal;
+
+                if (count($transactionList) < 25) {
+                    $transactionList[] = [
+                        'id' => $trx->id,
+                        'transaction_code' => $trx->transaction_code,
+                        'created_at' => $trx->created_at->translatedFormat('d M Y H:i'),
+                        'branch' => $branchName,
+                        'cashier' => $trx->cashier ? $trx->cashier->name : '-',
+                        'qty' => round($qtyInTrx, 2),
+                        'unit' => $itemUnit,
+                        'line_total' => $lineTotal,
+                        'total_price' => (float) $trx->total_price,
+                        'payment_method' => $trx->payment_method,
+                        'payment_status' => $trx->payment_status,
+                    ];
+                }
+            }
+        }
+
+        $totalQty = round($totalQty, 2);
+        foreach ($branchBreakdown as &$bb) {
+            $bb['qty'] = round($bb['qty'], 2);
+        }
+        unset($bb);
+
+        if ($totalRevenue == 0 && $product && $product->selling_price > 0) {
+            $totalRevenue = $totalQty * (float) $product->selling_price;
+            foreach ($branchBreakdown as &$bb) {
+                $bb['revenue'] = $bb['qty'] * (float) $product->selling_price;
+            }
+            unset($bb);
+            foreach ($transactionList as &$tl) {
+                if ($tl['line_total'] == 0) {
+                    $tl['line_total'] = $tl['qty'] * (float) $product->selling_price;
+                }
+            }
+            unset($tl);
+        }
+
+        $estimatedProfit = 0.0;
+        if ($product && $product->cost_price > 0) {
+            $costQty = $totalQty;
+            if (in_array(strtolower($product->price_unit), ['gram', 'g']) && $unit === 'kg') {
+                $costQty = $totalQty * 1000;
+            } elseif (in_array(strtolower($unit), ['gram', 'g']) && strtolower($product->price_unit) === 'kg') {
+                $costQty = $totalQty / 1000;
+            }
+            $totalCost = $costQty * (float) $product->cost_price;
+            $estimatedProfit = max(0, $totalRevenue - $totalCost);
+        }
+
+        return response()->json([
+            'success' => true,
+            'period_label' => $periodLabel,
+            'product' => [
+                'id' => $product ? $product->id : null,
+                'name' => $product ? $product->name : $productName,
+                'sku' => $product ? $product->sku : '-',
+                'category' => $product ? $product->category : 'Umum',
+                'stock' => $product ? (float) $product->stock : 0,
+                'price_unit' => $product ? $product->price_unit : $unit,
+                'selling_price' => $product ? (float) $product->selling_price : 0,
+                'cost_price' => $product ? (float) $product->cost_price : 0,
+                'image_path' => $product && $product->image_path ? asset('storage/' . $product->image_path) : null,
+            ],
+            'metrics' => [
+                'total_qty' => $totalQty,
+                'unit' => $unit,
+                'trx_count' => $transactionCount,
+                'total_revenue' => $totalRevenue,
+                'estimated_profit' => $estimatedProfit,
+                'profit_margin' => $totalRevenue > 0 ? round(($estimatedProfit / $totalRevenue) * 100, 1) : 0,
+            ],
+            'branches' => array_values($branchBreakdown),
+            'transactions' => $transactionList,
+        ]);
+    }
+
+    /**
+     * Get full list of best sellers (up to 100 items) for on-demand inspection modal.
+     */
+    public function getBestSellersAll(Request $request)
+    {
+        $activeBranch = $request->query('branch', '');
+        $dateRanges = $this->resolveDateRanges($request);
+        $filterType = $request->query('period_type', $dateRanges['filterType']);
+        $limit = max(10, min(100, (int) $request->query('limit', 50)));
+
+        if ($filterType === 'harian') {
+            $selectedDate = $request->query('date', \Carbon\Carbon::today()->format('Y-m-d'));
+            try {
+                $start = \Carbon\Carbon::parse($selectedDate)->startOfDay();
+            } catch (\Throwable $e) {
+                $start = \Carbon\Carbon::today()->startOfDay();
+            }
+            $end = $start->copy()->endOfDay();
+            $periodLabel = 'Harian: ' . $start->translatedFormat('d M Y');
+        } elseif ($filterType === 'mingguan') {
+            $start = $dateRanges['startOfWeek'];
+            $end = $dateRanges['endOfWeek'];
+            $periodLabel = 'Mingguan: ' . $start->translatedFormat('d M') . ' - ' . $end->translatedFormat('d M Y');
+        } else {
+            $start = $dateRanges['startOfMonth'];
+            $end = $dateRanges['endOfMonth'];
+            $periodLabel = 'Bulanan: ' . $start->translatedFormat('F Y');
+        }
+
+        $baseQuery = fn() => ($activeBranch && $activeBranch !== '')
+            ? \App\Models\Transaction::where('branch', $activeBranch)
+            : \App\Models\Transaction::query();
+
+        $transactions = $baseQuery()->select('items_summary', 'created_at')
+            ->whereBetween('created_at', [$start, $end])
+            ->where('payment_status', '!=', 'cancelled')
+            ->get();
+
+        $bestSellers = $this->getBestSellers($transactions, $limit);
+
+        return response()->json([
+            'success' => true,
+            'period_label' => $periodLabel,
+            'period_type' => $filterType,
+            'limit' => $limit,
+            'total_items' => count($bestSellers),
+            'items' => $bestSellers,
         ]);
     }
 
@@ -1616,30 +2153,37 @@ class DashboardController extends Controller
                     : \App\Models\Expense::query();
 
                 $activeStats = $baseQuery()
-                    ->selectRaw('SUM(total_price) as omset, SUM(total_price - total_cost) as profit, COUNT(id) as count')
+                    ->selectRaw('SUM(total_price) as omset, SUM(total_price - total_cost) as gross_profit, COUNT(id) as count, AVG(total_price) as aov')
                     ->whereBetween('created_at', [$start, $end])
                     ->first();
 
                 $comparisonStats = $baseQuery()
-                    ->selectRaw('SUM(total_price) as omset, SUM(total_price - total_cost) as profit, COUNT(id) as count')
+                    ->selectRaw('SUM(total_price) as omset, SUM(total_price - total_cost) as gross_profit, COUNT(id) as count, AVG(total_price) as aov')
                     ->whereBetween('created_at', [$comparisonStart, $comparisonEnd])
                     ->first();
 
-                $activeExpenses = $expenseQuery()
+                $activeExpenses = (float) $expenseQuery()
                     ->whereBetween('created_at', [$start, $end])
                     ->sum('amount');
 
-                $comparisonExpenses = $expenseQuery()
+                $comparisonExpenses = (float) $expenseQuery()
                     ->whereBetween('created_at', [$comparisonStart, $comparisonEnd])
                     ->sum('amount');
 
-                $activeRevenue = $activeStats->omset ?? 0;
-                $activeProfit = ($activeStats->profit ?? 0) - $activeExpenses;
-                $activeTransactionsCount = $activeStats->count ?? 0;
+                $activeRevenue = (float) ($activeStats->omset ?? 0);
+                $activeGrossProfit = (float) ($activeStats->gross_profit ?? 0);
+                $activeProfit = $activeGrossProfit - $activeExpenses;
+                $activeTransactionsCount = (int) ($activeStats->count ?? 0);
+                $activeAov = (float) ($activeStats->aov ?? 0);
 
-                $comparisonRevenue = $comparisonStats->omset ?? 0;
-                $comparisonProfit = ($comparisonStats->profit ?? 0) - $comparisonExpenses;
-                $comparisonTransactionsCount = $comparisonStats->count ?? 0;
+                $comparisonRevenue = (float) ($comparisonStats->omset ?? 0);
+                $comparisonProfit = ((float) ($comparisonStats->gross_profit ?? 0)) - $comparisonExpenses;
+                $comparisonTransactionsCount = (int) ($comparisonStats->count ?? 0);
+
+                // Margin & ratios
+                $grossMargin = $activeRevenue > 0 ? round(($activeGrossProfit / $activeRevenue) * 100, 1) : 0;
+                $netMargin = $activeRevenue > 0 ? round(($activeProfit / $activeRevenue) * 100, 1) : 0;
+                $oer = $activeRevenue > 0 ? round(($activeExpenses / $activeRevenue) * 100, 1) : 0;
 
                 // Calculate growth percentages
                 $revenueGrowthPercent = 0;
@@ -1706,15 +2250,19 @@ class DashboardController extends Controller
                         . "- Periode: {$titleLabel} ({$filterType})\n"
                         . "- {$branchText}\n"
                         . "- Omset: Rp " . number_format($activeRevenue, 0, ',', '.') . " (" . number_format($revenueGrowthPercent, 1) . "% {$comparisonLabel})\n"
+                        . "- Gross Profit Margin: {$grossMargin}%\n"
                         . "- Profit Bersih: Rp " . number_format($activeProfit, 0, ',', '.') . " (" . number_format($profitGrowthPercent, 1) . "% {$comparisonLabel})\n"
+                        . "- Net Profit Margin: {$netMargin}%\n"
                         . "- Pengeluaran: Rp " . number_format($activeExpenses, 0, ',', '.') . " (" . number_format($expenseGrowthPercent, 1) . "% {$comparisonLabel})\n"
+                        . "- Rasio Beban Pengeluaran (OER): {$oer}%\n"
                         . "- Jumlah Transaksi: " . number_format($activeTransactionsCount) . " Trx\n"
+                        . "- Rata-rata Nilai Belanja (AOV): Rp " . number_format($activeAov, 0, ',', '.') . "\n"
                         . "- 5 Produk Terlaris:\n{$bestSellersStr}"
                         . "- Produk Stok Menipis (<=10):\n{$lowStockStr}\n"
                         . "--------------------\n\n"
                         . "Berikan analisis dalam bahasa Indonesia terformat Markdown. Gunakan struktur:\n"
                         . "1. **Ringkasan Eksekutif**: Tinjauan tajam kesehatan keuangan toko pada periode ini.\n"
-                        . "2. **Analisis Mendalam & Tren**: Bahas pertumbuhan omset, profitabilitas, dan pengeluaran secara kritis.\n"
+                        . "2. **Analisis Mendalam & Tren**: Bahas pertumbuhan omset, margin kotor vs margin bersih, AOV, dan rasio beban pengeluaran secara kritis.\n"
                         . "3. **Saran & Rekomendasi Bisnis**: Minimal 3 saran aksi konkret dan taktis.\n\n"
                         . "PENTING: Jangan gunakan emoji apapun dalam respons. Gunakan teks profesional dan format Markdown yang rapi tanpa emoji sama sekali. Tone profesional, optimis namun realistis. Mulai langsung dengan judul Markdown.";
 

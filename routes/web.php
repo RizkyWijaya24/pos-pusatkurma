@@ -184,6 +184,8 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/dashboard/export', [\App\Http\Controllers\DashboardController::class, 'exportOwnerReport'])->name('dashboard.export');
         Route::get('/dashboard/export-best-sellers', [\App\Http\Controllers\DashboardController::class, 'exportBestSellers'])->name('dashboard.export-best-sellers');
+        Route::get('/dashboard/best-seller-detail', [\App\Http\Controllers\DashboardController::class, 'getBestSellerDetail'])->name('dashboard.best-seller-detail');
+        Route::get('/dashboard/best-sellers-all', [\App\Http\Controllers\DashboardController::class, 'getBestSellersAll'])->name('dashboard.best-sellers-all');
 
         // Transaction History (Owner read-only)
         Route::get('/transactions/export', [\App\Http\Controllers\TransactionController::class, 'export'])->name('transactions.export');
