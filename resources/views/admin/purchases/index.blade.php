@@ -464,7 +464,7 @@
                                                     <div class="text-[10px] text-emerald-700 font-bold text-center mt-0.5" x-text="'= ' + (item.quantity / 1000).toFixed(2) + ' kg'"></div>
                                                 </template>
                                                 <template x-if="(item.unit||'').trim().toLowerCase() === 'kg' && item.quantity > 0">
-                                                    <div class="text-[10px] text-emerald-700 font-bold text-center mt-0.5" x-text="'= ' + (item.quantity * 1000).toLocaleString('id-ID') + ' g'"></div>
+                                                    <div class="text-[10px] text-emerald-700 font-bold text-center mt-0.5" x-text="'= ' + (item.quantity * 1000).toLocaleString('id-ID') + ' gram'"></div>
                                                 </template>
                                             </td>
 
@@ -496,6 +496,12 @@
                                                        required
                                                        placeholder="0"
                                                        class="w-full text-right text-xs font-bold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 py-2">
+                                                <template x-if="getSelectedProduct(item.product_id) && ['gram','gr','g'].includes((getSelectedProduct(item.product_id).price_unit||'').trim().toLowerCase()) && ['kg','kilogram'].includes((item.unit||'').trim().toLowerCase()) && item.unit_cost > 0">
+                                                    <div class="text-[10px] text-emerald-700 font-bold text-right mt-0.5" x-text="'= ' + formatRupiah(Math.round(item.unit_cost / 1000)) + ' / gram'"></div>
+                                                </template>
+                                                <template x-if="getSelectedProduct(item.product_id) && ['kg','kilogram'].includes((getSelectedProduct(item.product_id).price_unit||'').trim().toLowerCase()) && ['gram','gr','g'].includes((item.unit||'').trim().toLowerCase()) && item.unit_cost > 0">
+                                                    <div class="text-[10px] text-emerald-700 font-bold text-right mt-0.5" x-text="'= ' + formatRupiah(Math.round(item.unit_cost * 1000)) + ' / kg'"></div>
+                                                </template>
                                             </td>
 
                                             <!-- Subtotal -->
@@ -1567,8 +1573,22 @@
                                                 <td class="px-4 py-3 font-bold text-slate-800" x-text="item.product_name"></td>
                                                 <td class="px-3 py-3 text-center">
                                                     <span class="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 font-extrabold text-[11px]" x-text="item.quantity + ' ' + item.unit"></span>
+                                                    <template x-if="item.product && ['kg','kilogram'].includes((item.unit||'').toLowerCase()) && ['gram','gr','g'].includes((item.product.price_unit||'').toLowerCase())">
+                                                        <div class="text-[9px] text-emerald-700 font-bold mt-0.5" x-text="'= ' + (item.quantity * 1000).toLocaleString('id-ID') + ' gram'"></div>
+                                                    </template>
+                                                    <template x-if="item.product && ['gram','gr','g'].includes((item.unit||'').toLowerCase()) && ['kg','kilogram'].includes((item.product.price_unit||'').toLowerCase())">
+                                                        <div class="text-[9px] text-emerald-700 font-bold mt-0.5" x-text="'= ' + (item.quantity / 1000).toFixed(2) + ' kg'"></div>
+                                                    </template>
                                                 </td>
-                                                <td class="px-4 py-3 text-right text-slate-500" x-text="formatRupiah(item.unit_cost)"></td>
+                                                <td class="px-4 py-3 text-right text-slate-500">
+                                                    <div class="font-bold text-slate-700" x-text="formatRupiah(item.unit_cost)"></div>
+                                                    <template x-if="item.product && ['kg','kilogram'].includes((item.unit||'').toLowerCase()) && ['gram','gr','g'].includes((item.product.price_unit||'').toLowerCase())">
+                                                        <div class="text-[9px] text-emerald-700 font-bold" x-text="'HPP: ' + formatRupiah(Math.round(item.unit_cost / 1000)) + ' / g'"></div>
+                                                    </template>
+                                                    <template x-if="item.product && ['gram','gr','g'].includes((item.unit||'').toLowerCase()) && ['kg','kilogram'].includes((item.product.price_unit||'').toLowerCase())">
+                                                        <div class="text-[9px] text-emerald-700 font-bold" x-text="'HPP: ' + formatRupiah(Math.round(item.unit_cost * 1000)) + ' / kg'"></div>
+                                                    </template>
+                                                </td>
                                                 <td class="px-4 py-3 text-right font-extrabold text-slate-800" x-text="formatRupiah(item.subtotal)"></td>
                                             </tr>
                                         </template>
@@ -2553,6 +2573,12 @@
                                                                x-model="it.quantity"
                                                                required
                                                                class="w-full text-xs font-bold text-center border-slate-200 rounded-xl focus:border-amber-500 focus:ring-amber-500 p-2 bg-slate-50">
+                                                        <template x-if="(it.unit||'').trim().toLowerCase() === 'gram' && it.quantity >= 1000">
+                                                            <div class="text-[10px] text-amber-700 font-bold text-center mt-0.5" x-text="'= ' + (it.quantity / 1000).toFixed(2) + ' kg'"></div>
+                                                        </template>
+                                                        <template x-if="(it.unit||'').trim().toLowerCase() === 'kg' && it.quantity > 0">
+                                                            <div class="text-[10px] text-amber-700 font-bold text-center mt-0.5" x-text="'= ' + (it.quantity * 1000).toLocaleString('id-ID') + ' gram'"></div>
+                                                        </template>
                                                     </td>
                                                     <!-- Unit -->
                                                     <td class="p-2">
@@ -2577,6 +2603,12 @@
                                                                x-model="it.unit_cost"
                                                                required
                                                                class="w-full text-xs font-bold text-right border-slate-200 rounded-xl focus:border-amber-500 focus:ring-amber-500 p-2 bg-slate-50">
+                                                        <template x-if="getSelectedProduct(it.product_id) && ['gram','gr','g'].includes((getSelectedProduct(it.product_id).price_unit||'').trim().toLowerCase()) && ['kg','kilogram'].includes((it.unit||'').trim().toLowerCase()) && it.unit_cost > 0">
+                                                            <div class="text-[10px] text-amber-700 font-bold text-right mt-0.5" x-text="'= ' + formatRupiah(Math.round(it.unit_cost / 1000)) + ' / gram'"></div>
+                                                        </template>
+                                                        <template x-if="getSelectedProduct(it.product_id) && ['kg','kilogram'].includes((getSelectedProduct(it.product_id).price_unit||'').trim().toLowerCase()) && ['gram','gr','g'].includes((it.unit||'').trim().toLowerCase()) && it.unit_cost > 0">
+                                                            <div class="text-[10px] text-amber-700 font-bold text-right mt-0.5" x-text="'= ' + formatRupiah(Math.round(it.unit_cost * 1000)) + ' / kg'"></div>
+                                                        </template>
                                                     </td>
                                                     <!-- Subtotal -->
                                                     <td class="p-2 text-right font-extrabold text-slate-800">

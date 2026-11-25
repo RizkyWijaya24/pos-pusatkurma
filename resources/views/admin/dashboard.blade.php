@@ -289,6 +289,8 @@
         // Wholesale Form State
         wholesaleCustomersList: @js($wholesaleCustomers ?? []),
         customerSuggestionsOpen: false,
+        wholesalePriceMemories: {},
+        wholesalePriceMemoryCache: {},
         wholesaleForm: {
             customer_name: '',
             customer_phone: '',
@@ -299,7 +301,7 @@
             paymentReceived: '',
             skip_stock_deduction: false,
             items: [
-                { name: '', qty: 1, price_unit: 'pcs', selling_price: '', cost_price: '', showSuggestions: false, activeSuggestionIndex: -1 }
+                { name: '', qty: 1, price_unit: 'pcs', selling_price: '', cost_price: '', price_source: '', showSuggestions: false, activeSuggestionIndex: -1 }
             ]
         },
 
@@ -1660,6 +1662,82 @@
                 this.wholesaleForm.customer_phone = customer.phone;
             }
             this.customerSuggestionsOpen = false;
+            this.loadWholesaleCustomerMemory(customer.name);
+        },
+
+        async loadWholesaleCustomerMemory(customerName) {
+            const key = (customerName || '').trim().toLowerCase();
+            if (!key) {
+                this.wholesalePriceMemories = {};
+                this.applyMemoryToExistingWholesaleItems();
+                return;
+            }
+
+            if (this.wholesalePriceMemoryCache[key]) {
+                this.wholesalePriceMemories = this.wholesalePriceMemoryCache[key];
+                this.applyMemoryToExistingWholesaleItems();
+                return;
+            }
+
+            try {
+                const res = await fetch(`{{ route('admin.wholesale.price-memory') }}?customer_name=${encodeURIComponent(customerName.trim())}`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.success) {
+                    const mems = data.memories || {};
+                    this.wholesalePriceMemoryCache[key] = mems;
+                    if ((this.wholesaleForm.customer_name || '').trim().toLowerCase() === key) {
+                        this.wholesalePriceMemories = mems;
+                        this.applyMemoryToExistingWholesaleItems();
+                    }
+                }
+            } catch (e) {
+                console.error('Gagal memuat memori harga wholesale:', e);
+            }
+        },
+
+        resolveWholesaleItemPrice(productName, targetUnit, fallbackMasterPrice) {
+            const prodKey = (productName || '').trim().toLowerCase();
+            const mem = prodKey ? this.wholesalePriceMemories[prodKey] : null;
+            if (mem && parseFloat(mem.last_selling_price) > 0) {
+                let price = parseFloat(mem.last_selling_price);
+                const memUnit = (mem.price_unit || '').trim().toLowerCase();
+                const tgtUnit = (targetUnit || '').trim().toLowerCase();
+
+                if (memUnit === 'kg' && ['gram', 'gr', 'g'].includes(tgtUnit)) {
+                    price = Math.round(price / 1000);
+                } else if (['gram', 'gr', 'g'].includes(memUnit) && tgtUnit === 'kg') {
+                    price = Math.round(price * 1000);
+                }
+
+                return { price: price, source: 'customer_memory' };
+            }
+
+            return { price: fallbackMasterPrice, source: 'master' };
+        },
+
+        applyMemoryToExistingWholesaleItems() {
+            this.wholesaleForm.items.forEach((item) => {
+                if (!item.name || !item.name.trim() || item.price_source === 'manual') return;
+                const prod = (this.products || []).find(p => (p.name || '').trim().toLowerCase() === item.name.trim().toLowerCase());
+                let masterFallback = parseFloat(item.selling_price) || 0;
+                if (prod) {
+                    const baseU = (prod.price_unit || '').toLowerCase();
+                    const curU  = (item.price_unit || '').toLowerCase();
+                    if (baseU === 'gram' && curU === 'kg') {
+                        masterFallback = Math.round((parseFloat(prod.selling_price) || 0) * 1000);
+                    } else if (baseU === 'kg' && ['gram', 'gr', 'g'].includes(curU)) {
+                        masterFallback = Math.round((parseFloat(prod.selling_price) || 0) / 1000);
+                    } else {
+                        masterFallback = parseFloat(prod.selling_price) || 0;
+                    }
+                }
+                const resolved = this.resolveWholesaleItemPrice(item.name, item.price_unit, masterFallback);
+                item.selling_price = resolved.price;
+                item.price_source  = resolved.source;
+            });
         },
 
         shareWholesaleToWa() {
@@ -1744,6 +1822,7 @@
                 price_unit: 'pcs',
                 selling_price: '',
                 cost_price: '',
+                price_source: '',
                 showSuggestions: false,
                 activeSuggestionIndex: -1
             });
@@ -1790,15 +1869,21 @@
                 item.base_unit = product.price_unit || 'pcs';
                 
                 // Jika satuan dasar adalah gram, defaultkan ke kg untuk transaksi partai
+                let masterSellingPrice = 0;
                 if ((product.price_unit || '').toLowerCase() === 'gram') {
                     item.price_unit = 'kg';
-                    item.selling_price = Math.round((parseFloat(product.selling_price) || 0) * 1000);
+                    masterSellingPrice = Math.round((parseFloat(product.selling_price) || 0) * 1000);
                     item.cost_price = product.cost_price ? Math.round(parseFloat(product.cost_price) * 1000) : '';
                 } else {
                     item.price_unit = product.price_unit || 'pcs';
-                    item.selling_price = product.selling_price;
+                    masterSellingPrice = product.selling_price;
                     item.cost_price = product.cost_price;
                 }
+
+                // Prioritas 1: Memori harga jual terakhir pelanggan ini; Prioritas 2: Harga jual master produk
+                const resolved = this.resolveWholesaleItemPrice(product.name, item.price_unit, masterSellingPrice);
+                item.selling_price = resolved.price;
+                item.price_source  = resolved.source;
                 
                 item.showSuggestions = false;
                 item.activeSuggestionIndex = -1;
@@ -1927,6 +2012,11 @@
                     .then(data => {
                         if (data.success) {
                             this.showToast(data.message, 'success');
+                            const savedCustKey = (this.wholesaleForm.customer_name || '').trim().toLowerCase();
+                            if (savedCustKey && this.wholesalePriceMemoryCache[savedCustKey]) {
+                                delete this.wholesalePriceMemoryCache[savedCustKey];
+                            }
+                            this.wholesalePriceMemories = {};
                             
                             // Reset form
                             this.wholesaleForm = {
@@ -1939,7 +2029,7 @@
                                 paymentReceived: '',
                                 skip_stock_deduction: false,
                                 items: [
-                                    { name: '', qty: 1, price_unit: 'pcs', selling_price: '', cost_price: '', showSuggestions: false, activeSuggestionIndex: -1 }
+                                    { name: '', qty: 1, price_unit: 'pcs', selling_price: '', cost_price: '', price_source: '', showSuggestions: false, activeSuggestionIndex: -1 }
                                 ]
                             };
 
@@ -2652,6 +2742,8 @@
                                            x-model="wholesaleForm.customer_name" 
                                            @focus="customerSuggestionsOpen = true"
                                            @input="customerSuggestionsOpen = true"
+                                           @change="loadWholesaleCustomerMemory(wholesaleForm.customer_name)"
+                                           @blur="setTimeout(() => loadWholesaleCustomerMemory(wholesaleForm.customer_name), 150)"
                                            placeholder="Ketik nama toko / pelanggan..." 
                                            class="w-full border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 font-semibold shadow-inner text-sm py-2.5 px-4 pr-9">
                                     <div class="absolute right-3 top-3 text-slate-400 pointer-events-none">
@@ -2893,10 +2985,26 @@
                                         <div class="relative flex items-center">
                                             <input type="number" 
                                                    x-model="item.selling_price" 
+                                                   @input="item.price_source = 'manual'"
                                                    placeholder="Harga jual..." 
                                                    class="w-full border-slate-200 rounded-lg text-xs font-bold py-2 px-2.5 focus:border-emerald-500 focus:ring-emerald-500 text-right pr-8">
                                             <span class="absolute right-2 text-[9px] font-black text-slate-400 uppercase pointer-events-none" x-text="'/' + (item.price_unit || 'pcs')"></span>
                                         </div>
+                                        <template x-if="item.price_source === 'customer_memory'">
+                                            <span class="text-[9px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-1.5 py-0.5 truncate"
+                                                  :title="'Harga terakhir ' + wholesaleForm.customer_name"
+                                                  x-text="'Harga terakhir ' + wholesaleForm.customer_name"></span>
+                                        </template>
+                                        <template x-if="item.price_source === 'master'">
+                                            <span class="text-[9px] font-bold text-slate-500 bg-slate-100 border border-slate-200 rounded-md px-1.5 py-0.5 truncate">
+                                                Harga master produk
+                                            </span>
+                                        </template>
+                                        <template x-if="item.price_source === 'manual'">
+                                            <span class="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-1.5 py-0.5 truncate">
+                                                Harga disesuaikan manual
+                                            </span>
+                                        </template>
                                     </div>
 
                                     <!-- Harga Modal Satuan (Untuk Profit) -->

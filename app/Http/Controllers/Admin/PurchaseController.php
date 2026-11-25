@@ -248,6 +248,11 @@ class PurchaseController extends Controller
                     'update_product_cost' => $shouldUpdateCost,
                 ]);
 
+                // Hitung konversi kuantitas stok dan HPP terhadap master unit produk (misal: kg vs gram)
+                $conversion = $this->resolveUnitConversion($prod, (float) $itemData['quantity'], $itemData['unit'], (float) $itemData['unit_cost']);
+                $stockDelta = $conversion['stock_quantity'];
+                $masterHpp  = $conversion['master_unit_cost'];
+
                 if (!$skipStock) {
                     // Update location stock
                     $productStock = ProductStock::firstOrCreate([
@@ -258,34 +263,38 @@ class PurchaseController extends Controller
                     ]);
 
                     $qtyBefore = (float) $productStock->stock;
-                    $productStock->incrementStock((float) $itemData['quantity']);
+                    $productStock->incrementStock($stockDelta);
                     $qtyAfter = (float) $productStock->stock;
 
                     // Update product total stock
-                    $prod->stock = (float) $prod->stock + (float) $itemData['quantity'];
+                    $prod->stock = (float) $prod->stock + $stockDelta;
                 }
 
                 // Update product HPP if requested
-                if ($shouldUpdateCost && (float) $itemData['unit_cost'] > 0) {
-                    $prod->cost_price = (int) round($itemData['unit_cost']);
+                if ($shouldUpdateCost && (float) $masterHpp > 0) {
+                    $prod->cost_price = (int) round($masterHpp);
                     $prod->save();
                 } elseif (!$skipStock) {
                     $prod->save();
                 }
 
                 if (!$skipStock) {
+                    $conversionNote = ($conversion['conversion_ratio'] != 1)
+                        ? " ({$itemData['quantity']} {$itemData['unit']} = " . number_format($stockDelta, 2, ',', '.') . " {$prod->price_unit})"
+                        : "";
+
                     // Log into StockAdjustmentLog
                     StockAdjustmentLog::create([
                         'product_id'      => $prod->id,
                         'location_id'     => $validated['location_id'],
                         'type'            => 'adjustment',
                         'quantity_before' => $qtyBefore,
-                        'quantity_change' => (float) $itemData['quantity'],
+                        'quantity_change' => $stockDelta,
                         'quantity_after'  => $qtyAfter,
                         'reference_type'  => 'purchase',
                         'reference_id'    => $purchase->id,
                         'created_by'      => auth()->id(),
-                        'notes'           => "Penerimaan Barang Masuk ({$purchase->purchase_code}) dari {$purchase->supplier_name}",
+                        'notes'           => "Penerimaan Barang Masuk ({$purchase->purchase_code}) dari {$purchase->supplier_name}{$conversionNote}",
                         'created_at'      => now(),
                     ]);
                 }
@@ -601,17 +610,22 @@ class PurchaseController extends Controller
             if (isset($validated['items']) && is_array($validated['items']) && count($validated['items']) > 0) {
                 // A. Revert old stock from old location
                 foreach ($purchase->items as $oldItem) {
+                    $oldProd = Product::find($oldItem->product_id);
+                    $oldConversion = $oldProd 
+                        ? $this->resolveUnitConversion($oldProd, (float) $oldItem->quantity, $oldItem->unit, (float) $oldItem->unit_cost)
+                        : ['stock_quantity' => (float)$oldItem->quantity];
+                    $revertStockQty = $oldConversion['stock_quantity'];
+
                     $oldProductStock = ProductStock::where('product_id', $oldItem->product_id)
                         ->where('location_id', $oldLocationId)
                         ->first();
                     if ($oldProductStock) {
-                        $oldProductStock->stock = max(0, (float)$oldProductStock->stock - (float)$oldItem->quantity);
+                        $oldProductStock->stock = max(0, (float)$oldProductStock->stock - $revertStockQty);
                         $oldProductStock->save();
                     }
 
-                    $oldProd = Product::find($oldItem->product_id);
                     if ($oldProd) {
-                        $oldProd->stock = max(0, (float)$oldProd->stock - (float)$oldItem->quantity);
+                        $oldProd->stock = max(0, (float)$oldProd->stock - $revertStockQty);
                         $oldProd->save();
                     }
                 }
@@ -640,6 +654,11 @@ class PurchaseController extends Controller
                         'update_product_cost' => $shouldUpdateCost,
                     ]);
 
+                    // Hitung konversi kuantitas stok dan HPP terhadap master unit produk
+                    $conversion = $this->resolveUnitConversion($prod, (float) $itemData['quantity'], $itemData['unit'], (float) $itemData['unit_cost']);
+                    $stockDelta = $conversion['stock_quantity'];
+                    $masterHpp  = $conversion['master_unit_cost'];
+
                     // Update location stock
                     $newProductStock = ProductStock::firstOrCreate([
                         'product_id'  => $prod->id,
@@ -648,16 +667,20 @@ class PurchaseController extends Controller
                         'stock' => 0,
                     ]);
                     $qtyBefore = (float) $newProductStock->stock;
-                    $newProductStock->incrementStock((float) $itemData['quantity']);
+                    $newProductStock->incrementStock($stockDelta);
                     $qtyAfter = (float) $newProductStock->stock;
 
                     // Update product total stock
-                    $prod->stock = (float) $prod->stock + (float) $itemData['quantity'];
+                    $prod->stock = (float) $prod->stock + $stockDelta;
 
-                    if ($shouldUpdateCost && (float) $itemData['unit_cost'] > 0) {
-                        $prod->cost_price = (int) round($itemData['unit_cost']);
+                    if ($shouldUpdateCost && (float) $masterHpp > 0) {
+                        $prod->cost_price = (int) round($masterHpp);
                     }
                     $prod->save();
+
+                    $conversionNote = ($conversion['conversion_ratio'] != 1)
+                        ? " ({$itemData['quantity']} {$itemData['unit']} = " . number_format($stockDelta, 2, ',', '.') . " {$prod->price_unit})"
+                        : "";
 
                     $itemsSummaryArr[] = "{$prod->name} ({$itemData['quantity']} {$itemData['unit']})";
 
@@ -667,12 +690,12 @@ class PurchaseController extends Controller
                         'location_id'     => $newLocationId,
                         'type'            => 'adjustment',
                         'quantity_before' => $qtyBefore,
-                        'quantity_change' => (float) $itemData['quantity'],
+                        'quantity_change' => $stockDelta,
                         'quantity_after'  => $qtyAfter,
                         'reference_type'  => 'purchase_edit',
                         'reference_id'    => $purchase->id,
                         'created_by'      => auth()->id(),
-                        'notes'           => "Penyesuaian Edit Faktur Pembelian ({$purchase->purchase_code})",
+                        'notes'           => "Penyesuaian Edit Faktur Pembelian ({$purchase->purchase_code}){$conversionNote}",
                         'created_at'      => now(),
                     ]);
                 }
@@ -743,21 +766,26 @@ class PurchaseController extends Controller
             // 1. Revert stock if purchase has items
             if ($purchase->items && $purchase->items->count() > 0) {
                 foreach ($purchase->items as $item) {
+                    $prod = Product::find($item->product_id);
+                    $conversion = $prod 
+                        ? $this->resolveUnitConversion($prod, (float) $item->quantity, $item->unit, (float) $item->unit_cost)
+                        : ['stock_quantity' => (float)$item->quantity];
+                    $revertStockQty = $conversion['stock_quantity'];
+
                     $productStock = ProductStock::where('product_id', $item->product_id)
                         ->where('location_id', $locationId)
                         ->first();
 
                     $qtyBefore = $productStock ? (float)$productStock->stock : 0;
-                    $newStock = max(0, $qtyBefore - (float)$item->quantity);
+                    $newStock = max(0, $qtyBefore - $revertStockQty);
 
                     if ($productStock) {
                         $productStock->stock = $newStock;
                         $productStock->save();
                     }
 
-                    $prod = Product::find($item->product_id);
                     if ($prod) {
-                        $prod->stock = max(0, (float)$prod->stock - (float)$item->quantity);
+                        $prod->stock = max(0, (float)$prod->stock - $revertStockQty);
                         $prod->save();
                     }
 
@@ -766,7 +794,7 @@ class PurchaseController extends Controller
                         'location_id'     => $locationId,
                         'type'            => 'adjustment',
                         'quantity_before' => $qtyBefore,
-                        'quantity_change' => -(float)$item->quantity,
+                        'quantity_change' => -$revertStockQty,
                         'quantity_after'  => $newStock,
                         'reference_type'  => 'purchase_deleted',
                         'reference_id'    => $purchase->id,
@@ -798,5 +826,68 @@ class PurchaseController extends Controller
                 'message' => 'Gagal menghapus faktur pembelian: ' . $e->getMessage(),
             ], 422);
         }
+    }
+
+    /**
+     * Menghitung konversi kuantitas stok dan HPP relatif terhadap satuan dasar (price_unit) master produk.
+     *
+     * Contoh:
+     * - Master unit = 'gram', input = 5 kg @ Rp 175.000/kg
+     *   -> stock_quantity = 5000 gram
+     *   -> master_unit_cost = Rp 175 / gram
+     *   -> conversion_ratio = 1000
+     *
+     * - Master unit = 'kg', input = 500 gram @ Rp 175/gram
+     *   -> stock_quantity = 0.5 kg
+     *   -> master_unit_cost = Rp 175.000 / kg
+     *   -> conversion_ratio = 0.001
+     *
+     * @param Product $product
+     * @param float $quantity
+     * @param string|null $unit
+     * @param float $unitCost
+     * @return array [
+     *     'stock_quantity'   => float,
+     *     'master_unit_cost' => float,
+     *     'conversion_ratio' => float,
+     * ]
+     */
+    public function resolveUnitConversion(Product $product, float $quantity, ?string $unit, float $unitCost): array
+    {
+        $inputUnit  = strtolower(trim($unit ?? ''));
+        $masterUnit = strtolower(trim($product->price_unit ?? ''));
+
+        $isInputGram  = in_array($inputUnit, ['gram', 'gr', 'g']);
+        $isInputKg    = in_array($inputUnit, ['kg', 'kilogram']);
+        $isInputOns   = in_array($inputUnit, ['ons', 'ounce']);
+
+        $isMasterGram = in_array($masterUnit, ['gram', 'gr', 'g']);
+        $isMasterKg   = in_array($masterUnit, ['kg', 'kilogram']);
+        $isMasterOns  = in_array($masterUnit, ['ons', 'ounce']);
+
+        $ratio = 1.0;
+
+        if ($isInputKg && $isMasterGram) {
+            $ratio = 1000.0;
+        } elseif ($isInputGram && $isMasterKg) {
+            $ratio = 0.001;
+        } elseif ($isInputOns && $isMasterGram) {
+            $ratio = 100.0;
+        } elseif ($isInputGram && $isMasterOns) {
+            $ratio = 0.01;
+        } elseif ($isInputKg && $isMasterOns) {
+            $ratio = 10.0;
+        } elseif ($isInputOns && $isMasterKg) {
+            $ratio = 0.1;
+        }
+
+        $stockQuantity  = (float) $quantity * $ratio;
+        $masterUnitCost = ($ratio != 0) ? ((float) $unitCost / $ratio) : (float) $unitCost;
+
+        return [
+            'stock_quantity'   => $stockQuantity,
+            'master_unit_cost' => $masterUnitCost,
+            'conversion_ratio' => $ratio,
+        ];
     }
 }

@@ -365,6 +365,446 @@ class StockReportController extends Controller
     }
 
     /**
+     * Halaman Diagnosa Barang Mati (Dead Stock & Slow-Moving Analysis).
+     */
+    public function deadStock(Request $request)
+    {
+        $days = (int) $request->query('days', 60);
+        if (!in_array($days, [30, 60, 90, 180], true)) {
+            $days = 60;
+        }
+
+        $locationId = $request->filled('location_id') ? (int) $request->query('location_id') : null;
+        $category   = $request->filled('category') ? trim((string) $request->query('category')) : '';
+        $status     = $request->query('status', 'all_issues');
+        if (!in_array($status, ['all_issues', 'dead', 'slow', 'new'], true)) {
+            $status = 'all_issues';
+        }
+        $sort = $request->query('sort', 'capital_desc');
+        if (!in_array($sort, ['capital_desc', 'idle_desc', 'stock_desc'], true)) {
+            $sort = 'capital_desc';
+        }
+        $search       = trim((string) $request->query('search', ''));
+        $forceRefresh = $request->boolean('refresh');
+
+        $analysis = $this->buildDeadStockData($days, $locationId, $forceRefresh);
+        $filtered = $this->filterAndSortDeadStock($analysis['items'], $status, $category, $search, $sort);
+
+        $perPage = 25;
+        $page    = max(1, (int) $request->query('page', 1));
+        $total   = $filtered->count();
+        $items   = new \Illuminate\Pagination\LengthAwarePaginator(
+            $filtered->forPage($page, $perPage)->values(),
+            $total,
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        $locations = Cache::remember('active_locations_sorted_report', 600,
+            fn() => StockLocation::active()->orderByRaw("type = 'gudang' DESC")->orderBy('name')->get()
+        );
+        $categories = Cache::remember('categories_sorted_name', 1800,
+            fn() => \App\Models\Category::orderBy('name')->get()
+        );
+
+        return view('owner.dead-stock', [
+            'items'       => $items,
+            'summary'     => $analysis['summary'],
+            'locations'   => $locations,
+            'categories'  => $categories,
+            'days'        => $days,
+            'locationId'  => $locationId,
+            'category'    => $category,
+            'status'      => $status,
+            'sort'        => $sort,
+            'search'      => $search,
+            'generatedAt' => $analysis['generated_at'],
+        ]);
+    }
+
+    /**
+     * Export Diagnosa Barang Mati ke Excel atau PDF.
+     */
+    public function exportDeadStock(Request $request)
+    {
+        $days = (int) $request->query('days', 60);
+        if (!in_array($days, [30, 60, 90, 180], true)) {
+            $days = 60;
+        }
+        $locationId = $request->filled('location_id') ? (int) $request->query('location_id') : null;
+        $category   = $request->filled('category') ? trim((string) $request->query('category')) : '';
+        $status     = $request->query('status', 'all_issues');
+        $sort       = $request->query('sort', 'capital_desc');
+        $search     = trim((string) $request->query('search', ''));
+        $isPdf      = $request->query('format') === 'pdf';
+
+        $analysis = $this->buildDeadStockData($days, $locationId, false);
+        $items    = $this->filterAndSortDeadStock($analysis['items'], $status, $category, $search, $sort);
+        $summary  = $analysis['summary'];
+
+        $locationName = 'Semua Cabang & Gudang';
+        if ($locationId) {
+            $loc = StockLocation::find($locationId);
+            if ($loc) {
+                $locationName = $loc->name;
+            }
+        }
+
+        $now     = now();
+        $printBy = auth()->user()->name . ' (' . ucfirst(auth()->user()->role) . ')';
+
+        $renderTemplate = function () use ($items, $summary, $days, $locationName, $now, $printBy, $isPdf) {
+            echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
+            echo '<style>';
+            if ($isPdf) {
+                echo '@page { margin: 1.0cm 1.2cm; } table { width: 100%; margin: 0 auto; } th { width: auto !important; } ';
+            }
+            echo 'body{font-family:"Segoe UI",Arial,sans-serif;color:#1e293b;}';
+            echo 'table{border-collapse:collapse;width:100%;}';
+            echo 'th{background-color:#059669;color:#fff;font-weight:bold;border:1px solid #047857;padding:8px 10px;font-size:10pt;white-space:nowrap;}';
+            echo 'td{border:1px solid #d1fae5;padding:7px 9px;font-size:9.5pt;vertical-align:middle;}';
+            echo '.title{font-size:15pt;font-weight:bold;color:#064e3b;text-align:center;border:none !important;}';
+            echo '.subtitle{font-size:11pt;font-weight:bold;color:#10b981;text-align:center;border:none !important;}';
+            echo '.meta-label{font-weight:bold;color:#374151;background-color:#f0fdf4;width:160px;border:1px solid #d1fae5;}';
+            echo '.meta-value{color:#1f2937;border:1px solid #d1fae5;}';
+            echo '.stripe{background-color:#f9fafb;}';
+            echo '.total-row{background-color:#d1fae5;font-weight:bold;color:#064e3b;}';
+            echo '.badge-dead{color:#b91c1c;font-weight:bold;}';
+            echo '.badge-slow{color:#b45309;font-weight:bold;}';
+            echo '.badge-new{color:#0369a1;font-weight:bold;}';
+            echo '</style></head><body>';
+
+            if ($isPdf) {
+                echo $this->pdfHeader();
+            }
+
+            echo '<table style="margin-bottom:12px;">';
+            echo '<tr><td colspan="8" class="title">DIAGNOSA BARANG MATI &amp; SLOW MOVING</td></tr>';
+            echo '<tr><td colspan="8" class="subtitle">Analisis Perputaran Persediaan &amp; Modal Tertahan</td></tr>';
+            echo '<tr><td colspan="2" class="meta-label">Periode Analisis</td><td colspan="6" class="meta-value">' . $days . ' Hari Terakhir</td></tr>';
+            echo '<tr><td colspan="2" class="meta-label">Lokasi Stok</td><td colspan="6" class="meta-value">' . htmlspecialchars($locationName) . '</td></tr>';
+            echo '<tr><td colspan="2" class="meta-label">Tanggal Cetak</td><td colspan="6" class="meta-value">' . $now->translatedFormat('d F Y H:i') . ' WIB | Oleh: ' . htmlspecialchars($printBy) . '</td></tr>';
+            echo '</table>';
+
+            if ($isPdf) {
+                echo $this->pdfCards([
+                    ['label' => 'Barang Mati Total', 'value' => $summary['dead_count'] . ' SKU', 'color' => '#be123c'],
+                    ['label' => 'Slow Moving', 'value' => $summary['slow_count'] . ' SKU', 'color' => '#b45309'],
+                    ['label' => 'Total Modal Tertahan', 'value' => 'Rp ' . number_format($summary['problem_capital'], 0, ',', '.'), 'color' => '#065f46'],
+                    ['label' => 'Porsi Modal Tertahan', 'value' => $summary['problem_capital_percent'] . '%', 'color' => '#1e293b'],
+                ]);
+            }
+
+            echo '<table><thead><tr>';
+            echo '<th style="width:40px;text-align:center;">No</th>';
+            echo '<th>Produk &amp; SKU</th>';
+            echo '<th>Kategori</th>';
+            echo '<th style="text-align:right;">Sisa Stok</th>';
+            echo '<th style="text-align:right;">Modal Tertahan</th>';
+            echo '<th style="text-align:center;">Terjual (' . $days . 'h)</th>';
+            echo '<th style="text-align:center;">Mengendap</th>';
+            echo '<th>Status &amp; Rekomendasi</th>';
+            echo '</tr></thead><tbody>';
+
+            $idx = 1;
+            $totalModal = 0;
+            foreach ($items as $row) {
+                $totalModal += $row['dead_capital'];
+                $rowClass = $idx % 2 === 0 ? ' class="stripe"' : '';
+                $statusClass = $row['status'] === 'dead' ? 'badge-dead' : ($row['status'] === 'new' ? 'badge-new' : 'badge-slow');
+
+                echo "<tr{$rowClass}>";
+                echo '<td style="text-align:center;">' . $idx++ . '</td>';
+                echo '<td><strong>' . htmlspecialchars($row['name']) . '</strong><br><span style="font-size:8pt;color:#64748b;">' . htmlspecialchars($row['sku']) . '</span></td>';
+                echo '<td>' . htmlspecialchars($row['category']) . '</td>';
+                echo '<td style="text-align:right;">' . htmlspecialchars($row['display_stock']) . '</td>';
+                echo '<td style="text-align:right;font-weight:bold;">Rp ' . number_format($row['dead_capital'], 0, ',', '.') . '</td>';
+                echo '<td style="text-align:center;">' . htmlspecialchars($row['display_sold']) . ' (' . $row['sale_count'] . 'x)</td>';
+                echo '<td style="text-align:center;">' . $row['idle_days'] . ' hari</td>';
+                echo '<td><span class="' . $statusClass . '">' . htmlspecialchars($row['status_label']) . '</span><br><span style="font-size:8pt;color:#475569;">' . htmlspecialchars($row['recommendation']) . '</span></td>';
+                echo '</tr>';
+            }
+
+            echo '<tr class="total-row">';
+            echo '<td colspan="4" style="text-align:right;">TOTAL MODAL TERTAHAN (DATA TERFILTER)</td>';
+            echo '<td style="text-align:right;">Rp ' . number_format($totalModal, 0, ',', '.') . '</td>';
+            echo '<td colspan="3"></td>';
+            echo '</tr>';
+
+            echo '</tbody></table>';
+
+            if ($isPdf) {
+                echo $this->pdfSignature($printBy);
+                echo $this->pdfFooter();
+            }
+
+            echo '</body></html>';
+        };
+
+        if ($isPdf) {
+            @ini_set('memory_limit', '512M');
+            @set_time_limit(180);
+            try {
+                ob_start();
+                $renderTemplate();
+                $html = ob_get_clean();
+
+                $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
+                $pdf->setPaper('a4', 'landscape');
+                return $pdf->download('Diagnosa_Barang_Mati_' . $days . 'Hari_' . $now->format('Y-m-d') . '.pdf');
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Dead Stock PDF export failed: ' . $e->getMessage());
+                return back()->with('error', 'Gagal memproses PDF: ' . $e->getMessage());
+            }
+        }
+
+        $filename = 'Diagnosa_Barang_Mati_' . $days . 'Hari_' . $now->format('Y-m-d') . '.xls';
+        return response()->streamDownload($renderTemplate, $filename, [
+            'Content-Type'        => 'application/vnd.ms-excel; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Pragma'              => 'no-cache',
+            'Expires'             => '0',
+        ]);
+    }
+
+    /**
+     * Hitung data diagnosa barang mati dalam 3 query agregasi SQL yang efisien (zero N+1).
+     */
+    private function buildDeadStockData(int $days, ?int $locationId, bool $forceRefresh = false): array
+    {
+        $cacheKey = "dead_stock_analysis_{$days}_" . ($locationId ?: 'all');
+        if ($forceRefresh) {
+            Cache::forget($cacheKey);
+        }
+
+        return Cache::remember($cacheKey, 300, function () use ($days, $locationId) {
+            $now         = now();
+            $periodStart = $now->copy()->subDays($days);
+
+            // Query 1: Agregasi total penjualan dalam periode analisis
+            $periodSales = StockAdjustmentLog::query()
+                ->selectRaw('product_id, SUM(ABS(quantity_change)) as qty_sold, COUNT(id) as sale_count')
+                ->where('type', 'sale')
+                ->where('created_at', '>=', $periodStart)
+                ->when($locationId, fn($q) => $q->where('location_id', $locationId))
+                ->groupBy('product_id')
+                ->get()
+                ->keyBy('product_id');
+
+            // Query 2: Tanggal penjualan terakhir & masuk stok terakhir sepanjang waktu (1 query kondisional)
+            $historyDates = StockAdjustmentLog::query()
+                ->selectRaw("
+                    product_id,
+                    MAX(CASE WHEN type = 'sale' THEN created_at END) as last_sold_at,
+                    MAX(CASE WHEN reference_type IN ('purchase', 'transfer_in', 'initial') THEN created_at END) as last_restock_at
+                ")
+                ->when($locationId, fn($q) => $q->where('location_id', $locationId))
+                ->groupBy('product_id')
+                ->get()
+                ->keyBy('product_id');
+
+            // Query 3: Master produk aktif dengan stok > 0
+            if ($locationId) {
+                $stockRows = ProductStock::with('product')
+                    ->where('location_id', $locationId)
+                    ->where('stock', '>', 0)
+                    ->get();
+
+                $productEntries = [];
+                foreach ($stockRows as $ps) {
+                    if ($ps->product && $ps->product->is_active && !$ps->product->is_bundle) {
+                        $productEntries[] = [
+                            'product' => $ps->product,
+                            'stock'   => (float) $ps->stock,
+                        ];
+                    }
+                }
+            } else {
+                $products = Product::where('is_active', true)
+                    ->where('is_bundle', false)
+                    ->where('stock', '>', 0)
+                    ->select('id', 'sku', 'name', 'category', 'cost_price', 'selling_price', 'price_unit', 'stock', 'created_at')
+                    ->get();
+
+                $productEntries = [];
+                foreach ($products as $p) {
+                    $productEntries[] = [
+                        'product' => $p,
+                        'stock'   => (float) $p->stock,
+                    ];
+                }
+            }
+
+            $items = collect();
+            $totalInventoryCapital   = 0;
+            $deadCount               = 0;
+            $deadCapitalTotal        = 0;
+            $slowCount               = 0;
+            $slowCapitalTotal        = 0;
+            $newCount                = 0;
+            $problemPotentialRevenue = 0;
+
+            foreach ($productEntries as $entry) {
+                /** @var Product $prod */
+                $prod  = $entry['product'];
+                $stock = $entry['stock'];
+
+                $costPrice    = (float) $prod->cost_price;
+                $sellingPrice = (float) $prod->selling_price;
+                $deadCapital  = round($stock * $costPrice);
+                $potRevenue   = round($stock * $sellingPrice);
+                $totalInventoryCapital += $deadCapital;
+
+                $saleStat = $periodSales->get($prod->id);
+                $qtySold  = $saleStat ? (float) $saleStat->qty_sold : 0.0;
+                $saleCnt  = $saleStat ? (int) $saleStat->sale_count : 0;
+
+                $hist          = $historyDates->get($prod->id);
+                $lastSoldAt    = ($hist && $hist->last_sold_at) ? \Carbon\Carbon::parse($hist->last_sold_at) : null;
+                $lastRestockAt = ($hist && $hist->last_restock_at) ? \Carbon\Carbon::parse($hist->last_restock_at) : null;
+
+                $refRestockDate     = $lastRestockAt ?? $prod->created_at ?? $now;
+                $daysSinceRestock   = (int) $refRestockDate->diffInDays($now);
+                $refIdleDate        = $lastSoldAt ?? $refRestockDate;
+                $idleDays           = (int) $refIdleDate->diffInDays($now);
+
+                $velocity = $qtySold / $days;
+                $doiDays  = $velocity > 0 ? (int) round($stock / $velocity) : null;
+
+                // Klasifikasi Diagnosa
+                if ($qtySold <= 0) {
+                    if ($daysSinceRestock <= 14) {
+                        $status         = 'new';
+                        $statusLabel    = 'Stok Baru (≤14 Hari)';
+                        $recommendation = 'Pantau penjualan awal produk baru atau stok yang baru masuk.';
+                        $newCount++;
+                    } else {
+                        $status         = 'dead';
+                        $statusLabel    = 'Mati Total (Dead Stock)';
+                        $recommendation = 'Buat promo cuci gudang / paket bundling, atau transfer ke cabang lain yang lebih ramai.';
+                        $deadCount++;
+                        $deadCapitalTotal        += $deadCapital;
+                        $problemPotentialRevenue += $potRevenue;
+                    }
+                } elseif ($doiDays !== null && $doiDays > 120) {
+                    $status         = 'critical_slow';
+                    $statusLabel    = 'Sangat Lambat (DOI > 120h)';
+                    $recommendation = 'Hentikan PO / restock sementara, berikan diskon bertahap atau jadikan item bundling.';
+                    $slowCount++;
+                    $slowCapitalTotal        += $deadCapital;
+                    $problemPotentialRevenue += $potRevenue;
+                } elseif ($doiDays !== null && $doiDays >= 60) {
+                    $status         = 'slow';
+                    $statusLabel    = 'Slow Moving (DOI 60-120h)';
+                    $recommendation = 'Evaluasi harga jual, tampilkan di etalase depan atau promosikan di toko online.';
+                    $slowCount++;
+                    $slowCapitalTotal        += $deadCapital;
+                    $problemPotentialRevenue += $potRevenue;
+                } else {
+                    // Perputaran lancar (DOI < 60 hari) — tidak masuk daftar masalah
+                    continue;
+                }
+
+                $items->push([
+                    'product_id'       => $prod->id,
+                    'sku'              => $prod->sku ?: '-',
+                    'name'             => $prod->name,
+                    'category'         => $prod->category ?: 'Umum',
+                    'price_unit'       => $prod->price_unit ?: 'pcs',
+                    'stock'            => $stock,
+                    'display_stock'    => $this->formatStockUnit($stock, $prod->price_unit ?: 'pcs'),
+                    'cost_price'       => $costPrice,
+                    'selling_price'    => $sellingPrice,
+                    'dead_capital'     => $deadCapital,
+                    'potential_rev'    => $potRevenue,
+                    'qty_sold'         => $qtySold,
+                    'display_sold'     => $this->formatStockUnit($qtySold, $prod->price_unit ?: 'pcs'),
+                    'sale_count'       => $saleCnt,
+                    'doi_days'         => $doiDays,
+                    'last_sold_at'     => $lastSoldAt ? $lastSoldAt->translatedFormat('d M Y') : 'Belum pernah',
+                    'idle_days'        => $idleDays,
+                    'status'           => $status,
+                    'status_label'     => $statusLabel,
+                    'recommendation'   => $recommendation,
+                ]);
+            }
+
+            $problemCapital = $deadCapitalTotal + $slowCapitalTotal;
+            $problemPct     = $totalInventoryCapital > 0
+                ? round(($problemCapital / $totalInventoryCapital) * 100, 1)
+                : 0;
+
+            return [
+                'items'        => $items,
+                'generated_at' => $now->translatedFormat('d M Y H:i'),
+                'summary'      => [
+                    'total_inventory_capital'   => $totalInventoryCapital,
+                    'dead_count'                => $deadCount,
+                    'dead_capital_total'        => $deadCapitalTotal,
+                    'slow_count'                => $slowCount,
+                    'slow_capital_total'        => $slowCapitalTotal,
+                    'new_count'                 => $newCount,
+                    'problem_count'             => $deadCount + $slowCount,
+                    'problem_capital'           => $problemCapital,
+                    'problem_potential_revenue' => $problemPotentialRevenue,
+                    'problem_capital_percent'   => $problemPct,
+                ],
+            ];
+        });
+    }
+
+    /**
+     * Filter dan urutkan koleksi hasil diagnosa barang mati di memori.
+     */
+    private function filterAndSortDeadStock($items, string $status, string $category, string $search, string $sort)
+    {
+        $filtered = $items->filter(function ($row) use ($status, $category, $search) {
+            if ($status === 'all_issues' && !in_array($row['status'], ['dead', 'critical_slow', 'slow'], true)) {
+                return false;
+            }
+            if ($status === 'dead' && $row['status'] !== 'dead') {
+                return false;
+            }
+            if ($status === 'slow' && !in_array($row['status'], ['critical_slow', 'slow'], true)) {
+                return false;
+            }
+            if ($status === 'new' && $row['status'] !== 'new') {
+                return false;
+            }
+            if ($category !== '' && strcasecmp($row['category'], $category) !== 0) {
+                return false;
+            }
+            if ($search !== '') {
+                $needle = mb_strtolower($search);
+                if (!str_contains(mb_strtolower($row['name']), $needle) && !str_contains(mb_strtolower($row['sku']), $needle)) {
+                    return false;
+                }
+            }
+            return true;
+        });
+
+        return match ($sort) {
+            'idle_desc'  => $filtered->sortByDesc('idle_days')->values(),
+            'stock_desc' => $filtered->sortByDesc('stock')->values(),
+            default      => $filtered->sortByDesc('dead_capital')->values(),
+        };
+    }
+
+    /**
+     * Format angka stok dengan konversi ramah baca untuk satuan gram >= 1000.
+     */
+    private function formatStockUnit(float $qty, string $unit): string
+    {
+        $cleanUnit = strtolower(trim($unit));
+        if (in_array($cleanUnit, ['gram', 'gr', 'g'], true) && $qty >= 1000) {
+            return rtrim(rtrim(number_format($qty / 1000, 2, ',', '.'), '0'), ',') . ' kg';
+        }
+        return rtrim(rtrim(number_format($qty, 2, ',', '.'), '0'), ',') . ' ' . $unit;
+    }
+
+    /**
      * Private helper methods for formal PDF layout.
      */
     private function pdfHeader(): string

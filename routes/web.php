@@ -62,6 +62,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'admin'])->name('dashboard');
 
         // Wholesale Order Routes
+        Route::get('/wholesale-price-memory', [\App\Http\Controllers\TransactionController::class, 'getWholesalePriceMemory'])->name('wholesale.price-memory');
         Route::post('/wholesale-transactions', [\App\Http\Controllers\TransactionController::class, 'storeWholesale'])->name('wholesale-transactions.store');
         Route::get('/wholesale-transactions/{transaction}', [\App\Http\Controllers\TransactionController::class, 'showWholesale'])->name('wholesale-transactions.show');
         Route::put('/wholesale-transactions/{transaction}', [\App\Http\Controllers\TransactionController::class, 'updateWholesale'])->name('wholesale-transactions.update');
@@ -195,6 +196,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/stock-report', [\App\Http\Controllers\StockReportController::class, 'index'])->name('stock-report');
         Route::get('/stock-report/export', [\App\Http\Controllers\StockReportController::class, 'export'])->name('stock-report.export');
         Route::get('/stock-adjustment-log', [\App\Http\Controllers\StockReportController::class, 'adjustmentLog'])->name('stock-adjustment-log');
+        Route::get('/dead-stock', [\App\Http\Controllers\StockReportController::class, 'deadStock'])->name('dead-stock');
+        Route::get('/dead-stock/export', [\App\Http\Controllers\StockReportController::class, 'exportDeadStock'])->name('dead-stock.export');
 
         // Owner juga bisa approve/reject transfer
         Route::post('/stock-transfers/{stockTransfer}/approve', [\App\Http\Controllers\StockTransferController::class, 'approve'])->name('stock-transfers.approve');

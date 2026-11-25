@@ -1568,6 +1568,8 @@ class TransactionController extends Controller
             ]);
         }
 
+        $this->syncWholesalePriceMemory($request->customer_name, $request->items, $txDate);
+
         return response()->json([
             'success' => true,
             'message' => 'Nota partai berhasil dicatat!',
@@ -1973,12 +1975,82 @@ class TransactionController extends Controller
 
             $transaction->update($updateData);
 
+            $memoryDate = $request->filled('transaction_date')
+                ? Carbon::parse($request->transaction_date)
+                : $transaction->created_at;
+            $this->syncWholesalePriceMemory($request->customer_name, $request->items, $memoryDate);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Nota partai #' . $transaction->transaction_code . ' berhasil diperbarui!',
                 'transaction' => $transaction
             ]);
         });
+    }
+
+    /**
+     * Ambil memori harga jual terakhir milik pelanggan tertentu (Nota Partai).
+     */
+    public function getWholesalePriceMemory(Request $request)
+    {
+        $customerKey = \App\Models\WholesalePriceMemory::normalizeKey($request->query('customer_name'));
+        if ($customerKey === '') {
+            return response()->json(['success' => true, 'memories' => new \stdClass()]);
+        }
+
+        $memories = \App\Models\WholesalePriceMemory::where('customer_key', $customerKey)
+            ->get(['product_key', 'price_unit', 'last_selling_price', 'last_cost_price', 'last_transaction_at'])
+            ->keyBy('product_key');
+
+        return response()->json([
+            'success'  => true,
+            'memories' => $memories,
+        ]);
+    }
+
+    /**
+     * Simpan/perbarui memori harga jual terakhir per pelanggan + produk saat nota partai disimpan.
+     */
+    private function syncWholesalePriceMemory(?string $customerName, array $items, $txDate): void
+    {
+        $customerKey = \App\Models\WholesalePriceMemory::normalizeKey($customerName);
+        if ($customerKey === '') {
+            return;
+        }
+
+        $now     = now();
+        $rows    = [];
+        $dateVal = $txDate ?: $now;
+
+        foreach ($items as $item) {
+            $prodKey = \App\Models\WholesalePriceMemory::normalizeKey($item['name'] ?? '');
+            $sell    = intval($item['selling_price'] ?? 0);
+            if ($prodKey === '' || $sell <= 0) {
+                continue;
+            }
+
+            $cost = isset($item['cost_price']) && $item['cost_price'] !== '' ? intval($item['cost_price']) : null;
+            $unit = trim((string) ($item['price_unit'] ?? 'pcs')) ?: 'pcs';
+
+            $rows[$prodKey] = [
+                'customer_key'        => $customerKey,
+                'product_key'         => $prodKey,
+                'price_unit'          => $unit,
+                'last_selling_price'  => $sell,
+                'last_cost_price'     => $cost,
+                'last_transaction_at' => $dateVal,
+                'created_at'          => $now,
+                'updated_at'          => $now,
+            ];
+        }
+
+        if (!empty($rows)) {
+            \App\Models\WholesalePriceMemory::upsert(
+                array_values($rows),
+                ['customer_key', 'product_key'],
+                ['price_unit', 'last_selling_price', 'last_cost_price', 'last_transaction_at', 'updated_at']
+            );
+        }
     }
 
     /**

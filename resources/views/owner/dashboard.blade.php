@@ -1166,11 +1166,15 @@
 
             <!-- Side alert section: Low Stock products detailed listing -->
             <div class="lg:col-span-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-md flex flex-col gap-4">
-                <div class="flex justify-between items-start">
+                <div class="flex justify-between items-start gap-2">
                     <div>
                         <h4 class="font-extrabold text-slate-800 text-base leading-tight">Detail Peringatan Stok</h4>
                         <p class="text-xs text-slate-400 font-medium mt-1">Status stok kritis & valuasi modal toko:</p>
                     </div>
+                    <a href="{{ route('owner.dead-stock') }}"
+                       class="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[10px] font-extrabold uppercase tracking-wider transition shrink-0 whitespace-nowrap">
+                        Cek Barang Mati &rarr;
+                    </a>
                 </div>
 
                 <!-- Valuasi Modal Persediaan Summary -->
