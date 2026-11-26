@@ -240,8 +240,10 @@ class DashboardController extends Controller
         $titleLabel = $dateRanges['titleLabel'];
         $dateObj = $dateRanges['dateObj'];
 
-        // Resolve selected branch filter
+        // Resolve selected branch & sales channel filters
         $selectedBranch = $request->query('branch');
+        $selectedChannel = $this->normalizeChannel($request->query('channel'));
+        $isChannelFiltered = $selectedChannel !== 'all';
 
         // All unique branches for dropdown
         $branches = \DB::table('users')
@@ -259,10 +261,9 @@ class DashboardController extends Controller
             ->sort()
             ->values();
 
-        // Helper: base query with optional branch scope
-        $baseQuery = fn() => ($selectedBranch && $selectedBranch !== '')
-            ? \App\Models\Transaction::where('branch', $selectedBranch)
-            : \App\Models\Transaction::query();
+        // Helper: branch-scoped query (all channels) vs branch + channel-scoped query
+        $branchQuery = fn() => $this->makeTransactionQuery($selectedBranch, 'all');
+        $baseQuery = fn() => $this->makeTransactionQuery($selectedBranch, $selectedChannel);
 
         $expenseQuery = fn() => ($selectedBranch && $selectedBranch !== '')
             ? \App\Models\Expense::where('branch', $selectedBranch)
@@ -300,13 +301,15 @@ class DashboardController extends Controller
             ->where('payment_status', '!=', 'cancelled')
             ->first();
 
-        $activeExpenses = (float) $expenseQuery()
-            ->whereBetween('created_at', [$start, $end])
-            ->sum('amount');
+        // Pengeluaran operasional dicatat per cabang (tidak terpisah per saluran).
+        // Saat memfilter saluran spesifik (Retail/Wholesale), jangan kurangkan pengeluaran seluruh cabang ke satu saluran.
+        $activeExpenses = $isChannelFiltered
+            ? 0.0
+            : (float) $expenseQuery()->whereBetween('created_at', [$start, $end])->sum('amount');
 
-        $comparisonExpenses = (float) $expenseQuery()
-            ->whereBetween('created_at', [$comparisonStart, $comparisonEnd])
-            ->sum('amount');
+        $comparisonExpenses = $isChannelFiltered
+            ? 0.0
+            : (float) $expenseQuery()->whereBetween('created_at', [$comparisonStart, $comparisonEnd])->sum('amount');
 
         $activeRevenue = (float) ($activeStats->omset ?? 0);
         $activeGrossProfit = (float) ($activeStats->gross_profit ?? 0);
@@ -332,16 +335,31 @@ class DashboardController extends Controller
             ->whereBetween('created_at', [$start, $end])
             ->sum('total_price');
 
-        // B. Penerimaan cicilan & DP dari transaksi tempo yang masuk pada rentang filter ini
-        $installmentCashQuery = \App\Models\InstallmentPayment::whereBetween('installment_payments.created_at', [$start, $end])
-            ->whereHas('transaction', function ($q) use ($selectedBranch) {
-                $q->where('payment_method', 'Piutang / Tempo')
-                  ->where('payment_status', '!=', 'cancelled');
-                if ($selectedBranch && $selectedBranch !== '') {
-                    $q->where('branch', $selectedBranch);
-                }
-            });
-        $installmentCash = (float) $installmentCashQuery->sum('amount');
+        // B. Penerimaan cicilan & DP dari transaksi tempo yang masuk pada rentang filter ini (hanya wholesale)
+        if ($selectedChannel === 'retail') {
+            $installmentCash = 0.0;
+            $compInstallmentCash = 0.0;
+        } else {
+            $installmentCashQuery = \App\Models\InstallmentPayment::whereBetween('installment_payments.created_at', [$start, $end])
+                ->whereHas('transaction', function ($q) use ($selectedBranch) {
+                    $q->where('payment_method', 'Piutang / Tempo')
+                      ->where('payment_status', '!=', 'cancelled');
+                    if ($selectedBranch && $selectedBranch !== '') {
+                        $q->where('branch', $selectedBranch);
+                    }
+                });
+            $installmentCash = (float) $installmentCashQuery->sum('amount');
+
+            $compInstallmentCashQuery = \App\Models\InstallmentPayment::whereBetween('installment_payments.created_at', [$comparisonStart, $comparisonEnd])
+                ->whereHas('transaction', function ($q) use ($selectedBranch) {
+                    $q->where('payment_method', 'Piutang / Tempo')
+                      ->where('payment_status', '!=', 'cancelled');
+                    if ($selectedBranch && $selectedBranch !== '') {
+                        $q->where('branch', $selectedBranch);
+                    }
+                });
+            $compInstallmentCash = (float) $compInstallmentCashQuery->sum('amount');
+        }
         $realizedCash = $directCash + $installmentCash;
 
         // Perhitungan perbandingan kas masuk untuk periode lalu
@@ -354,16 +372,6 @@ class DashboardController extends Controller
             ->where('payment_status', 'paid')
             ->whereBetween('created_at', [$comparisonStart, $comparisonEnd])
             ->sum('total_price');
-
-        $compInstallmentCashQuery = \App\Models\InstallmentPayment::whereBetween('installment_payments.created_at', [$comparisonStart, $comparisonEnd])
-            ->whereHas('transaction', function ($q) use ($selectedBranch) {
-                $q->where('payment_method', 'Piutang / Tempo')
-                  ->where('payment_status', '!=', 'cancelled');
-                if ($selectedBranch && $selectedBranch !== '') {
-                    $q->where('branch', $selectedBranch);
-                }
-            });
-        $compInstallmentCash = (float) $compInstallmentCashQuery->sum('amount');
         $comparisonRealizedCash = $compDirectCash + $compInstallmentCash;
 
         $cashGrowthPercent = 0;
@@ -373,24 +381,29 @@ class DashboardController extends Controller
             $cashGrowthPercent = 100;
         }
 
-        // C. Piutang tempo yang belum cair (seluruh transaksi tempo unpaid)
-        $unpaidTempoTrxQuery = $baseQuery()
-            ->where('transaction_type', 'wholesale')
-            ->where('payment_method', 'Piutang / Tempo')
-            ->where('payment_status', 'unpaid');
-        $unpaidTempoTotal = (float) (clone $unpaidTempoTrxQuery)->sum('total_price');
-        $unpaidTempoPaid = (float) \App\Models\InstallmentPayment::whereIn('transaction_id', (clone $unpaidTempoTrxQuery)->select('id'))->sum('amount');
-        $outstandingReceivables = max(0, $unpaidTempoTotal - $unpaidTempoPaid);
+        // C. Piutang tempo yang belum cair (seluruh transaksi wholesale tempo unpaid)
+        if ($selectedChannel === 'retail') {
+            $outstandingReceivables = 0.0;
+            $activePeriodReceivables = 0.0;
+        } else {
+            $unpaidTempoTrxQuery = $baseQuery()
+                ->where('transaction_type', 'wholesale')
+                ->where('payment_method', 'Piutang / Tempo')
+                ->where('payment_status', 'unpaid');
+            $unpaidTempoTotal = (float) (clone $unpaidTempoTrxQuery)->sum('total_price');
+            $unpaidTempoPaid = (float) \App\Models\InstallmentPayment::whereIn('transaction_id', (clone $unpaidTempoTrxQuery)->select('id'))->sum('amount');
+            $outstandingReceivables = max(0, $unpaidTempoTotal - $unpaidTempoPaid);
 
-        // Piutang yang belum cair khusus dari transaksi yang terjadi di periode aktif yang dipilih:
-        $activePeriodTempoQuery = $baseQuery()
-            ->where('transaction_type', 'wholesale')
-            ->where('payment_method', 'Piutang / Tempo')
-            ->where('payment_status', 'unpaid')
-            ->whereBetween('created_at', [$start, $end]);
-        $activePeriodTempoTotal = (float) (clone $activePeriodTempoQuery)->sum('total_price');
-        $activePeriodTempoPaid = (float) \App\Models\InstallmentPayment::whereIn('transaction_id', (clone $activePeriodTempoQuery)->select('id'))->sum('amount');
-        $activePeriodReceivables = max(0, $activePeriodTempoTotal - $activePeriodTempoPaid);
+            // Piutang yang belum cair khusus dari transaksi yang terjadi di periode aktif yang dipilih:
+            $activePeriodTempoQuery = $baseQuery()
+                ->where('transaction_type', 'wholesale')
+                ->where('payment_method', 'Piutang / Tempo')
+                ->where('payment_status', 'unpaid')
+                ->whereBetween('created_at', [$start, $end]);
+            $activePeriodTempoTotal = (float) (clone $activePeriodTempoQuery)->sum('total_price');
+            $activePeriodTempoPaid = (float) \App\Models\InstallmentPayment::whereIn('transaction_id', (clone $activePeriodTempoQuery)->select('id'))->sum('amount');
+            $activePeriodReceivables = max(0, $activePeriodTempoTotal - $activePeriodTempoPaid);
+        }
 
         // Calculate growth percentages
         $revenueGrowthPercent = 0;
@@ -434,18 +447,37 @@ class DashboardController extends Controller
             $aovGrowthPercent = 100;
         }
 
+        // Segmentasi Saluran selalu menampilkan komparasi Retail vs Wholesale untuk cabang & periode terpilih
+        $channelSummaryStats = $isChannelFiltered
+            ? $branchQuery()
+                ->selectRaw("
+                    SUM(total_price) as omset,
+                    SUM(CASE WHEN transaction_type = 'wholesale' THEN total_price ELSE 0 END) as wholesale_omset,
+                    COUNT(CASE WHEN transaction_type = 'wholesale' THEN 1 END) as wholesale_count,
+                    SUM(CASE WHEN transaction_type = 'wholesale' THEN (total_price - total_cost) ELSE 0 END) as wholesale_profit,
+                    SUM(CASE WHEN transaction_type != 'wholesale' OR transaction_type IS NULL THEN total_price ELSE 0 END) as retail_omset,
+                    COUNT(CASE WHEN transaction_type != 'wholesale' OR transaction_type IS NULL THEN 1 END) as retail_count,
+                    SUM(CASE WHEN transaction_type != 'wholesale' OR transaction_type IS NULL THEN (total_price - total_cost) ELSE 0 END) as retail_profit
+                ")
+                ->whereBetween('created_at', [$start, $end])
+                ->where('payment_status', '!=', 'cancelled')
+                ->first()
+            : $activeStats;
+
+        $channelTotalRevenue = (float) ($channelSummaryStats->omset ?? 0);
+
         $retailStats = [
-            'omset' => (float) ($activeStats->retail_omset ?? 0),
-            'count' => (int) ($activeStats->retail_count ?? 0),
-            'profit' => (float) ($activeStats->retail_profit ?? 0),
-            'share_percent' => $activeRevenue > 0 ? round(((float) ($activeStats->retail_omset ?? 0) / $activeRevenue) * 100, 1) : 0,
+            'omset' => (float) ($channelSummaryStats->retail_omset ?? 0),
+            'count' => (int) ($channelSummaryStats->retail_count ?? 0),
+            'profit' => (float) ($channelSummaryStats->retail_profit ?? 0),
+            'share_percent' => $channelTotalRevenue > 0 ? round(((float) ($channelSummaryStats->retail_omset ?? 0) / $channelTotalRevenue) * 100, 1) : 0,
         ];
 
         $wholesaleStats = [
-            'omset' => (float) ($activeStats->wholesale_omset ?? 0),
-            'count' => (int) ($activeStats->wholesale_count ?? 0),
-            'profit' => (float) ($activeStats->wholesale_profit ?? 0),
-            'share_percent' => $activeRevenue > 0 ? round(((float) ($activeStats->wholesale_omset ?? 0) / $activeRevenue) * 100, 1) : 0,
+            'omset' => (float) ($channelSummaryStats->wholesale_omset ?? 0),
+            'count' => (int) ($channelSummaryStats->wholesale_count ?? 0),
+            'profit' => (float) ($channelSummaryStats->wholesale_profit ?? 0),
+            'share_percent' => $channelTotalRevenue > 0 ? round(((float) ($channelSummaryStats->wholesale_omset ?? 0) / $channelTotalRevenue) * 100, 1) : 0,
         ];
 
         $paymentBreakdown = [
@@ -474,7 +506,8 @@ class DashboardController extends Controller
         // Multi-Branch Scorecard (when All Branches are selected)
         $branchScorecard = [];
         if (!$selectedBranch || $selectedBranch === '') {
-            $branchAggregates = \App\Models\Transaction::selectRaw("
+            $branchAggregates = $this->makeTransactionQuery(null, $selectedChannel)
+                ->selectRaw("
                     COALESCE(branch, 'Pusat Cianjur') as branch_name,
                     SUM(total_price) as omset,
                     SUM(total_price - total_cost) as gross_profit,
@@ -487,13 +520,15 @@ class DashboardController extends Controller
                 ->orderByDesc('omset')
                 ->get();
 
-            $branchExpenses = \App\Models\Expense::selectRaw("
-                    COALESCE(branch, 'Pusat Cianjur') as branch_name,
-                    SUM(amount) as total_expense
-                ")
-                ->whereBetween('created_at', [$start, $end])
-                ->groupBy('branch_name')
-                ->pluck('total_expense', 'branch_name');
+            $branchExpenses = $isChannelFiltered
+                ? collect()
+                : \App\Models\Expense::selectRaw("
+                        COALESCE(branch, 'Pusat Cianjur') as branch_name,
+                        SUM(amount) as total_expense
+                    ")
+                    ->whereBetween('created_at', [$start, $end])
+                    ->groupBy('branch_name')
+                    ->pluck('total_expense', 'branch_name');
 
             foreach ($branchAggregates as $b) {
                 $exp = (float) ($branchExpenses[$b->branch_name] ?? 0);
@@ -797,7 +832,7 @@ class DashboardController extends Controller
 
         // 7. Best sellers — Cache 10 menit untuk efisiensi parsing regex string items_summary
         $bestSellerDay = ($filterType === 'harian') ? $dateObj : $start;
-        $bsCacheKey = 'owner_bs_' . md5(($selectedBranch ?? 'all') . '_' . $bestSellerDay->format('Y-m-d') . '_' . $startOfWeek->format('Y-m-d') . '_' . $startOfMonth->format('Y-m'));
+        $bsCacheKey = 'owner_bs_' . md5(($selectedBranch ?? 'all') . '_' . $selectedChannel . '_' . $bestSellerDay->format('Y-m-d') . '_' . $startOfWeek->format('Y-m-d') . '_' . $startOfMonth->format('Y-m'));
 
         $bestSellersData = Cache::remember($bsCacheKey, 600, function () use ($baseQuery, $bestSellerDay, $startOfWeek, $endOfWeek, $startOfMonth, $endOfMonth) {
             $todayTransactions = $baseQuery()
@@ -837,6 +872,8 @@ class DashboardController extends Controller
             'selectedWeek',
             'selectedMonth',
             'selectedBranch',
+            'selectedChannel',
+            'isChannelFiltered',
             'branches',
             'activeRevenue',
             'activeProfit',
@@ -877,6 +914,55 @@ class DashboardController extends Controller
             'branchScorecard',
             'inventoryMetrics'
         ));
+    }
+
+    /**
+     * Normalize requested sales channel filter ('all', 'retail', 'wholesale').
+     */
+    private function normalizeChannel(?string $channel): string
+    {
+        return in_array($channel, ['retail', 'wholesale'], true) ? $channel : 'all';
+    }
+
+    /**
+     * Human-readable label for selected sales channel.
+     */
+    private function channelLabel(string $channel): string
+    {
+        return match ($channel) {
+            'retail' => 'Retail POS (Kasir)',
+            'wholesale' => 'Wholesale (Partai)',
+            default => 'Semua Saluran',
+        };
+    }
+
+    /**
+     * Apply sales channel filter to a Transaction query.
+     */
+    private function applyChannelScope($query, string $channel)
+    {
+        if ($channel === 'wholesale') {
+            return $query->where('transaction_type', 'wholesale');
+        }
+        if ($channel === 'retail') {
+            return $query->where(function ($q) {
+                $q->where('transaction_type', '!=', 'wholesale')
+                  ->orWhereNull('transaction_type');
+            });
+        }
+        return $query;
+    }
+
+    /**
+     * Build a Transaction query scoped by optional branch and sales channel.
+     */
+    private function makeTransactionQuery(?string $branch, string $channel = 'all')
+    {
+        $query = \App\Models\Transaction::query();
+        if ($branch && $branch !== '') {
+            $query->where('branch', $branch);
+        }
+        return $this->applyChannelScope($query, $channel);
     }
 
     /**
@@ -1130,12 +1216,13 @@ class DashboardController extends Controller
     public function exportBestSellers(Request $request)
     {
         $activeBranch = $request->query('branch', '');
+        $selectedChannel = $this->normalizeChannel($request->query('channel'));
+        $channelLabel = $this->channelLabel($selectedChannel);
         $branchSuffix = $activeBranch ? '_' . str_replace(' ', '_', $activeBranch) : '';
+        $channelSuffix = $selectedChannel !== 'all' ? '_' . $selectedChannel : '';
 
-        // Helper: base query with optional branch scope
-        $baseQuery = fn() => ($activeBranch && $activeBranch !== '')
-            ? \App\Models\Transaction::where('branch', $activeBranch)
-            : \App\Models\Transaction::query();
+        // Helper: base query with optional branch & channel scope
+        $baseQuery = fn() => $this->makeTransactionQuery($activeBranch, $selectedChannel);
 
         $dateRanges = $this->resolveDateRanges($request);
         $filterType = $dateRanges['filterType'];
@@ -1167,7 +1254,7 @@ class DashboardController extends Controller
             $totalQty += $item['qty'];
         }
 
-        $renderTemplate = function () use ($bestSellers, $activeBranch, $periodLabel, $printDate, $printedBy, $isPdf, $totalItems, $totalQty) {
+        $renderTemplate = function () use ($bestSellers, $activeBranch, $channelLabel, $periodLabel, $printDate, $printedBy, $isPdf, $totalItems, $totalQty) {
             echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
             echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
             echo '<style>' . $this->excelStyles($isPdf) . '</style></head><body>';
@@ -1199,6 +1286,7 @@ class DashboardController extends Controller
             }
             echo '<tr><td class="meta-label">Periode</td><td colspan="5" class="meta-value">' . htmlspecialchars($periodLabel) . '</td></tr>';
             echo '<tr><td class="meta-label">Filter Cabang</td><td colspan="5" class="meta-value">' . htmlspecialchars($activeBranch ? $activeBranch : 'Semua Cabang') . '</td></tr>';
+            echo '<tr><td class="meta-label">Saluran Penjualan</td><td colspan="5" class="meta-value">' . htmlspecialchars($channelLabel) . '</td></tr>';
             echo '<tr><td class="meta-label">Tanggal Cetak</td><td colspan="5" class="meta-value">' . htmlspecialchars($printDate) . '</td></tr>';
             echo '<tr><td class="meta-label">Dicetak Oleh</td><td colspan="5" class="meta-value">' . htmlspecialchars($printedBy) . '</td></tr>';
             echo '<tr><td colspan="6" class="spacer"></td></tr>';
@@ -1252,14 +1340,14 @@ class DashboardController extends Controller
 
                 $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
                 $pdf->setPaper('a4', 'portrait');
-                return $pdf->download($filePrefix . $branchSuffix . '_' . $now->format('Y-m-d') . '.pdf');
+                return $pdf->download($filePrefix . $branchSuffix . $channelSuffix . '_' . $now->format('Y-m-d') . '.pdf');
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::error('Best Seller PDF export failed: ' . $e->getMessage());
                 return response('Gagal mengekspor PDF Produk Terlaris: ' . $e->getMessage(), 500);
             }
         }
 
-        $filename = $filePrefix . $branchSuffix . '_' . $now->format('Y-m-d') . '.xls';
+        $filename = $filePrefix . $branchSuffix . $channelSuffix . '_' . $now->format('Y-m-d') . '.xls';
         return response()->streamDownload($renderTemplate, $filename, [
             'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
             'Cache-Control' => 'no-cache, no-store, must-revalidate',
@@ -1279,6 +1367,7 @@ class DashboardController extends Controller
         }
 
         $activeBranch = $request->query('branch', '');
+        $selectedChannel = $this->normalizeChannel($request->query('channel'));
         $dateRanges = $this->resolveDateRanges($request);
         $filterType = $request->query('period_type', $dateRanges['filterType']);
 
@@ -1301,9 +1390,7 @@ class DashboardController extends Controller
             $periodLabel = 'Bulanan: ' . $start->translatedFormat('F Y');
         }
 
-        $baseQuery = fn() => ($activeBranch && $activeBranch !== '')
-            ? \App\Models\Transaction::where('branch', $activeBranch)
-            : \App\Models\Transaction::query();
+        $baseQuery = fn() => $this->makeTransactionQuery($activeBranch, $selectedChannel);
 
         // 1. Fetch matching transactions in range with created_at index
         $transactions = $baseQuery()
@@ -1470,6 +1557,7 @@ class DashboardController extends Controller
     public function getBestSellersAll(Request $request)
     {
         $activeBranch = $request->query('branch', '');
+        $selectedChannel = $this->normalizeChannel($request->query('channel'));
         $dateRanges = $this->resolveDateRanges($request);
         $filterType = $request->query('period_type', $dateRanges['filterType']);
         $limit = max(10, min(100, (int) $request->query('limit', 50)));
@@ -1493,9 +1581,7 @@ class DashboardController extends Controller
             $periodLabel = 'Bulanan: ' . $start->translatedFormat('F Y');
         }
 
-        $baseQuery = fn() => ($activeBranch && $activeBranch !== '')
-            ? \App\Models\Transaction::where('branch', $activeBranch)
-            : \App\Models\Transaction::query();
+        $baseQuery = fn() => $this->makeTransactionQuery($activeBranch, $selectedChannel);
 
         $transactions = $baseQuery()->select('items_summary', 'created_at')
             ->whereBetween('created_at', [$start, $end])
@@ -1508,6 +1594,8 @@ class DashboardController extends Controller
             'success' => true,
             'period_label' => $periodLabel,
             'period_type' => $filterType,
+            'channel' => $selectedChannel,
+            'channel_label' => $this->channelLabel($selectedChannel),
             'limit' => $limit,
             'total_items' => count($bestSellers),
             'items' => $bestSellers,
@@ -1520,7 +1608,10 @@ class DashboardController extends Controller
     public function exportOwnerReport(Request $request)
     {
         $activeBranch = $request->query('branch', '');
+        $selectedChannel = $this->normalizeChannel($request->query('channel'));
+        $channelLabel = $this->channelLabel($selectedChannel);
         $branchSuffix = $activeBranch ? '_' . str_replace(' ', '_', $activeBranch) : '';
+        $channelSuffix = $selectedChannel !== 'all' ? '_' . $selectedChannel : '';
 
         $now = \Carbon\Carbon::now();
         $printDate = $now->translatedFormat('d F Y - H:i');
@@ -1543,13 +1634,11 @@ class DashboardController extends Controller
         $titleLabel = $dateRanges['titleLabel'];
         $filePrefix = $dateRanges['filePrefix'];
 
-        $baseQuery = fn() => ($activeBranch && $activeBranch !== '')
-            ? \App\Models\Transaction::where('branch', $activeBranch)
-            : \App\Models\Transaction::query();
+        $baseQuery = fn() => $this->makeTransactionQuery($activeBranch, $selectedChannel);
 
         if ($filterType === 'harian') {
             $label = 'Harian';
-            $filename = $filePrefix . $branchSuffix . '_' . $now->format('Y-m-d') . '.xls';
+            $filename = $filePrefix . $branchSuffix . $channelSuffix . '_' . $now->format('Y-m-d') . '.xls';
             $todayTransactions = $baseQuery()->with('cashier')
                 ->whereBetween('created_at', [$start, $end])
                 ->latest()
@@ -1565,7 +1654,7 @@ class DashboardController extends Controller
             }
             $avgOmset = $totalTransactions > 0 ? (int)round($totalOmset / $totalTransactions) : 0;
 
-            $renderTemplate = function () use ($todayTransactions, $activeBranch, $printDate, $printedBy, $now, $start, $label, $isPdf, $totalTransactions, $totalOmset, $totalProfit, $avgOmset) {
+            $renderTemplate = function () use ($todayTransactions, $activeBranch, $channelLabel, $printDate, $printedBy, $now, $start, $label, $isPdf, $totalTransactions, $totalOmset, $totalProfit, $avgOmset) {
                 echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
                 echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
                 echo '<style>' . $this->excelStyles($isPdf) . '</style></head><body>';
@@ -1591,6 +1680,7 @@ class DashboardController extends Controller
                 }
                 echo '<tr><td class="meta-label">Filter Waktu</td><td colspan="8" class="meta-value">' . $label . ' (' . $start->translatedFormat('d F Y') . ')</td></tr>';
                 echo '<tr><td class="meta-label">Filter Cabang</td><td colspan="8" class="meta-value">' . htmlspecialchars($activeBranch ? $activeBranch : 'Semua Cabang') . '</td></tr>';
+                echo '<tr><td class="meta-label">Saluran Penjualan</td><td colspan="8" class="meta-value">' . htmlspecialchars($channelLabel) . '</td></tr>';
                 echo '<tr><td class="meta-label">Tanggal Cetak</td><td colspan="8" class="meta-value">' . htmlspecialchars($printDate) . '</td></tr>';
                 echo '<tr><td class="meta-label">Dicetak Oleh</td><td colspan="8" class="meta-value">' . htmlspecialchars($printedBy) . '</td></tr>';
                 echo '<tr><td colspan="9" class="spacer"></td></tr>';
@@ -1684,7 +1774,7 @@ class DashboardController extends Controller
                 'Expires' => '0',
             ]);
         } elseif ($filterType === 'mingguan') {
-            $filename = $filePrefix . $branchSuffix . '_' . $now->format('Y-m-d') . '.xls';
+            $filename = $filePrefix . $branchSuffix . $channelSuffix . '_' . $now->format('Y-m-d') . '.xls';
             
             $days = [];
             for ($date = $startOfWeek->copy(); $date->lte($endOfWeek); $date->addDay()) {
@@ -1697,10 +1787,7 @@ class DashboardController extends Controller
                 ];
             }
 
-            $query = \App\Models\Transaction::query();
-            if ($activeBranch) {
-                $query->where('branch', $activeBranch);
-            }
+            $query = $baseQuery();
 
             $weeklyTrxs = $query->whereBetween('created_at', [$startOfWeek, $endOfWeek])->get();
             foreach ($weeklyTrxs as $trx) {
@@ -1722,7 +1809,7 @@ class DashboardController extends Controller
                 $totalCount += $day['count'];
             }
 
-            $renderTemplate = function () use ($days, $startOfWeek, $endOfWeek, $activeBranch, $printDate, $printedBy, $isPdf, $totalOmset, $totalProfit, $totalCount) {
+            $renderTemplate = function () use ($days, $startOfWeek, $endOfWeek, $activeBranch, $channelLabel, $printDate, $printedBy, $isPdf, $totalOmset, $totalProfit, $totalCount) {
                 echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
                 echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
                 echo '<style>' . $this->excelStyles($isPdf) . '</style></head><body>';
@@ -1747,6 +1834,7 @@ class DashboardController extends Controller
                 }
                 echo '<tr><td class="meta-label">Rentang Waktu</td><td colspan="6" class="meta-value">' . htmlspecialchars($startOfWeek->translatedFormat('d M Y') . ' s/d ' . $endOfWeek->translatedFormat('d M Y')) . '</td></tr>';
                 echo '<tr><td class="meta-label">Filter Cabang</td><td colspan="6" class="meta-value">' . htmlspecialchars($activeBranch ? $activeBranch : 'Semua Cabang') . '</td></tr>';
+                echo '<tr><td class="meta-label">Saluran Penjualan</td><td colspan="6" class="meta-value">' . htmlspecialchars($channelLabel) . '</td></tr>';
                 echo '<tr><td class="meta-label">Tanggal Cetak</td><td colspan="6" class="meta-value">' . htmlspecialchars($printDate) . '</td></tr>';
                 echo '<tr><td class="meta-label">Dicetak Oleh</td><td colspan="6" class="meta-value">' . htmlspecialchars($printedBy) . '</td></tr>';
                 echo '<tr><td colspan="7" class="spacer"></td></tr>';
@@ -1843,7 +1931,7 @@ class DashboardController extends Controller
                 'Expires' => '0',
             ]);
         } else { // bulanan
-            $filename = $filePrefix . $branchSuffix . '_' . $now->format('Y-m-d') . '.xls';
+            $filename = $filePrefix . $branchSuffix . $channelSuffix . '_' . $now->format('Y-m-d') . '.xls';
             $daysInMonth = $startOfMonth->daysInMonth;
 
             $weeksBreakdown = [
@@ -1856,10 +1944,7 @@ class DashboardController extends Controller
                 $weeksBreakdown[5] = ['start' => 29, 'end' => $daysInMonth, 'label' => 'Minggu 5', 'sub_label' => '29 - ' . $daysInMonth . ' ' . $startOfMonth->translatedFormat('F'), 'omset' => 0, 'profit' => 0, 'count' => 0];
             }
 
-            $query = \App\Models\Transaction::query();
-            if ($activeBranch) {
-                $query->where('branch', $activeBranch);
-            }
+            $query = $baseQuery();
 
             $monthlyTrxs = $query->whereBetween('created_at', [$startOfMonth, $endOfMonth])->get();
             foreach ($monthlyTrxs as $trx) {
@@ -1885,7 +1970,7 @@ class DashboardController extends Controller
                 $totalCount += $w['count'];
             }
 
-            $renderTemplate = function () use ($weeksBreakdown, $startOfMonth, $activeBranch, $printDate, $printedBy, $isPdf, $totalOmset, $totalProfit, $totalCount) {
+            $renderTemplate = function () use ($weeksBreakdown, $startOfMonth, $activeBranch, $channelLabel, $printDate, $printedBy, $isPdf, $totalOmset, $totalProfit, $totalCount) {
                 echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
                 echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
                 echo '<style>' . $this->excelStyles($isPdf) . '</style></head><body>';
@@ -1910,6 +1995,7 @@ class DashboardController extends Controller
                 }
                 echo '<tr><td class="meta-label">Rentang Waktu</td><td colspan="6" class="meta-value">' . htmlspecialchars($startOfMonth->translatedFormat('F Y')) . '</td></tr>';
                 echo '<tr><td class="meta-label">Filter Cabang</td><td colspan="6" class="meta-value">' . htmlspecialchars($activeBranch ? $activeBranch : 'Semua Cabang') . '</td></tr>';
+                echo '<tr><td class="meta-label">Saluran Penjualan</td><td colspan="6" class="meta-value">' . htmlspecialchars($channelLabel) . '</td></tr>';
                 echo '<tr><td class="meta-label">Tanggal Cetak</td><td colspan="6" class="meta-value">' . htmlspecialchars($printDate) . '</td></tr>';
                 echo '<tr><td class="meta-label">Dicetak Oleh</td><td colspan="6" class="meta-value">' . htmlspecialchars($printedBy) . '</td></tr>';
                 echo '<tr><td colspan="7" class="spacer"></td></tr>';
@@ -2126,12 +2212,17 @@ class DashboardController extends Controller
                 $skill = 'general';
             }
 
-            // Cache key includes skill so each mode has its own cache entry
+            $selectedChannel = $this->normalizeChannel($request->query('channel'));
+            $isChannelFiltered = $selectedChannel !== 'all';
+            $channelText = $this->channelLabel($selectedChannel);
+
+            // Cache key includes skill and channel so each mode has its own cache entry
             $cacheKey = 'owner_ai_analysis_' . md5(json_encode([
                 'filter_type' => $filterType,
                 'start'       => $start->toDateTimeString(),
                 'end'         => $end->toDateTimeString(),
                 'branch'      => $selectedBranch,
+                'channel'     => $selectedChannel,
                 'skill'       => $skill,
             ]));
 
@@ -2142,11 +2233,9 @@ class DashboardController extends Controller
             }
 
             $analysis = Cache::remember($cacheKey, 3600, function () use (
-                $start, $end, $comparisonStart, $comparisonEnd, $selectedBranch, $filterType, $titleLabel, $comparisonLabel, $skill
+                $start, $end, $comparisonStart, $comparisonEnd, $selectedBranch, $selectedChannel, $isChannelFiltered, $channelText, $filterType, $titleLabel, $comparisonLabel, $skill
             ) {
-                $baseQuery = fn() => ($selectedBranch && $selectedBranch !== '')
-                    ? \App\Models\Transaction::where('branch', $selectedBranch)
-                    : \App\Models\Transaction::query();
+                $baseQuery = fn() => $this->makeTransactionQuery($selectedBranch, $selectedChannel);
 
                 $expenseQuery = fn() => ($selectedBranch && $selectedBranch !== '')
                     ? \App\Models\Expense::where('branch', $selectedBranch)
@@ -2162,13 +2251,13 @@ class DashboardController extends Controller
                     ->whereBetween('created_at', [$comparisonStart, $comparisonEnd])
                     ->first();
 
-                $activeExpenses = (float) $expenseQuery()
-                    ->whereBetween('created_at', [$start, $end])
-                    ->sum('amount');
+                $activeExpenses = $isChannelFiltered
+                    ? 0.0
+                    : (float) $expenseQuery()->whereBetween('created_at', [$start, $end])->sum('amount');
 
-                $comparisonExpenses = (float) $expenseQuery()
-                    ->whereBetween('created_at', [$comparisonStart, $comparisonEnd])
-                    ->sum('amount');
+                $comparisonExpenses = $isChannelFiltered
+                    ? 0.0
+                    : (float) $expenseQuery()->whereBetween('created_at', [$comparisonStart, $comparisonEnd])->sum('amount');
 
                 $activeRevenue = (float) ($activeStats->omset ?? 0);
                 $activeGrossProfit = (float) ($activeStats->gross_profit ?? 0);
@@ -2232,7 +2321,7 @@ class DashboardController extends Controller
                 }
 
                 // ── Build prompt & gather data based on selected skill ─────
-                $branchText  = $selectedBranch ? "Cabang: {$selectedBranch}" : "Semua Cabang";
+                $branchText  = ($selectedBranch ? "Cabang: {$selectedBranch}" : "Semua Cabang") . " | Saluran: {$channelText}";
                 $geminiKey   = config('services.gemini.key');
                 $geminiModel = config('services.gemini.model', 'gemini-2.5-flash');
 
@@ -2277,26 +2366,28 @@ class DashboardController extends Controller
                     $totalDaysInMonth = $now->daysInMonth;
                     $elapsedFraction = $currentDay / $totalDaysInMonth;
 
-                    $monthlyData = \App\Models\Transaction::selectRaw(
+                    $monthlyData = $this->makeTransactionQuery($selectedBranch ?: null, $selectedChannel)
+                        ->selectRaw(
                             "DATE_FORMAT(created_at, '%Y-%m') as month_key,
                              DATE_FORMAT(created_at, '%M %Y') as month_label,
                              SUM(total_price) as omset,
                              SUM(total_price - total_cost) as gross_profit,
                              COUNT(id) as trx_count"
                         )
-                        ->when($selectedBranch, fn($q) => $q->where('branch', $selectedBranch))
                         ->where('created_at', '>=', $sixMonthsAgo)
                         ->groupBy('month_key', 'month_label')
                         ->orderBy('month_key')
                         ->get();
 
-                    $monthlyExpenses = \App\Models\Expense::selectRaw(
-                            "DATE_FORMAT(created_at, '%Y-%m') as month_key, SUM(amount) as total_expense"
-                        )
-                        ->when($selectedBranch, fn($q) => $q->where('branch', $selectedBranch))
-                        ->where('created_at', '>=', $sixMonthsAgo)
-                        ->groupBy('month_key')
-                        ->pluck('total_expense', 'month_key');
+                    $monthlyExpenses = $isChannelFiltered
+                        ? collect()
+                        : \App\Models\Expense::selectRaw(
+                                "DATE_FORMAT(created_at, '%Y-%m') as month_key, SUM(amount) as total_expense"
+                            )
+                            ->when($selectedBranch, fn($q) => $q->where('branch', $selectedBranch))
+                            ->where('created_at', '>=', $sixMonthsAgo)
+                            ->groupBy('month_key')
+                            ->pluck('total_expense', 'month_key');
 
                     $historyStr = '';
                     foreach ($monthlyData as $m) {
@@ -2343,7 +2434,8 @@ class DashboardController extends Controller
                 // SKILL: branch_comparison — Perbandingan Antar Cabang
                 // ────────────────────────────────────────────────────────────
                 } elseif ($skill === 'branch_comparison') {
-                    $branchStats = \App\Models\Transaction::selectRaw(
+                    $branchStats = $this->makeTransactionQuery(null, $selectedChannel)
+                        ->selectRaw(
                             "COALESCE(branch, 'Cabang Rumah') as branch_name,
                              SUM(total_price) as omset,
                              SUM(total_price - total_cost) as gross_profit,
@@ -2355,12 +2447,14 @@ class DashboardController extends Controller
                         ->orderByDesc('omset')
                         ->get();
 
-                    $branchExpenses = \App\Models\Expense::selectRaw(
-                            "COALESCE(branch, 'Cabang Rumah') as branch_name, SUM(amount) as total_expense"
-                        )
-                        ->whereBetween('created_at', [$start, $end])
-                        ->groupBy('branch_name')
-                        ->pluck('total_expense', 'branch_name');
+                    $branchExpenses = $isChannelFiltered
+                        ? collect()
+                        : \App\Models\Expense::selectRaw(
+                                "COALESCE(branch, 'Cabang Rumah') as branch_name, SUM(amount) as total_expense"
+                            )
+                            ->whereBetween('created_at', [$start, $end])
+                            ->groupBy('branch_name')
+                            ->pluck('total_expense', 'branch_name');
 
                     $branchStr  = '';
                     $totalOmset = 0;
@@ -2894,6 +2988,8 @@ class DashboardController extends Controller
             $titleLabel = $dateRanges['titleLabel'];
 
             $selectedBranch = $request->query('branch', '');
+            $selectedChannel = $this->normalizeChannel($request->query('channel'));
+            $channelLabel = $this->channelLabel($selectedChannel);
             $skill = $request->query('skill', 'general');
 
             // Find cache key
@@ -2902,6 +2998,7 @@ class DashboardController extends Controller
                 'start'       => $start->toDateTimeString(),
                 'end'         => $end->toDateTimeString(),
                 'branch'      => $selectedBranch,
+                'channel'     => $selectedChannel,
                 'skill'       => $skill,
             ]));
 
@@ -2996,6 +3093,10 @@ class DashboardController extends Controller
                     <tr>
                         <td class="meta-label">Cabang</td>
                         <td>' . htmlspecialchars($selectedBranch ? $selectedBranch : 'Semua Cabang') . '</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-label">Saluran Penjualan</td>
+                        <td>' . htmlspecialchars($channelLabel) . '</td>
                     </tr>
                     <tr>
                         <td class="meta-label">Periode Data</td>

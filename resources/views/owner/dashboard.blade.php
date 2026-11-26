@@ -627,14 +627,27 @@
                              {{ $selectedBranch }}
                         </span>
                     @endif
+                    @if($isChannelFiltered)
+                        <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider border {{ $selectedChannel === 'retail' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-teal-50 text-teal-800 border-teal-200' }}">
+                            {{ $selectedChannel === 'retail' ? 'Retail POS (Kasir)' : 'Wholesale (Partai)' }}
+                        </span>
+                    @endif
                 </div>
-                <p class="text-xs text-slate-400 font-medium">Gunakan tab filter dan filter cabang untuk menganalisis performa bisnis Anda</p>
+                <p class="text-xs text-slate-400 font-medium">Gunakan filter cabang, saluran penjualan, dan periode untuk menganalisis performa bisnis Anda</p>
             </div>
             
             <!-- Right Side: Dropdowns and Filters Controls -->
             <div x-data="{ filterType: '{{ $filterType }}' }" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-                <!-- Single Merged GET Form for both Filters -->
-                <form method="GET" action="{{ route('owner.dashboard') }}" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                <!-- Single Merged GET Form for Filters -->
+                <form method="GET" action="{{ route('owner.dashboard') }}" class="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                    <!-- Dropdown Filter Saluran Penjualan -->
+                    <select name="channel" onchange="this.form.submit()"
+                            class="w-full sm:w-auto text-xs font-bold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner px-4 py-2.5 bg-slate-50 text-slate-700 hover:bg-slate-100/50 transition cursor-pointer">
+                        <option value="all" {{ $selectedChannel === 'all' ? 'selected' : '' }}>Semua Saluran</option>
+                        <option value="retail" {{ $selectedChannel === 'retail' ? 'selected' : '' }}>Retail POS (Kasir)</option>
+                        <option value="wholesale" {{ $selectedChannel === 'wholesale' ? 'selected' : '' }}>Wholesale (Partai)</option>
+                    </select>
+
                     <!-- Dropdown Filter Cabang -->
                     <select name="branch" onchange="this.form.submit()" 
                             class="w-full sm:w-auto text-xs font-bold border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner px-4 py-2.5 bg-slate-50 text-slate-700 hover:bg-slate-100/50 transition cursor-pointer">
@@ -779,10 +792,13 @@
 
                 <div class="flex flex-col gap-1 min-w-0 flex-1 z-10 pr-10">
                     <div class="flex items-center gap-1.5 pr-10">
-                        <span class="text-[10px] font-black text-teal-700 uppercase tracking-widest">Total Profit Bersih</span>
-                        <span class="text-[8px] font-black text-teal-700 leading-none bg-teal-100/60 border border-teal-200 px-1 py-0.5 rounded tracking-wide shrink-0">NET</span>
+                        <span class="text-[10px] font-black text-teal-700 uppercase tracking-widest">{{ $isChannelFiltered ? 'Laba Saluran' : 'Total Profit Bersih' }}</span>
+                        <span class="text-[8px] font-black text-teal-700 leading-none bg-teal-100/60 border border-teal-200 px-1 py-0.5 rounded tracking-wide shrink-0">{{ $isChannelFiltered ? 'GROSS' : 'NET' }}</span>
                     </div>
                     <h3 class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight mt-0.5 whitespace-nowrap" x-text="formatRupiah({{ (int) $activeProfit }})">Rp {{ number_format($activeProfit, 0, ',', '.') }}</h3>
+                    @if($isChannelFiltered)
+                        <p class="text-[10px] text-teal-700/80 font-semibold">Laba kotor saluran (belum dipotong beban cabang)</p>
+                    @endif
                     <div class="flex items-center gap-1 text-[11px] font-extrabold {{ $profitGrowthPercent >= 0 ? 'text-teal-600' : 'text-rose-600' }} mt-1">
                         @if($profitGrowthPercent > 0)
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
@@ -855,6 +871,9 @@
                 <div class="flex flex-col gap-1 min-w-0 flex-1 z-10 pr-10">
                     <span class="text-[10px] font-black text-amber-700 uppercase tracking-widest pr-10">Total Pengeluaran</span>
                     <h3 class="text-2xl sm:text-3xl font-black text-slate-800 leading-tight mt-0.5 whitespace-nowrap" x-text="formatRupiah({{ (int) $activeExpenses }})">Rp {{ number_format($activeExpenses, 0, ',', '.') }}</h3>
+                    @if($isChannelFiltered)
+                        <p class="text-[10px] text-amber-800/80 font-semibold mt-1">Beban operasional tercatat per cabang (pilih Semua Saluran)</p>
+                    @else
                     <div class="flex items-center gap-1 text-[11px] font-extrabold {{ $expenseGrowthPercent >= 0 ? 'text-rose-600' : 'text-emerald-600' }} mt-1">
                         @if($expenseGrowthPercent > 0)
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
@@ -871,6 +890,7 @@
                             <span class="truncate">Stabil {{ $comparisonLabel }}</span>
                         @endif
                     </div>
+                    @endif
                 </div>
                 <div class="w-10 h-10 shrink-0 bg-white/80 text-amber-600 border border-amber-200 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-amber-600 group-hover:text-white transition duration-300 absolute top-5 right-5 z-10">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
@@ -902,12 +922,12 @@
             <!-- Metric 2: Net Operating Margin -->
             <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between gap-4">
                 <div class="flex flex-col gap-1 min-w-0">
-                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Net Operating Margin</span>
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider">{{ $isChannelFiltered ? 'Margin Laba Saluran' : 'Net Operating Margin' }}</span>
                     <div class="flex items-baseline gap-1.5">
                         <span class="text-2xl font-black text-slate-800">{{ $netMarginPercent }}%</span>
-                        <span class="text-[11px] font-bold text-teal-600">Laba Bersih</span>
+                        <span class="text-[11px] font-bold text-teal-600">{{ $isChannelFiltered ? 'Laba Kotor' : 'Laba Bersih' }}</span>
                     </div>
-                    <span class="text-[10px] text-slate-400 font-semibold truncate" title="Setelah beban operasional">Setelah biaya operasional</span>
+                    <span class="text-[10px] text-slate-400 font-semibold truncate" title="{{ $isChannelFiltered ? 'Belum termasuk biaya operasional cabang' : 'Setelah beban operasional' }}">{{ $isChannelFiltered ? 'Belum termasuk beban cabang' : 'Setelah biaya operasional' }}</span>
                 </div>
                 <div class="w-10 h-10 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 border border-teal-100 shadow-sm">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -924,7 +944,9 @@
                         <span class="text-2xl font-black text-slate-800">{{ $oerPercent }}%</span>
                         <span class="text-[11px] font-bold text-amber-600">dari Omset</span>
                     </div>
-                    <span class="text-[10px] text-slate-400 font-semibold truncate" title="Total Rp {{ number_format($activeExpenses, 0, ',', '.') }}">Rp {{ number_format($activeExpenses, 0, ',', '.') }}</span>
+                    <span class="text-[10px] text-slate-400 font-semibold truncate" title="{{ $isChannelFiltered ? 'Tersedia pada mode Semua Saluran' : 'Total Rp ' . number_format($activeExpenses, 0, ',', '.') }}">
+                        {{ $isChannelFiltered ? 'Hanya di Semua Saluran' : 'Rp ' . number_format($activeExpenses, 0, ',', '.') }}
+                    </span>
                 </div>
                 <div class="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-100 shadow-sm">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -954,24 +976,44 @@
 
         <!-- 1.6. ROW: Saluran Penjualan & Distribusi Arus Kas Pembayaran -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Saluran Penjualan: Retail vs Wholesale -->
+            <!-- Saluran Penjualan: Retail vs Wholesale (Clickable to Filter Dashboard) -->
+            @php
+                $channelRouteBase = [
+                    'filter_type' => $filterType,
+                    'date' => $selectedDate,
+                    'week' => $selectedWeek,
+                    'month' => $selectedMonth,
+                    'branch' => $selectedBranch,
+                ];
+            @endphp
             <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between gap-5">
-                <div class="flex justify-between items-start">
+                <div class="flex justify-between items-start gap-3">
                     <div>
                         <h4 class="font-extrabold text-slate-800 text-sm leading-tight">Segmentasi Saluran Penjualan</h4>
-                        <p class="text-xs text-slate-400 font-medium mt-0.5">Komparasi kontribusi transaksi eceran (POS) vs nota partai (Grosir)</p>
+                        <p class="text-xs text-slate-400 font-medium mt-0.5">Klik saluran untuk memisahkan performa eceran (POS) vs nota partai (Grosir)</p>
                     </div>
-                    <span class="text-[10px] font-extrabold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-xl">2 Saluran</span>
+                    @if($isChannelFiltered)
+                        <a href="{{ route('owner.dashboard', array_merge($channelRouteBase, ['channel' => 'all'])) }}"
+                           class="text-[10px] font-extrabold bg-slate-800 hover:bg-slate-900 text-white px-2.5 py-1 rounded-xl transition whitespace-nowrap shrink-0">
+                            Tampilkan Semua
+                        </a>
+                    @else
+                        <span class="text-[10px] font-extrabold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-xl whitespace-nowrap shrink-0">2 Saluran</span>
+                    @endif
                 </div>
 
                 <!-- Channel Visual Bars -->
-                <div class="flex flex-col gap-4">
+                <div class="flex flex-col gap-3">
                     <!-- Retail -->
-                    <div class="flex flex-col gap-1.5">
-                        <div class="flex justify-between items-center text-xs">
+                    <a href="{{ route('owner.dashboard', array_merge($channelRouteBase, ['channel' => $selectedChannel === 'retail' ? 'all' : 'retail'])) }}"
+                       class="flex flex-col gap-1.5 p-3 -mx-3 rounded-2xl border transition duration-150 cursor-pointer {{ $selectedChannel === 'retail' ? 'bg-emerald-50/70 border-emerald-300 ring-2 ring-emerald-500/20' : ($selectedChannel === 'wholesale' ? 'border-transparent opacity-55 hover:opacity-100 hover:bg-slate-50' : 'border-transparent hover:bg-slate-50 hover:border-slate-200') }}">
+                        <div class="flex justify-between items-center text-xs gap-2">
                             <span class="font-extrabold text-slate-700 flex items-center gap-1.5">
-                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
-                                Retail POS (Kasir)
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shrink-0"></span>
+                                <span>Retail POS (Kasir)</span>
+                                @if($selectedChannel === 'retail')
+                                    <span class="text-[9px] font-black bg-emerald-600 text-white px-1.5 py-0.5 rounded-md uppercase tracking-wide">Aktif</span>
+                                @endif
                             </span>
                             <span class="font-black text-slate-900">
                                 Rp {{ number_format($retailStats['omset'], 0, ',', '.') }}
@@ -985,14 +1027,18 @@
                             <span>{{ number_format($retailStats['count']) }} Nota Transaksi</span>
                             <span>Margin Kotor: Rp {{ number_format($retailStats['profit'], 0, ',', '.') }}</span>
                         </div>
-                    </div>
+                    </a>
 
                     <!-- Wholesale -->
-                    <div class="flex flex-col gap-1.5">
-                        <div class="flex justify-between items-center text-xs">
+                    <a href="{{ route('owner.dashboard', array_merge($channelRouteBase, ['channel' => $selectedChannel === 'wholesale' ? 'all' : 'wholesale'])) }}"
+                       class="flex flex-col gap-1.5 p-3 -mx-3 rounded-2xl border transition duration-150 cursor-pointer {{ $selectedChannel === 'wholesale' ? 'bg-teal-50/70 border-teal-300 ring-2 ring-teal-500/20' : ($selectedChannel === 'retail' ? 'border-transparent opacity-55 hover:opacity-100 hover:bg-slate-50' : 'border-transparent hover:bg-slate-50 hover:border-slate-200') }}">
+                        <div class="flex justify-between items-center text-xs gap-2">
                             <span class="font-extrabold text-slate-700 flex items-center gap-1.5">
-                                <span class="w-2.5 h-2.5 rounded-full bg-teal-500 inline-block"></span>
-                                Partai Wholesale
+                                <span class="w-2.5 h-2.5 rounded-full bg-teal-500 inline-block shrink-0"></span>
+                                <span>Partai Wholesale</span>
+                                @if($selectedChannel === 'wholesale')
+                                    <span class="text-[9px] font-black bg-teal-600 text-white px-1.5 py-0.5 rounded-md uppercase tracking-wide">Aktif</span>
+                                @endif
                             </span>
                             <span class="font-black text-slate-900">
                                 Rp {{ number_format($wholesaleStats['omset'], 0, ',', '.') }}
@@ -1006,7 +1052,7 @@
                             <span>{{ number_format($wholesaleStats['count']) }} Nota Partai</span>
                             <span>Margin Kotor: Rp {{ number_format($wholesaleStats['profit'], 0, ',', '.') }}</span>
                         </div>
-                    </div>
+                    </a>
                 </div>
             </div>
 
@@ -1088,8 +1134,8 @@
                             <th class="py-3 px-3">Nama Cabang</th>
                             <th class="py-3 px-3 text-right">Total Omset</th>
                             <th class="py-3 px-3 text-center">Share Omset</th>
-                            <th class="py-3 px-3 text-right">Laba Bersih</th>
-                            <th class="py-3 px-3 text-center">Net Margin</th>
+                            <th class="py-3 px-3 text-right">{{ $isChannelFiltered ? 'Laba Kotor' : 'Laba Bersih' }}</th>
+                            <th class="py-3 px-3 text-center">{{ $isChannelFiltered ? 'Gross Margin' : 'Net Margin' }}</th>
                             <th class="py-3 px-3 text-center">Transaksi</th>
                             <th class="py-3 px-3 text-right">AOV (Rata-rata)</th>
                         </tr>
@@ -1229,7 +1275,7 @@
                     </svg>
                     <span>Daftar Lengkap</span>
                 </button>
-                <a href="{{ route('owner.dashboard.export-best-sellers', ['filter_type' => $filterType, 'date' => $selectedDate, 'week' => $selectedWeek, 'month' => $selectedMonth, 'branch' => $selectedBranch]) }}" 
+                <a href="{{ route('owner.dashboard.export-best-sellers', ['filter_type' => $filterType, 'date' => $selectedDate, 'week' => $selectedWeek, 'month' => $selectedMonth, 'branch' => $selectedBranch, 'channel' => $selectedChannel]) }}" 
                    class="px-3 sm:px-4 py-2.5 bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-800 hover:text-white text-xs font-bold rounded-xl shadow-sm transition duration-150 flex items-center justify-center gap-1.5 sm:gap-2 text-center">
                     <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
@@ -1237,7 +1283,7 @@
                     <span class="hidden md:inline">Ekspor Excel Terlaris ({{ $filterType === 'harian' ? 'Harian' : ($filterType === 'mingguan' ? 'Mingguan' : 'Bulanan') }})</span>
                     <span class="md:hidden">Excel</span>
                 </a>
-                <a href="{{ route('owner.dashboard.export-best-sellers', ['filter_type' => $filterType, 'date' => $selectedDate, 'week' => $selectedWeek, 'month' => $selectedMonth, 'branch' => $selectedBranch, 'format' => 'pdf']) }}" 
+                <a href="{{ route('owner.dashboard.export-best-sellers', ['filter_type' => $filterType, 'date' => $selectedDate, 'week' => $selectedWeek, 'month' => $selectedMonth, 'branch' => $selectedBranch, 'channel' => $selectedChannel, 'format' => 'pdf']) }}" 
                    class="px-3 sm:px-4 py-2.5 bg-rose-50 border border-rose-200 text-rose-800 hover:bg-rose-800 hover:text-white text-xs font-bold rounded-xl shadow-sm transition duration-150 flex items-center justify-center gap-1.5 sm:gap-2 text-center">
                     <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
@@ -1529,7 +1575,7 @@
                 
                 <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
                     <!-- Button Ekspor Excel (Visible on all filters) -->
-                    <a href="{{ route('owner.dashboard.export', ['filter_type' => $filterType, 'date' => $selectedDate, 'week' => $selectedWeek, 'month' => $selectedMonth, 'branch' => $selectedBranch]) }}" 
+                    <a href="{{ route('owner.dashboard.export', ['filter_type' => $filterType, 'date' => $selectedDate, 'week' => $selectedWeek, 'month' => $selectedMonth, 'branch' => $selectedBranch, 'channel' => $selectedChannel]) }}" 
                        class="flex-1 sm:flex-initial px-3 sm:px-4 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-800 hover:text-white text-xs font-bold rounded-xl shadow-sm transition duration-150 flex items-center justify-center gap-1.5 sm:gap-2 text-center">
                         <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
@@ -1538,7 +1584,7 @@
                     </a>
 
                     <!-- Button Ekspor PDF (Visible on all filters) -->
-                    <a href="{{ route('owner.dashboard.export', ['filter_type' => $filterType, 'date' => $selectedDate, 'week' => $selectedWeek, 'month' => $selectedMonth, 'branch' => $selectedBranch, 'format' => 'pdf']) }}" 
+                    <a href="{{ route('owner.dashboard.export', ['filter_type' => $filterType, 'date' => $selectedDate, 'week' => $selectedWeek, 'month' => $selectedMonth, 'branch' => $selectedBranch, 'channel' => $selectedChannel, 'format' => 'pdf']) }}" 
                        class="flex-1 sm:flex-initial px-3 sm:px-4 py-2.5 bg-rose-50 border border-rose-200 text-rose-800 hover:bg-rose-800 hover:text-white text-xs font-bold rounded-xl shadow-sm transition duration-150 flex items-center justify-center gap-1.5 sm:gap-2 text-center">
                         <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
@@ -1733,7 +1779,7 @@
 
                         <!-- Unduh PDF Button -->
                         <a x-show="aiAnalysis && !aiLoading"
-                           :href="`{{ route('owner.performance.analysis.export-pdf') }}?skill=${activeSkill}&branch=${new URLSearchParams(window.location.search).get('branch') || ''}&filter_type=${new URLSearchParams(window.location.search).get('filter_type') || 'harian'}&date=${new URLSearchParams(window.location.search).get('date') || ''}&week=${new URLSearchParams(window.location.search).get('week') || ''}&month=${new URLSearchParams(window.location.search).get('month') || ''}`"
+                           :href="`{{ route('owner.performance.analysis.export-pdf') }}?skill=${activeSkill}&branch=${new URLSearchParams(window.location.search).get('branch') || ''}&channel=${new URLSearchParams(window.location.search).get('channel') || 'all'}&filter_type=${new URLSearchParams(window.location.search).get('filter_type') || 'harian'}&date=${new URLSearchParams(window.location.search).get('date') || ''}&week=${new URLSearchParams(window.location.search).get('week') || ''}&month=${new URLSearchParams(window.location.search).get('month') || ''}`"
                            target="_blank"
                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer">
                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -2364,13 +2410,13 @@
                     <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-600 flex items-center justify-between gap-3">
                         <span class="font-semibold text-slate-500">Ingin melihat rincian nota transaksi periode ini?</span>
                         <template x-if="selectedPointData && selectedPointData.raw_date">
-                            <a :href="'{{ route('owner.dashboard') }}?filter_type=harian&date=' + selectedPointData.raw_date + (selectedBranch ? '&branch=' + selectedBranch : '')"
+                            <a :href="'{{ route('owner.dashboard') }}?filter_type=harian&date=' + selectedPointData.raw_date + (selectedBranch ? '&branch=' + selectedBranch : '') + '&channel=' + (new URLSearchParams(window.location.search).get('channel') || 'all')"
                                class="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-xs shadow-sm transition whitespace-nowrap cursor-pointer">
                                 Filter Hari Ini &rarr;
                             </a>
                         </template>
                         <template x-if="selectedPointData && selectedPointData.raw_month">
-                            <a :href="'{{ route('owner.dashboard') }}?filter_type=bulanan&month=' + selectedPointData.raw_month + (selectedBranch ? '&branch=' + selectedBranch : '')"
+                            <a :href="'{{ route('owner.dashboard') }}?filter_type=bulanan&month=' + selectedPointData.raw_month + (selectedBranch ? '&branch=' + selectedBranch : '') + '&channel=' + (new URLSearchParams(window.location.search).get('channel') || 'all')"
                                class="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-xs shadow-sm transition whitespace-nowrap cursor-pointer">
                                 Filter Bulan Ini &rarr;
                             </a>
