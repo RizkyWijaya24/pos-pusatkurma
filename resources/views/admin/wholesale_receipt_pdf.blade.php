@@ -368,11 +368,11 @@
                 @endif
             </td>
             <td>
-                <div class="company-name">{{ $settings['shop_name'] ?? 'PUSAT KURMA INDONESIA' }}</div>
-                <div class="company-tagline">{{ $settings['shop_tagline'] ?? 'Supplier Kurma & Oleh-oleh Haji / Umroh' }}</div>
+                <div class="company-name">{{ str_replace(['✦', '•'], '-', $settings['shop_name'] ?? 'PUSAT KURMA PREMIUM CIANJUR') }}</div>
+                <div class="company-tagline">{{ str_replace(['✦', '•'], '-', $settings['shop_tagline'] ?? 'Cianjur - Premium Dates') }}</div>
                 <div class="company-addr">
-                    {{ $settings['shop_address'] ?? 'Tanah Abang, Jakarta Pusat' }}<br>
-                    Telp / WhatsApp: {{ $settings['shop_whatsapp'] ?? '0877-7160-7774' }}
+                    {{ str_replace(['✦', '•'], '-', $settings['shop_address'] ?? 'Jl. Dr. Muwardi No.48, Muka, Kec. Cianjur, Kabupaten Cianjur, Jawa Barat 43215') }}<br>
+                    Telp / WhatsApp: {{ $settings['shop_whatsapp'] ?? '082396572250' }}
                 </div>
             </td>
             <td class="invoice-title-col">

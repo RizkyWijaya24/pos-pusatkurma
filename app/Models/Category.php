@@ -12,4 +12,11 @@ class Category extends Model
     protected $fillable = [
         'name',
     ];
+
+    protected static function booted(): void
+    {
+        $flush = static fn () => \App\Support\PosCache::flushProducts();
+        static::saved($flush);
+        static::deleted($flush);
+    }
 }

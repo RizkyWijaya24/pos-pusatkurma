@@ -10,6 +10,10 @@
         showEditModal: false,
         showDeleteModal: false,
         showDeleteExpenseModal: false,
+        showDpPayModal: false,
+        dpPayTrx: null,
+        dpPayForm: { amount: '', payment_method: 'Cash', note: '' },
+        isSubmittingDpPay: false,
         editForm: { id: null, items_summary: '', total_price: 0, payment_method: 'Cash', payment_status: 'paid' },
         deleteId: null,
         deleteExpenseId: null,
@@ -166,6 +170,57 @@
                 }
             })
             .catch(e => alert(e));
+        },
+
+        openDpPay(trx) {
+            this.dpPayTrx = trx;
+            this.dpPayForm = {
+                amount: Math.max(1, Math.round(trx.remaining_amount || 0)),
+                payment_method: 'Cash',
+                note: ''
+            };
+            this.showDpPayModal = true;
+        },
+
+        async submitDpPay() {
+            if (!this.dpPayTrx || this.isSubmittingDpPay) return;
+            const amount = parseInt(this.dpPayForm.amount || 0, 10);
+            const maxAmount = Math.round(this.dpPayTrx.remaining_amount || 0);
+            if (!amount || amount <= 0) {
+                alert('Nominal pembayaran harus lebih dari 0.');
+                return;
+            }
+            if (amount > maxAmount) {
+                alert('Nominal melebihi sisa tagihan (' + this.formatRupiah(maxAmount) + ').');
+                return;
+            }
+            this.isSubmittingDpPay = true;
+            const csrfToken = document.querySelector('meta[name=csrf-token]').getAttribute('content');
+            try {
+                const res = await fetch(`/admin/transactions/${this.dpPayTrx.id}/installments`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        amount: amount,
+                        payment_method: this.dpPayForm.payment_method || 'Cash',
+                        note: this.dpPayForm.note || null
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    alert(data.message || 'Gagal mencatat pembayaran DP.');
+                    return;
+                }
+                if (window.showToast) {
+                    window.showToast(data.message, 'success');
+                }
+                this.showDpPayModal = false;
+                setTimeout(() => location.reload(), 600);
+            } catch (e) {
+                alert('Terjadi kesalahan jaringan.');
+            } finally {
+                this.isSubmittingDpPay = false;
+            }
         }
     }" class="flex flex-col gap-6 max-w-full overflow-hidden">
 
@@ -481,26 +536,39 @@
                                         </div>
                                     </td>
                                     <td class="px-5 py-4">
-                                        <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase border
-                                            {{ $trx->payment_method === 'Cash' || $trx->payment_method === 'Tunai' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : '' }}
-                                            {{ $trx->payment_method === 'QRIS' || $trx->payment_method === 'Transfer Bank' ? 'bg-teal-50 text-teal-700 border-teal-100' : '' }}
-                                            {{ $trx->payment_method === 'Debit' ? 'bg-sky-50 text-sky-700 border-sky-100' : '' }}
-                                            {{ $trx->payment_method === 'Piutang / Tempo' ? 'bg-rose-50 text-rose-700 border-rose-100' : '' }}
-                                        ">
-                                            {{ $trx->payment_method }}
-                                        </span>
+                                        <div class="flex flex-col gap-1 items-start">
+                                            <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase border
+                                                {{ $trx->payment_method === 'Cash' || $trx->payment_method === 'Tunai' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : '' }}
+                                                {{ $trx->payment_method === 'QRIS' || $trx->payment_method === 'Transfer Bank' ? 'bg-teal-50 text-teal-700 border-teal-100' : '' }}
+                                                {{ $trx->payment_method === 'Debit' ? 'bg-sky-50 text-sky-700 border-sky-100' : '' }}
+                                                {{ $trx->payment_method === 'DP' ? 'bg-amber-50 text-amber-800 border-amber-200' : '' }}
+                                                {{ $trx->payment_method === 'Piutang / Tempo' ? 'bg-rose-50 text-rose-700 border-rose-100' : '' }}
+                                            ">
+                                                {{ $trx->payment_method }}
+                                            </span>
+                                            @if(!empty($trx->customer_name))
+                                                <span class="text-[10px] font-bold text-slate-600">{{ $trx->customer_name }}</span>
+                                            @endif
+                                        </div>
                                     </td>
                                     <td class="px-5 py-4 text-center">
                                         @if(($trx->payment_status ?? 'paid') === 'paid')
                                             <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">Lunas</span>
                                         @elseif(($trx->payment_status ?? 'paid') === 'cancelled')
                                             <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase bg-slate-100 text-slate-700 border border-slate-300">Dibatalkan</span>
+                                        @elseif($trx->payment_method === 'DP')
+                                            <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase bg-amber-100 text-amber-800 border border-amber-200">DP</span>
                                         @else
                                             <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase bg-rose-100 text-rose-800 border border-rose-200">Tempo</span>
                                         @endif
                                     </td>
                                     <td class="px-5 py-4 text-right text-emerald-700 font-extrabold whitespace-nowrap">
-                                        Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                        <div>Rp {{ number_format($trx->total_price, 0, ',', '.') }}</div>
+                                        @if($trx->payment_method === 'DP' && ($trx->payment_status ?? 'paid') === 'unpaid')
+                                            <div class="text-[10px] font-bold text-amber-700">
+                                                Sisa: Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                            </div>
+                                        @endif
                                     </td>
                                     <td class="px-5 py-4 text-center">
                                         <div class="flex items-center justify-center gap-1.5">
@@ -545,9 +613,13 @@
                                                         'customer_phone' => $trx->customer_phone ?? '-',
                                                         'discount' => (float)$trx->discount,
                                                         'total_price' => (float)$trx->total_price,
+                                                        'paid_amount' => (int) round($trx->paid_amount),
+                                                        'remaining_amount' => (int) round($trx->remaining_amount),
                                                         'items_summary' => $trx->items_summary,
                                                         'parsed_items' => $trx->parsed_items,
                                                     ];
+                                                    $digitalPdfUrl = \Illuminate\Support\Facades\URL::signedRoute('receipt.digital', ['transaction' => $trx->id]);
+                                                    $digitalPdfDownloadUrl = \Illuminate\Support\Facades\URL::signedRoute('receipt.digital', ['transaction' => $trx->id, 'download' => 1]);
                                                 @endphp
                                                 <button type="button"
                                                     @click="printDirectBluetooth(@js($adminTrxData))"
@@ -566,6 +638,37 @@
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.821V7.5a.75.75 0 0 1 .75-.75h9a.75.75 0 0 1 .75.75v6.321m-10.5 0h10.5m-10.5 0-1.755-.351A1.25 1.25 0 0 1 3 12.25v-2.5a1.25 1.25 0 0 1 1.25-1.25h15.5c.69 0 1.25.56 1.25 1.25v2.5a1.25 1.25 0 0 1-1.025 1.22l-1.725.345m-12 0a1.25 1.25 0 1 0 2.5 0m9.5 0a1.25 1.25 0 1 0 2.5 0" />
                                                     </svg>
                                                 </button>
+                                                <a href="{{ $digitalPdfUrl }}"
+                                                   target="_blank"
+                                                   class="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition duration-150 inline-flex items-center"
+                                                   title="Buka Struk Digital (PDF)">
+                                                    <svg class="h-4 w-4 text-emerald-700" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                                                    </svg>
+                                                </a>
+                                                <a href="{{ $digitalPdfDownloadUrl }}"
+                                                   class="p-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition duration-150 inline-flex items-center"
+                                                   title="Unduh Struk Digital (PDF)">
+                                                    <svg class="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                                    </svg>
+                                                </a>
+                                                <button type="button"
+                                                    onclick="shareDigitalReceiptPdf('{{ $digitalPdfUrl }}', '{{ $trx->transaction_code }}', '{{ $digitalPdfDownloadUrl }}')"
+                                                    class="p-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 transition duration-150 inline-flex items-center"
+                                                    title="Bagikan File Struk PDF">
+                                                    <svg class="h-4 w-4 text-teal-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
+                                                    </svg>
+                                                </button>
+                                                @if($trx->payment_method === 'DP' && ($trx->payment_status ?? 'paid') === 'unpaid')
+                                                    <button type="button"
+                                                        @click="openDpPay(@js($adminTrxData))"
+                                                        class="px-2.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-[11px] transition duration-150 inline-flex items-center gap-1 shadow-sm"
+                                                        title="Bayar Sisa / Lunasi DP">
+                                                        Lunasi
+                                                    </button>
+                                                @endif
                                             @endif
                                             
                                             <!-- Edit Button -->
@@ -739,6 +842,7 @@
                         <option value="Cash">Cash</option>
                         <option value="QRIS">QRIS</option>
                         <option value="Debit">Debit</option>
+                        <option value="DP">DP</option>
                         <option value="Tunai">Tunai</option>
                         <option value="Transfer Bank">Transfer Bank</option>
                         <option value="Piutang / Tempo">Piutang / Tempo</option>
@@ -828,9 +932,128 @@
                 </div>
             </div>
         </div>
+
+        <!-- DP SETTLEMENT MODAL (PELUNASAN SISA TAGIHAN DP) -->
+        <div x-show="showDpPayModal"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm"
+             style="display: none;"
+             @keydown.escape.window="showDpPayModal = false">
+
+            <div class="bg-white rounded-3xl p-6 w-full max-w-md border border-slate-100 shadow-2xl flex flex-col gap-4"
+                 @click.away="showDpPayModal = false">
+
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div>
+                        <h3 class="font-extrabold text-slate-800 text-lg">Pelunasan Sisa Tagihan DP</h3>
+                        <p class="text-xs font-mono font-bold text-emerald-700" x-text="dpPayTrx?.transaction_code"></p>
+                    </div>
+                    <button type="button" @click="showDpPayModal = false" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+
+                <div class="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs space-y-1.5">
+                    <div class="flex justify-between">
+                        <span class="text-slate-600">Pemesan:</span>
+                        <span class="font-extrabold text-slate-900" x-text="dpPayTrx?.customer_name || '-'"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-600">Total Tagihan:</span>
+                        <span class="font-bold text-slate-800" x-text="formatRupiah(dpPayTrx?.total_price || 0)"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-600">Sudah Dibayar:</span>
+                        <span class="font-bold text-emerald-700" x-text="formatRupiah(dpPayTrx?.paid_amount || 0)"></span>
+                    </div>
+                    <div class="flex justify-between border-t border-amber-200 pt-1.5 font-black text-amber-800 text-sm">
+                        <span>Sisa Tagihan:</span>
+                        <span x-text="formatRupiah(dpPayTrx?.remaining_amount || 0)"></span>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1.5">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Nominal Pembayaran (Rp)</label>
+                        <button type="button" @click="dpPayForm.amount = dpPayTrx?.remaining_amount || ''" class="text-[11px] font-extrabold text-amber-700 hover:underline">
+                            Isi Lunas
+                        </button>
+                    </div>
+                    <input type="number" x-model="dpPayForm.amount" min="1" :max="dpPayTrx?.remaining_amount || 0"
+                           class="w-full border-slate-200 rounded-xl text-sm font-bold focus:border-amber-500 focus:ring-amber-500 shadow-inner">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Metode Pembayaran</label>
+                    <select x-model="dpPayForm.payment_method"
+                            class="w-full border-slate-200 rounded-xl text-sm font-bold focus:border-amber-500 focus:ring-amber-500 shadow-inner">
+                        <option value="Cash">Tunai (Cash)</option>
+                        <option value="QRIS">QRIS</option>
+                        <option value="Debit">Debit</option>
+                        <option value="Transfer">Transfer</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Catatan (Opsional)</label>
+                    <input type="text" x-model="dpPayForm.note" placeholder="Catatan pelunasan..."
+                           class="w-full border-slate-200 rounded-xl text-sm focus:border-amber-500 focus:ring-amber-500 shadow-inner">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 pt-2">
+                    <button type="button" @click="showDpPayModal = false" class="py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold transition duration-150">Batal</button>
+                    <button type="button"
+                            @click="submitDpPay()"
+                            :disabled="isSubmittingDpPay || !(parseInt(dpPayForm.amount || 0, 10) > 0) || parseInt(dpPayForm.amount || 0, 10) > (dpPayTrx?.remaining_amount || 0)"
+                            class="py-3 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-2xl font-bold shadow-md transition duration-150">
+                        <span x-show="!isSubmittingDpPay">Simpan Pelunasan</span>
+                        <span x-show="isSubmittingDpPay">Menyimpan...</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
+        async function shareDigitalReceiptPdf(pdfUrl, trxCode, downloadUrl) {
+            if (!pdfUrl) return;
+            const fileName = 'Struk-' + trxCode + '.pdf';
+            try {
+                const res = await fetch(pdfUrl, { headers: { 'Accept': 'application/pdf' } });
+                if (!res.ok) throw new Error('Gagal mengambil file PDF.');
+                const blob = await res.blob();
+                const pdfFile = new File([blob], fileName, { type: 'application/pdf' });
+
+                if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+                    await navigator.share({
+                        title: 'Struk Digital ' + trxCode,
+                        files: [pdfFile],
+                    });
+                    return;
+                }
+
+                const blobUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+                if (window.showToast) {
+                    window.showToast('File PDF diunduh (' + fileName + '). Silakan kirim ke customer.', 'success');
+                }
+            } catch (e) {
+                if (e && e.name === 'AbortError') return;
+                window.open(downloadUrl || pdfUrl, '_blank');
+            }
+        }
+
         function printReceipt(transactionId) {
             if (!transactionId) return;
             const iframeId = 'receipt-print-iframe';

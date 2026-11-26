@@ -35,6 +35,57 @@
                 </svg>
                 Bulanan
             </a>
+            <a href="{{ route('kasir.transactions.index', ['tab' => 'unpaid_dp']) }}"
+               class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200
+                      {{ $activeTab === 'unpaid_dp' ? 'bg-amber-600 text-white shadow-md shadow-amber-200' : 'text-amber-700 hover:bg-amber-50' }}">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+                </svg>
+                DP Belum Lunas
+                @if($unpaidDpTransactions->count() > 0)
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-black {{ $activeTab === 'unpaid_dp' ? 'bg-white text-amber-700' : 'bg-amber-100 text-amber-800' }}">
+                        {{ $unpaidDpTransactions->count() }}
+                    </span>
+        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap">
+                                        Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-bold whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->paid_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-amber-700 font-black whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button"
+                                                    @click="openDetail(@js($dpTrxData))"
+                                                    class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition active:scale-95">
+                                                Bayar Sisa / Lunasi
+                                            </button>
+                                            <a href="{{ $dpTrxData['digital_receipt_url'] }}"
+                                               target="_blank"
+                                               class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-200 transition">
+                                                PDF
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold">
+                                        Tidak ada tagihan DP yang belum lunas.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        @endif
+            </a>
         </div>
 
         {{-- ======================================================= --}}
@@ -64,7 +115,45 @@
                     @endphp
                     <p class="text-xs text-slate-400 mt-1">Margin: {{ $marginPct }}%</p>
                 </div>
-                @endif
+        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap">
+                                        Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-bold whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->paid_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-amber-700 font-black whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button"
+                                                    @click="openDetail(@js($dpTrxData))"
+                                                    class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition active:scale-95">
+                                                Bayar Sisa / Lunasi
+                                            </button>
+                                            <a href="{{ $dpTrxData['digital_receipt_url'] }}"
+                                               target="_blank"
+                                               class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-200 transition">
+                                                PDF
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold">
+                                        Tidak ada tagihan DP yang belum lunas.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        @endif
                 {{-- Jumlah transaksi --}}
                 <div class="bg-white border border-slate-100 rounded-2xl p-5 shadow-md">
                     <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Transaksi Hari Ini</p>
@@ -164,7 +253,45 @@
                                                             <span class="text-[11px] font-semibold text-slate-400 whitespace-nowrap">
                                                                 @ Rp {{ number_format($item['unit_price'], 0, ',', '.') }}
                                                             </span>
-                                                        @endif
+        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap">
+                                        Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-bold whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->paid_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-amber-700 font-black whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button"
+                                                    @click="openDetail(@js($dpTrxData))"
+                                                    class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition active:scale-95">
+                                                Bayar Sisa / Lunasi
+                                            </button>
+                                            <a href="{{ $dpTrxData['digital_receipt_url'] }}"
+                                               target="_blank"
+                                               class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-200 transition">
+                                                PDF
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold">
+                                        Tidak ada tagihan DP yang belum lunas.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        @endif
                                                     </div>
                                                 </div>
                                             @empty
@@ -173,17 +300,149 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase border
-                                            {{ $trx->payment_method === 'Cash'  ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : '' }}
-                                            {{ $trx->payment_method === 'QRIS'  ? 'bg-teal-50 text-teal-700 border-teal-100' : '' }}
-                                            {{ $trx->payment_method === 'Debit' ? 'bg-sky-50 text-sky-700 border-sky-100' : '' }}
-                                            {{ str_starts_with($trx->payment_method, 'SPLIT') ? 'bg-violet-50 text-violet-700 border-violet-100' : '' }}
-                                        ">
-                                            {{ $trx->payment_method }}
-                                        </span>
+                                        <div class="flex flex-col gap-1 items-start">
+                                            <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase border
+                                                {{ $trx->payment_method === 'Cash'  ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : '' }}
+                                                {{ $trx->payment_method === 'QRIS'  ? 'bg-teal-50 text-teal-700 border-teal-100' : '' }}
+                                                {{ $trx->payment_method === 'Debit' ? 'bg-sky-50 text-sky-700 border-sky-100' : '' }}
+                                                {{ $trx->payment_method === 'DP'    ? 'bg-amber-50 text-amber-800 border-amber-200' : '' }}
+                                                {{ str_starts_with($trx->payment_method, 'SPLIT') ? 'bg-violet-50 text-violet-700 border-violet-100' : '' }}
+                                            ">
+                                                {{ $trx->payment_method }}
+                                                @if(($trx->payment_status ?? 'paid') === 'unpaid')
+                                                    • Belum Lunas
+                                                @elseif($trx->payment_method === 'DP')
+                                                    • Lunas
+        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap">
+                                        Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-bold whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->paid_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-amber-700 font-black whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button"
+                                                    @click="openDetail(@js($dpTrxData))"
+                                                    class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition active:scale-95">
+                                                Bayar Sisa / Lunasi
+                                            </button>
+                                            <a href="{{ $dpTrxData['digital_receipt_url'] }}"
+                                               target="_blank"
+                                               class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-200 transition">
+                                                PDF
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold">
+                                        Tidak ada tagihan DP yang belum lunas.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        @endif
+                                            </span>
+                                            @if(!empty($trx->customer_name))
+                                                <span class="text-[11px] font-bold text-slate-600">
+                                                    Pemesan: {{ $trx->customer_name }}
+                                                </span>
+        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap">
+                                        Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-bold whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->paid_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-amber-700 font-black whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button"
+                                                    @click="openDetail(@js($dpTrxData))"
+                                                    class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition active:scale-95">
+                                                Bayar Sisa / Lunasi
+                                            </button>
+                                            <a href="{{ $dpTrxData['digital_receipt_url'] }}"
+                                               target="_blank"
+                                               class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-200 transition">
+                                                PDF
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold">
+                                        Tidak ada tagihan DP yang belum lunas.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        @endif
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 text-right text-emerald-700 font-extrabold whitespace-nowrap">
+                                        <div>Rp {{ number_format($trx->total_price, 0, ',', '.') }}</div>
+                                        @if($trx->payment_method === 'DP' && ($trx->payment_status ?? 'paid') === 'unpaid')
+                                            <div class="text-[10px] font-bold text-amber-700">
+                                                Sisa: Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                            </div>
+        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap">
                                         Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-bold whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->paid_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-amber-700 font-black whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button"
+                                                    @click="openDetail(@js($dpTrxData))"
+                                                    class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition active:scale-95">
+                                                Bayar Sisa / Lunasi
+                                            </button>
+                                            <a href="{{ $dpTrxData['digital_receipt_url'] }}"
+                                               target="_blank"
+                                               class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-200 transition">
+                                                PDF
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold">
+                                        Tidak ada tagihan DP yang belum lunas.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        @endif
                                     </td>
                                     <td class="px-6 py-4 text-center">
                                         @php
@@ -199,6 +458,17 @@
                                                 'customer_phone' => $trx->customer_phone ?? '-',
                                                 'discount' => (float)$trx->discount,
                                                 'total_price' => (float)$trx->total_price,
+                                                'paid_amount' => (int) round($trx->paid_amount),
+                                                'remaining_amount' => (int) round($trx->remaining_amount),
+                                                'digital_receipt_url' => \Illuminate\Support\Facades\URL::signedRoute('receipt.digital', ['transaction' => $trx->id]),
+                                                'digital_receipt_download_url' => \Illuminate\Support\Facades\URL::signedRoute('receipt.digital', ['transaction' => $trx->id, 'download' => 1]),
+                                                'installments' => $trx->installments->map(fn($inst) => [
+                                                    'id' => $inst->id,
+                                                    'amount' => (int) $inst->amount,
+                                                    'payment_method' => $inst->payment_method,
+                                                    'note' => $inst->note,
+                                                    'date' => $inst->created_at->translatedFormat('d M Y H:i'),
+                                                ])->values(),
                                                 'items_summary' => $trx->items_summary,
                                                 'parsed_items' => $trx->parsed_items,
                                             ];
@@ -238,6 +508,17 @@
                                                 </svg>
                                                 Struk
                                             </button>
+
+                                            {{-- Digital PDF Button --}}
+                                            <a href="{{ $trxData['digital_receipt_url'] }}"
+                                               target="_blank"
+                                               class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-200 transition duration-150 inline-flex items-center gap-1 shadow-sm active:scale-95"
+                                               title="Buka Struk Digital (PDF)">
+                                                <svg class="h-3.5 w-3.5 text-emerald-700" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                                                </svg>
+                                                PDF
+                                            </a>
                                         </div>
                                     </td>
                                 </tr>
@@ -256,7 +537,45 @@
                     <div class="bg-slate-50/50 border-t border-slate-100 px-6 py-4">
                         {{ $transactions->appends(['tab' => 'daily'])->links() }}
                     </div>
-                @endif
+        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap">
+                                        Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-bold whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->paid_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-amber-700 font-black whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button"
+                                                    @click="openDetail(@js($dpTrxData))"
+                                                    class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition active:scale-95">
+                                                Bayar Sisa / Lunasi
+                                            </button>
+                                            <a href="{{ $dpTrxData['digital_receipt_url'] }}"
+                                               target="_blank"
+                                               class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-200 transition">
+                                                PDF
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold">
+                                        Tidak ada tagihan DP yang belum lunas.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        @endif
             </div>
 
         {{-- ======================================================= --}}
@@ -304,7 +623,45 @@
                     @php $wMargin = $weeklyOmset > 0 ? round(($weeklyProfit / $weeklyOmset) * 100, 1) : 0; @endphp
                     <p class="text-xs text-slate-400 mt-1">Margin: {{ $wMargin }}%</p>
                 </div>
-                @endif
+        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap">
+                                        Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-bold whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->paid_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-amber-700 font-black whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button"
+                                                    @click="openDetail(@js($dpTrxData))"
+                                                    class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition active:scale-95">
+                                                Bayar Sisa / Lunasi
+                                            </button>
+                                            <a href="{{ $dpTrxData['digital_receipt_url'] }}"
+                                               target="_blank"
+                                               class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-200 transition">
+                                                PDF
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold">
+                                        Tidak ada tagihan DP yang belum lunas.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        @endif
                 <div class="bg-white border border-slate-100 rounded-2xl p-5 shadow-md">
                     <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Rata-rata per Hari</p>
                     @php $daysWithTrx = count(array_filter($weeklyDays, fn($d) => $d['count'] > 0)); $avgDaily = $daysWithTrx > 0 ? (int)round($weeklyOmset / $daysWithTrx) : 0; @endphp
@@ -326,7 +683,45 @@
                                 @if(!auth()->user()->isKasir())
                                 <th class="px-6 py-4 text-right">Profit Bersih</th>
                                 <th class="px-6 py-4 text-right">Margin</th>
-                                @endif
+        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap">
+                                        Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-bold whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->paid_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-amber-700 font-black whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button"
+                                                    @click="openDetail(@js($dpTrxData))"
+                                                    class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition active:scale-95">
+                                                Bayar Sisa / Lunasi
+                                            </button>
+                                            <a href="{{ $dpTrxData['digital_receipt_url'] }}"
+                                               target="_blank"
+                                               class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-200 transition">
+                                                PDF
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold">
+                                        Tidak ada tagihan DP yang belum lunas.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        @endif
                                 <th class="px-6 py-4 text-center">Jml Trx</th>
                             </tr>
                         </thead>
@@ -342,7 +737,45 @@
                                         <span class="font-bold text-slate-700 text-sm">{{ $day['sub_label'] }}</span>
                                         @if($isToday)
                                             <span class="ml-2 text-[10px] font-extrabold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Hari Ini</span>
-                                        @endif
+        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap">
+                                        Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-bold whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->paid_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-amber-700 font-black whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button"
+                                                    @click="openDetail(@js($dpTrxData))"
+                                                    class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition active:scale-95">
+                                                Bayar Sisa / Lunasi
+                                            </button>
+                                            <a href="{{ $dpTrxData['digital_receipt_url'] }}"
+                                               target="_blank"
+                                               class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-200 transition">
+                                                PDF
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold">
+                                        Tidak ada tagihan DP yang belum lunas.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        @endif
                                     </td>
                                     <td class="px-6 py-4 text-slate-500 text-sm font-semibold">{{ $day['label'] }}</td>
                                     <td class="px-6 py-4 text-right font-extrabold {{ $day['omset'] > 0 ? 'text-emerald-700' : 'text-slate-300' }}">
@@ -355,13 +788,89 @@
                                     <td class="px-6 py-4 text-right text-xs font-bold text-slate-500">
                                         {{ $day['omset'] > 0 ? $dayMargin . '%' : '—' }}
                                     </td>
-                                    @endif
+        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap">
+                                        Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-bold whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->paid_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-amber-700 font-black whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button"
+                                                    @click="openDetail(@js($dpTrxData))"
+                                                    class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition active:scale-95">
+                                                Bayar Sisa / Lunasi
+                                            </button>
+                                            <a href="{{ $dpTrxData['digital_receipt_url'] }}"
+                                               target="_blank"
+                                               class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-200 transition">
+                                                PDF
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold">
+                                        Tidak ada tagihan DP yang belum lunas.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        @endif
                                     <td class="px-6 py-4 text-center">
                                         @if ($day['count'] > 0)
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">{{ $day['count'] }} Trx</span>
                                         @else
                                             <span class="text-slate-300 text-xs font-semibold">—</span>
-                                        @endif
+        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap">
+                                        Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-bold whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->paid_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-amber-700 font-black whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button"
+                                                    @click="openDetail(@js($dpTrxData))"
+                                                    class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition active:scale-95">
+                                                Bayar Sisa / Lunasi
+                                            </button>
+                                            <a href="{{ $dpTrxData['digital_receipt_url'] }}"
+                                               target="_blank"
+                                               class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-200 transition">
+                                                PDF
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold">
+                                        Tidak ada tagihan DP yang belum lunas.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        @endif
                                     </td>
                                 </tr>
                             @endforeach
@@ -377,7 +886,45 @@
                                     @php $totalWMargin = $weeklyOmset > 0 ? round(($weeklyProfit / $weeklyOmset) * 100, 1) : 0; @endphp
                                     {{ $totalWMargin }}%
                                 </td>
-                                @endif
+        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap">
+                                        Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-bold whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->paid_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-amber-700 font-black whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button"
+                                                    @click="openDetail(@js($dpTrxData))"
+                                                    class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition active:scale-95">
+                                                Bayar Sisa / Lunasi
+                                            </button>
+                                            <a href="{{ $dpTrxData['digital_receipt_url'] }}"
+                                               target="_blank"
+                                               class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-200 transition">
+                                                PDF
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold">
+                                        Tidak ada tagihan DP yang belum lunas.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        @endif
                                 <td class="px-6 py-4 text-center">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-200 text-emerald-800">{{ $weeklyCount }} Trx</span>
                                 </td>
@@ -432,7 +979,45 @@
                     @php $mMargin = $monthlyOmset > 0 ? round(($monthlyProfit / $monthlyOmset) * 100, 1) : 0; @endphp
                     <p class="text-xs text-slate-400 mt-1">Margin: {{ $mMargin }}%</p>
                 </div>
-                @endif
+        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap">
+                                        Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-bold whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->paid_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-amber-700 font-black whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button"
+                                                    @click="openDetail(@js($dpTrxData))"
+                                                    class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition active:scale-95">
+                                                Bayar Sisa / Lunasi
+                                            </button>
+                                            <a href="{{ $dpTrxData['digital_receipt_url'] }}"
+                                               target="_blank"
+                                               class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-200 transition">
+                                                PDF
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold">
+                                        Tidak ada tagihan DP yang belum lunas.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        @endif
                 <div class="bg-white border border-slate-100 rounded-2xl p-5 shadow-md">
                     <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Rata-rata per Minggu</p>
                     @php $weeksWithTrx = count(array_filter($monthlyWeeks, fn($w) => $w['count'] > 0)); $avgWeekly = $weeksWithTrx > 0 ? (int)round($monthlyOmset / $weeksWithTrx) : 0; @endphp
@@ -454,7 +1039,45 @@
                                 @if(!auth()->user()->isKasir())
                                 <th class="px-6 py-4 text-right">Profit Bersih</th>
                                 <th class="px-6 py-4 text-right">Margin</th>
-                                @endif
+        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap">
+                                        Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-bold whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->paid_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-amber-700 font-black whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button"
+                                                    @click="openDetail(@js($dpTrxData))"
+                                                    class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition active:scale-95">
+                                                Bayar Sisa / Lunasi
+                                            </button>
+                                            <a href="{{ $dpTrxData['digital_receipt_url'] }}"
+                                               target="_blank"
+                                               class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-200 transition">
+                                                PDF
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold">
+                                        Tidak ada tagihan DP yang belum lunas.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        @endif
                                 <th class="px-6 py-4 text-center">Jml Trx</th>
                             </tr>
                         </thead>
@@ -475,13 +1098,89 @@
                                     <td class="px-6 py-4 text-right text-xs font-bold text-slate-500">
                                         {{ $w['omset'] > 0 ? $wMarginPct . '%' : '—' }}
                                     </td>
-                                    @endif
+        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap">
+                                        Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-bold whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->paid_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-amber-700 font-black whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button"
+                                                    @click="openDetail(@js($dpTrxData))"
+                                                    class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition active:scale-95">
+                                                Bayar Sisa / Lunasi
+                                            </button>
+                                            <a href="{{ $dpTrxData['digital_receipt_url'] }}"
+                                               target="_blank"
+                                               class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-200 transition">
+                                                PDF
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold">
+                                        Tidak ada tagihan DP yang belum lunas.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        @endif
                                     <td class="px-6 py-4 text-center">
                                         @if ($w['count'] > 0)
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">{{ $w['count'] }} Trx</span>
                                         @else
                                             <span class="text-slate-300 text-xs font-semibold">—</span>
-                                        @endif
+        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap">
+                                        Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-bold whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->paid_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-amber-700 font-black whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button"
+                                                    @click="openDetail(@js($dpTrxData))"
+                                                    class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition active:scale-95">
+                                                Bayar Sisa / Lunasi
+                                            </button>
+                                            <a href="{{ $dpTrxData['digital_receipt_url'] }}"
+                                               target="_blank"
+                                               class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-200 transition">
+                                                PDF
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold">
+                                        Tidak ada tagihan DP yang belum lunas.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        @endif
                                     </td>
                                 </tr>
                             @endforeach
@@ -493,12 +1192,155 @@
                                 @if(!auth()->user()->isKasir())
                                 <td class="px-6 py-4 text-right font-extrabold text-teal-600 text-base">Rp {{ number_format($monthlyProfit, 0, ',', '.') }}</td>
                                 <td class="px-6 py-4 text-right font-bold text-slate-500 text-sm">{{ $mMargin }}%</td>
-                                @endif
+        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap">
+                                        Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-bold whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->paid_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-amber-700 font-black whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button"
+                                                    @click="openDetail(@js($dpTrxData))"
+                                                    class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition active:scale-95">
+                                                Bayar Sisa / Lunasi
+                                            </button>
+                                            <a href="{{ $dpTrxData['digital_receipt_url'] }}"
+                                               target="_blank"
+                                               class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-200 transition">
+                                                PDF
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold">
+                                        Tidak ada tagihan DP yang belum lunas.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        @endif
                                 <td class="px-6 py-4 text-center">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-200 text-emerald-800">{{ $monthlyCount }} Trx</span>
                                 </td>
                             </tr>
                         </tfoot>
+                    </table>
+                </div>
+            </div>
+
+        @elseif ($activeTab === 'unpaid_dp')
+
+            <div class="flex justify-between items-center gap-4 flex-wrap">
+                <div>
+                    <h3 class="font-extrabold text-slate-800 text-lg leading-tight">Tagihan DP Belum Lunas</h3>
+                    <p class="text-sm text-slate-400 font-medium mt-1">Daftar seluruh pesanan DP (termasuk dari hari sebelumnya) yang menunggu pembayaran sisa tagihan</p>
+                </div>
+                <span class="bg-amber-100 text-amber-800 font-bold text-xs px-3 py-1.5 rounded-full border border-amber-200">
+                    {{ $unpaidDpTransactions->count() }} Tagihan Aktif
+                </span>
+            </div>
+
+            <div class="bg-white rounded-3xl border border-slate-100 shadow-md overflow-hidden">
+                <div class="overflow-x-auto w-full max-w-full">
+                    <table class="min-w-full divide-y divide-slate-100 text-left text-sm text-slate-700">
+                        <thead class="bg-amber-50/70 font-bold text-slate-600 uppercase tracking-wider text-xs">
+                            <tr>
+                                <th class="px-6 py-4">Tanggal Order</th>
+                                <th class="px-6 py-4">Kode Struk</th>
+                                <th class="px-6 py-4">Pemesan</th>
+                                <th class="px-6 py-4">Total Tagihan</th>
+                                <th class="px-6 py-4 text-right">DP Masuk</th>
+                                <th class="px-6 py-4 text-right">Sisa Tagihan</th>
+                                <th class="px-6 py-4 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 font-semibold text-slate-800">
+                            @forelse ($unpaidDpTransactions as $trx)
+                                @php
+                                    $dpTrxData = [
+                                        'id' => $trx->id,
+                                        'transaction_code' => $trx->transaction_code,
+                                        'created_at_formatted' => $trx->created_at->translatedFormat('d M Y - H:i'),
+                                        'payment_method' => $trx->payment_method,
+                                        'payment_status' => $trx->payment_status ?? 'unpaid',
+                                        'branch' => $trx->branch ?? 'Pusat Cianjur',
+                                        'cashier_name' => $trx->cashier->name ?? 'Kasir',
+                                        'customer_name' => $trx->customer_name ?? '-',
+                                        'customer_phone' => $trx->customer_phone ?? '-',
+                                        'discount' => (float)$trx->discount,
+                                        'total_price' => (float)$trx->total_price,
+                                        'paid_amount' => (int) round($trx->paid_amount),
+                                        'remaining_amount' => (int) round($trx->remaining_amount),
+                                        'digital_receipt_url' => \Illuminate\Support\Facades\URL::signedRoute('receipt.digital', ['transaction' => $trx->id]),
+                                        'digital_receipt_download_url' => \Illuminate\Support\Facades\URL::signedRoute('receipt.digital', ['transaction' => $trx->id, 'download' => 1]),
+                                        'installments' => $trx->installments->map(fn($inst) => [
+                                            'id' => $inst->id,
+                                            'amount' => (int) $inst->amount,
+                                            'payment_method' => $inst->payment_method,
+                                            'note' => $inst->note,
+                                            'date' => $inst->created_at->translatedFormat('d M Y H:i'),
+                                        ])->values(),
+                                        'items_summary' => $trx->items_summary,
+                                        'parsed_items' => $trx->parsed_items,
+                                    ];
+                                @endphp
+                                <tr class="hover:bg-amber-50/30 transition duration-150">
+                                    <td class="px-6 py-4 text-slate-500 text-xs whitespace-nowrap">
+                                        {{ $trx->created_at->translatedFormat('d M Y - H:i') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-emerald-700 font-mono text-xs whitespace-nowrap">
+                                        {{ $trx->transaction_code }}
+                                    </td>
+                                    <td class="px-6 py-4 text-xs">
+                                        <div class="font-extrabold text-slate-800">{{ $trx->customer_name ?: '-' }}</div>
+                                        @if(!empty($trx->customer_phone))
+                                            <div class="text-slate-500 font-semibold">{{ $trx->customer_phone }}</div>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-700 whitespace-nowrap">
+                                        Rp {{ number_format($trx->total_price, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-bold whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->paid_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-amber-700 font-black whitespace-nowrap">
+                                        Rp {{ number_format((int) round($trx->remaining_amount), 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button"
+                                                    @click="openDetail(@js($dpTrxData))"
+                                                    class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition active:scale-95">
+                                                Bayar Sisa / Lunasi
+                                            </button>
+                                            <a href="{{ $dpTrxData['digital_receipt_url'] }}"
+                                               target="_blank"
+                                               class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-200 transition">
+                                                PDF
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold">
+                                        Tidak ada tagihan DP yang belum lunas.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -570,8 +1412,12 @@
                                       x-text="selectedTrx?.payment_status === 'cancelled' ? 'BATAL' : ((selectedTrx?.payment_status === 'paid' || !selectedTrx?.payment_status) ? 'LUNAS' : 'TEMPO')"></span>
                             </div>
                             <div x-show="selectedTrx?.customer_name && selectedTrx?.customer_name !== '-'">
-                                <span class="text-slate-400 font-semibold block text-[10px] uppercase">Pelanggan</span>
+                                <span class="text-slate-400 font-semibold block text-[10px] uppercase">Pemesan</span>
                                 <span class="font-bold text-slate-700" x-text="selectedTrx?.customer_name"></span>
+                            </div>
+                            <div x-show="selectedTrx?.customer_phone && selectedTrx?.customer_phone !== '-'">
+                                <span class="text-slate-400 font-semibold block text-[10px] uppercase">No. WhatsApp / HP</span>
+                                <span class="font-bold text-slate-700" x-text="selectedTrx?.customer_phone"></span>
                             </div>
                         </div>
 
@@ -627,17 +1473,100 @@
                                 <span class="font-extrabold text-sm text-slate-800">Total Pembayaran</span>
                                 <span class="font-black text-lg text-emerald-700" x-text="formatRupiah(selectedTrx?.total_price)"></span>
                             </div>
+
+                            <template x-if="selectedTrx?.payment_method === 'DP' || (selectedTrx?.installments && selectedTrx.installments.length > 0)">
+                                <div class="pt-2 border-t border-dashed border-amber-200 space-y-1.5">
+                                    <div class="flex justify-between text-slate-700">
+                                        <span>Sudah Dibayar (DP / Cicilan)</span>
+                                        <span class="font-extrabold text-emerald-700" x-text="formatRupiah(selectedTrx?.paid_amount || 0)"></span>
+                                    </div>
+                                    <template x-if="(selectedTrx?.remaining_amount || 0) > 0">
+                                        <div class="flex justify-between text-amber-800 font-extrabold">
+                                            <span>Sisa Pelunasan</span>
+                                            <span x-text="formatRupiah(selectedTrx?.remaining_amount || 0)"></span>
+                                        </div>
+                                    </template>
+                                    <template x-if="selectedTrx?.installments && selectedTrx.installments.length > 0">
+                                        <div class="pt-1 space-y-1">
+                                            <span class="text-[10px] font-bold uppercase text-slate-400 block">Riwayat Pembayaran</span>
+                                            <template x-for="inst in selectedTrx.installments" :key="inst.id || inst.date">
+                                                <div class="flex justify-between items-center text-[11px] bg-white px-2.5 py-1.5 rounded-lg border border-slate-100">
+                                                    <span class="text-slate-600" x-text="inst.date + ' • ' + inst.payment_method + (inst.note ? ' (' + inst.note + ')' : '')"></span>
+                                                    <span class="font-bold text-emerald-700" x-text="formatRupiah(inst.amount)"></span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
                         </div>
+
+                        <!-- Terima Pelunasan DP (jika masih unpaid) -->
+                        <template x-if="selectedTrx && selectedTrx.payment_status === 'unpaid' && (selectedTrx.remaining_amount || 0) > 0">
+                            <div class="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-3">
+                                <div class="flex justify-between items-center">
+                                    <h4 class="text-xs font-extrabold uppercase tracking-wider text-amber-900">Terima Pelunasan / Cicilan DP</h4>
+                                    <button type="button"
+                                            @click="dpPayAmount = selectedTrx.remaining_amount"
+                                            class="text-[11px] font-extrabold text-amber-800 bg-amber-200/70 hover:bg-amber-200 px-2.5 py-1 rounded-lg transition">
+                                        Isi Lunas (<span x-text="formatRupiah(selectedTrx.remaining_amount)"></span>)
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <input type="number"
+                                           x-model="dpPayAmount"
+                                           min="1"
+                                           :max="selectedTrx.remaining_amount"
+                                           placeholder="Nominal bayar (Rp)"
+                                           class="w-full py-2 px-3 text-xs font-bold border-amber-200 rounded-xl bg-white focus:border-amber-500 focus:ring-amber-500">
+                                    <select x-model="dpPayMethod"
+                                            class="w-full py-2 px-3 text-xs font-bold border-amber-200 rounded-xl bg-white focus:border-amber-500 focus:ring-amber-500">
+                                        <option value="Cash">Tunai (Cash)</option>
+                                        <option value="QRIS">QRIS</option>
+                                        <option value="Debit">Debit</option>
+                                        <option value="Transfer">Transfer</option>
+                                    </select>
+                                </div>
+                                <input type="text"
+                                       x-model="dpPayNote"
+                                       placeholder="Catatan pelunasan (opsional)"
+                                       class="w-full py-2 px-3 text-xs font-semibold border-amber-200 rounded-xl bg-white focus:border-amber-500 focus:ring-amber-500">
+                                <button type="button"
+                                        @click="submitKasirInstallment()"
+                                        :disabled="isSubmittingInstallment || !(parseInt(dpPayAmount || 0, 10) > 0) || parseInt(dpPayAmount || 0, 10) > selectedTrx.remaining_amount"
+                                        class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-extrabold text-xs rounded-xl transition shadow-sm">
+                                    <span x-show="!isSubmittingInstallment">Simpan Pembayaran / Pelunasan</span>
+                                    <span x-show="isSubmittingInstallment">Menyimpan...</span>
+                                </button>
+                            </div>
+                        </template>
                     </div>
 
                     <!-- Footer Actions -->
-                    <div class="flex items-center justify-between gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+                    <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
                         <button type="button"
                                 @click="closeDetail()"
                                 class="px-4 py-2 bg-white hover:bg-slate-100 text-slate-600 font-bold text-xs rounded-xl border border-slate-200 transition">
                             Tutup
                         </button>
-                        <div class="flex items-center gap-2">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <a :href="selectedTrx?.digital_receipt_url || '#'"
+                               target="_blank"
+                               x-show="selectedTrx?.digital_receipt_url"
+                               class="px-3.5 py-2 bg-white hover:bg-slate-50 text-emerald-700 font-bold text-xs rounded-xl border border-emerald-200 transition">
+                                Buka PDF
+                            </a>
+                            <a :href="selectedTrx?.digital_receipt_download_url || selectedTrx?.digital_receipt_url || '#'"
+                               x-show="selectedTrx?.digital_receipt_url"
+                               class="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs rounded-xl border border-emerald-200 transition">
+                                Unduh PDF
+                            </a>
+                            <button type="button"
+                                    @click="shareDigitalReceiptPdf(selectedTrx)"
+                                    x-show="selectedTrx?.digital_receipt_url"
+                                    class="px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl transition">
+                                Bagikan PDF
+                            </button>
                             <!-- Direct Bluetooth -->
                             <button type="button"
                                     @click="printDirectBluetooth(selectedTrx)"
@@ -875,15 +1804,104 @@
             return {
                 showDetailModal: false,
                 selectedTrx: null,
+                dpPayAmount: '',
+                dpPayMethod: 'Cash',
+                dpPayNote: '',
+                isSubmittingInstallment: false,
 
                 openDetail(trx) {
                     this.selectedTrx = trx;
+                    this.dpPayAmount = trx?.remaining_amount || '';
+                    this.dpPayMethod = 'Cash';
+                    this.dpPayNote = '';
                     this.showDetailModal = true;
                 },
 
                 closeDetail() {
                     this.showDetailModal = false;
                     this.selectedTrx = null;
+                },
+
+                normalizeWaPhone(raw) {
+                    if (!raw || raw === '-') return '';
+                    let digits = String(raw).replace(/[^0-9]/g, '');
+                    if (digits.startsWith('0')) digits = '62' + digits.substring(1);
+                    else if (digits.startsWith('8')) digits = '62' + digits;
+                    return digits;
+                },
+
+                async shareDigitalReceiptPdf(trx) {
+                    if (!trx || !trx.digital_receipt_url) return;
+                    const fileName = 'Struk-' + trx.transaction_code + '.pdf';
+                    try {
+                        const res = await fetch(trx.digital_receipt_url, { headers: { 'Accept': 'application/pdf' } });
+                        if (!res.ok) throw new Error('Gagal mengunduh file PDF.');
+                        const blob = await res.blob();
+                        const pdfFile = new File([blob], fileName, { type: 'application/pdf' });
+
+                        if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+                            await navigator.share({
+                                title: 'Struk Digital ' + trx.transaction_code,
+                                files: [pdfFile],
+                            });
+                            return;
+                        }
+
+                        const blobUrl = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = blobUrl;
+                        a.download = fileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+                        if (window.showToast) {
+                            window.showToast('File PDF diunduh (' + fileName + '). Silakan lampirkan ke chat customer.', 'success');
+                        }
+                    } catch (e) {
+                        if (e && e.name === 'AbortError') return;
+                        window.open(trx.digital_receipt_download_url || trx.digital_receipt_url, '_blank');
+                    }
+                },
+
+                async submitKasirInstallment() {
+                    if (!this.selectedTrx || this.isSubmittingInstallment) return;
+                    const amount = parseInt(this.dpPayAmount || 0, 10);
+                    if (!amount || amount <= 0) return;
+
+                    this.isSubmittingInstallment = true;
+                    const csrfToken = document.querySelector('meta[name=csrf-token]').getAttribute('content');
+                    try {
+                        const res = await fetch(`/kasir/transactions/${this.selectedTrx.id}/installments`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                amount: amount,
+                                payment_method: this.dpPayMethod,
+                                note: this.dpPayNote.trim() || 'Pelunasan DP (Kasir)',
+                            }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok || !data.success) {
+                            throw new Error(data.message || 'Gagal mencatat pelunasan.');
+                        }
+                        if (window.showToast) {
+                            window.showToast(data.message, 'success');
+                        }
+                        window.location.reload();
+                    } catch (e) {
+                        if (window.showToast) {
+                            window.showToast(e.message || 'Terjadi kesalahan saat menyimpan pelunasan.', 'error');
+                        } else {
+                            alert(e.message);
+                        }
+                    } finally {
+                        this.isSubmittingInstallment = false;
+                    }
                 },
 
                 formatRupiah(num) {

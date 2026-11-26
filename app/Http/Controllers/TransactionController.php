@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 use Carbon\Carbon;
 
 class TransactionController extends Controller
@@ -29,13 +30,15 @@ class TransactionController extends Controller
         // ---- Daily (paginated list) ----
         $transactions = Transaction::where('cashier_id', $cashierId)
             ->whereBetween('created_at', [$todayStart, $todayEnd])
+            ->with(['cashier:id,name', 'installments:id,transaction_id,amount,payment_method,note,created_at'])
             ->latest('id')
             ->paginate(15);
 
         // ---- Today totals (hanya select kolom esensial untuk menghemat memori) ----
         $todayTrxList = Transaction::where('cashier_id', $cashierId)
             ->whereBetween('created_at', [$todayStart, $todayEnd])
-            ->select('id', 'total_price', 'total_cost', 'payment_method')
+            ->with('installments:id,transaction_id,amount,payment_method')
+            ->select('id', 'total_price', 'total_cost', 'payment_method', 'payment_status')
             ->get();
 
         $omsetSum = 0;
@@ -134,6 +137,23 @@ class TransactionController extends Controller
         $monthlyProfit = array_sum(array_column($monthlyWeeks, 'profit'));
         $monthlyCount  = array_sum(array_column($monthlyWeeks, 'count'));
 
+        // Daftar seluruh transaksi DP yang belum lunas (lintas hari) untuk kasir / cabangnya
+        $authUser   = auth()->user();
+        $userBranch = $authUser->branch ?? '';
+        $unpaidDpTransactions = Transaction::where('payment_method', 'DP')
+            ->where('payment_status', 'unpaid')
+            ->when(!$authUser->isAdmin() && !$authUser->isOwner(), function ($q) use ($cashierId, $userBranch) {
+                $q->where(function ($sub) use ($cashierId, $userBranch) {
+                    $sub->where('cashier_id', $cashierId);
+                    if ($userBranch !== '') {
+                        $sub->orWhere('branch', $userBranch);
+                    }
+                });
+            })
+            ->with(['cashier:id,name', 'installments:id,transaction_id,amount,payment_method,note,created_at'])
+            ->latest('id')
+            ->get();
+
         return view('kasir.transactions', compact(
             'transactions',
             'activeTab',
@@ -149,7 +169,8 @@ class TransactionController extends Controller
             'monthlyOmset',
             'monthlyProfit',
             'monthlyCount',
-            'startOfMonth'
+            'startOfMonth',
+            'unpaidDpTransactions'
         ));
     }
 
@@ -492,7 +513,7 @@ class TransactionController extends Controller
      */
     public function adminIndex(Request $request)
     {
-        $query = Transaction::with('cashier')->latest();
+        $query = Transaction::with(['cashier', 'installments:id,transaction_id,amount,payment_method'])->latest();
 
         // Optional date filter - default to today
         $date = $request->has('date') ? $request->input('date') : Carbon::today()->toDateString();
@@ -641,7 +662,7 @@ class TransactionController extends Controller
      */
     public function ownerIndex(Request $request)
     {
-        $query = Transaction::with('cashier')->latest();
+        $query = Transaction::with(['cashier', 'installments:id,transaction_id,amount,payment_method'])->latest();
 
         // Optional date filter - default to today
         $date = $request->has('date') ? $request->input('date') : Carbon::today()->toDateString();
@@ -796,6 +817,11 @@ class TransactionController extends Controller
             'total_price' => 'required|integer|min:0',
             'discount' => 'nullable|integer|min:0',
             'payment_method' => 'required|string',
+            'customer_name' => 'required_if:payment_method,DP|nullable|string|max:255',
+            'customer_phone' => 'nullable|string|max:30',
+            'dp_amount' => 'required_if:payment_method,DP|nullable|integer|min:1',
+            'dp_payment_method' => 'nullable|string|in:Cash,QRIS,Debit,Transfer',
+            'dp_note' => 'nullable|string|max:255',
             'affiliate_id' => 'nullable|exists:affiliates,id',
             'pax_count' => 'nullable|integer|min:0',
             'items' => 'required|array|min:1',
@@ -804,7 +830,33 @@ class TransactionController extends Controller
             'items.*.qty' => 'required|numeric|min:0',
             'items.*.price_unit' => 'required|string',
             'items.*.price' => 'required|numeric|min:0',
+        ], [
+            'customer_name.required_if' => 'Nama pemesan wajib diisi untuk metode pembayaran DP.',
+            'dp_amount.required_if'     => 'Nominal DP wajib diisi.',
+            'dp_amount.min'             => 'Nominal DP minimal Rp 1.',
         ]);
+
+        $isDp = $request->payment_method === 'DP';
+        $dpAmount = $isDp ? (int) $request->input('dp_amount', 0) : 0;
+        $dpPayMethod = $request->input('dp_payment_method', 'Cash') ?: 'Cash';
+        $dpNote = trim((string) $request->input('dp_note', ''));
+        $customerName = trim((string) $request->input('customer_name', ''));
+        $customerPhone = trim((string) $request->input('customer_phone', ''));
+
+        if ($isDp) {
+            if ($dpAmount <= 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Nominal DP harus lebih dari Rp 0.'
+                ], 422);
+            }
+            if ($dpAmount >= (int) $request->total_price) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Nominal DP sama dengan atau melebihi total tagihan. Gunakan metode Tunai, QRIS, Debit, atau SPLIT untuk pembayaran lunas.'
+                ], 422);
+            }
+        }
 
         $itemsSummary = collect($request->items)->map(function ($item) {
             return $item['name'] . ' (' . $item['qty'] . ' ' . $item['price_unit'] . ' x ' . $item['price'] . ')';
@@ -896,20 +948,33 @@ class TransactionController extends Controller
         // ── Bungkus dalam DB::transaction agar data selalu konsisten (All-or-Nothing) ──
         try {
             $transaction = DB::transaction(function () use (
-                $request, $itemsSummary, $cashierBranch, $totalCost, $resolveProduct
+                $request, $itemsSummary, $cashierBranch, $totalCost, $resolveProduct,
+                $isDp, $dpAmount, $dpPayMethod, $dpNote, $customerName, $customerPhone
             ) {
                 $trx = Transaction::create([
                     'cashier_id'       => auth()->id(),
                     'affiliate_id'     => $request->input('affiliate_id'),
                     'pax_count'        => $request->input('pax_count', 0),
                     'transaction_code' => 'TRX-' . Carbon::now()->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6)),
+                    'transaction_type' => 'retail',
+                    'customer_name'    => $customerName !== '' ? $customerName : null,
+                    'customer_phone'   => $customerPhone !== '' ? $customerPhone : null,
                     'items_summary'    => $itemsSummary,
                     'total_price'      => $request->total_price,
                     'discount'         => $request->input('discount', 0),
                     'total_cost'       => $totalCost,
                     'payment_method'   => $request->payment_method,
+                    'payment_status'   => $isDp ? 'unpaid' : 'paid',
                     'branch'           => $cashierBranch,
                 ]);
+
+                if ($isDp && $dpAmount > 0) {
+                    $trx->installments()->create([
+                        'amount'         => $dpAmount,
+                        'payment_method' => $dpPayMethod,
+                        'note'           => $dpNote !== '' ? 'DP Awal (Kasir): ' . $dpNote : 'DP Awal (Kasir)',
+                    ]);
+                }
 
                 // Hitung & catat potongan komisi dari omset ke komisi_ledger jika berafiliasi
                 if ($request->filled('affiliate_id')) {
@@ -939,6 +1004,7 @@ class TransactionController extends Controller
                         } else {
                             // Fallback: lokasi cabang belum terdaftar di sistem
                             $product->decrement('stock', floatval($item['qty']));
+                            \App\Support\PosCache::flushProducts();
                         }
                     }
                 }
@@ -958,17 +1024,30 @@ class TransactionController extends Controller
             $lock->release();
         }
 
+        $transaction->load('installments');
+        $bd = $transaction->payment_breakdown;
+
         return response()->json([
             'success' => true,
             'message' => 'Transaksi berhasil dicatat!',
             'transaction' => [
-                'id'               => $transaction->id,
-                'time'             => $transaction->created_at->format('H:i'),
-                'transaction_code' => $transaction->transaction_code,
-                'items_summary'    => $transaction->items_summary,
-                'payment_method'   => $transaction->payment_method,
-                'total_price'      => $transaction->total_price,
-                'discount'         => $transaction->discount,
+                'id'                  => $transaction->id,
+                'time'                => $transaction->created_at->format('H:i'),
+                'transaction_code'    => $transaction->transaction_code,
+                'items_summary'       => $transaction->items_summary,
+                'payment_method'      => $transaction->payment_method,
+                'payment_status'      => $transaction->payment_status ?? 'paid',
+                'customer_name'       => $transaction->customer_name,
+                'customer_phone'      => $transaction->customer_phone,
+                'total_price'         => (int) $transaction->total_price,
+                'discount'            => (int) $transaction->discount,
+                'paid_amount'         => (int) round($transaction->paid_amount),
+                'remaining_amount'    => (int) round($transaction->remaining_amount),
+                'cash_in_amount'      => (float) ($bd['cash'] ?? 0),
+                'dp_payment_method'   => $isDp ? $dpPayMethod : null,
+                'dp_note'                      => $dpNote !== '' ? $dpNote : null,
+                'digital_receipt_url'          => URL::signedRoute('receipt.digital', ['transaction' => $transaction->id]),
+                'digital_receipt_download_url' => URL::signedRoute('receipt.digital', ['transaction' => $transaction->id, 'download' => 1]),
                 // items_sold: dipakai Alpine.js untuk update stok produk real-time tanpa refresh
                 'items_sold'       => collect($request->items)
                     ->filter(fn($item) => !empty($item['id']))
@@ -1312,6 +1391,103 @@ class TransactionController extends Controller
     /**
      * Print transaction receipt for Kasir.
      */
+    /**
+     * Parse transaction items_summary into itemized receipt rows.
+     */
+    private function parseReceiptItems(Transaction $transaction): array
+    {
+        $items = [];
+        if (empty($transaction->items_summary)) {
+            return $items;
+        }
+
+        $parts = explode(', ', $transaction->items_summary);
+
+        // Pre-load semua produk yang mungkin dibutuhkan dalam 1 query (item format lama tanpa harga eksplisit)
+        $namesToLookup = [];
+        foreach ($parts as $part) {
+            $trimmed = trim($part);
+            if (in_array($trimmed, ['[Stok Sudah Didata]', '[Tanpa Potong Stok]', '[Piutang Manual]'])) {
+                continue;
+            }
+            if (!preg_match('/^.*?\s*\(\d+(?:\.\d+)?\s*\w+\s*x\s*\d+(?:\.\d+)?\)$/', $trimmed)) {
+                if (preg_match('/^(.*?)\s*\(\d+(?:\.\d+)?\s*\w+\)$/', $trimmed, $m)) {
+                    $namesToLookup[] = trim($m[1]);
+                } else {
+                    $namesToLookup[] = $trimmed;
+                }
+            }
+        }
+
+        $preloadedProducts = !empty($namesToLookup)
+            ? \App\Models\Product::whereIn('name', $namesToLookup)->get()->keyBy('name')
+            : collect();
+
+        foreach ($parts as $part) {
+            $trimmed = trim($part);
+            if ($trimmed === '' || in_array($trimmed, ['[Stok Sudah Didata]', '[Tanpa Potong Stok]', '[Piutang Manual]'])) {
+                continue;
+            }
+
+            if (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*(\w+)\s*x\s*(\d+(?:\.\d+)?)\)$/', $trimmed, $matches)) {
+                $name      = trim($matches[1]);
+                $qty       = floatval($matches[2]);
+                $unit      = $matches[3];
+                $unitPrice = floatval($matches[4]);
+
+                if ($unit === 'gram' && $qty >= 1000) {
+                    $qty       = $qty / 1000;
+                    $unit      = 'kg';
+                    $unitPrice = $unitPrice * 1000;
+                }
+
+                $items[] = [
+                    'name'        => $name,
+                    'qty'         => $qty,
+                    'unit'        => $unit,
+                    'unit_price'  => $unitPrice,
+                    'total_price' => round(($unitPrice * $qty) / 500) * 500,
+                ];
+            } elseif (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*(\w+)\)$/', $trimmed, $matches)) {
+                $name      = trim($matches[1]);
+                $qty       = floatval($matches[2]);
+                $unit      = $matches[3];
+                $product   = $preloadedProducts->get($name);
+                $unitPrice = $product ? $product->getPriceForQuantity($qty) : null;
+
+                if ($unit === 'gram' && $qty >= 1000) {
+                    $qty  = $qty / 1000;
+                    $unit = 'kg';
+                    if ($unitPrice !== null) {
+                        $unitPrice = $unitPrice * 1000;
+                    }
+                }
+
+                $items[] = [
+                    'name'        => $name,
+                    'qty'         => $qty,
+                    'unit'        => $unit,
+                    'unit_price'  => $unitPrice,
+                    'total_price' => $unitPrice ? round(($unitPrice * $qty) / 500) * 500 : null,
+                ];
+            } else {
+                $name      = $trimmed;
+                $product   = $preloadedProducts->get($name);
+                $unitPrice = $product ? $product->getPriceForQuantity(1) : null;
+
+                $items[] = [
+                    'name'        => $name,
+                    'qty'         => 1,
+                    'unit'        => 'pcs',
+                    'unit_price'  => $unitPrice,
+                    'total_price' => $unitPrice ? round($unitPrice / 500) * 500 : null,
+                ];
+            }
+        }
+
+        return $items;
+    }
+
     public function print(Transaction $transaction)
     {
         // Security check: Cashier who made the transaction, admin, or owner can print
@@ -1319,90 +1495,36 @@ class TransactionController extends Controller
             abort(403, 'Anda tidak memiliki akses untuk mencetak nota ini.');
         }
 
-        // Parse items from items_summary
-        $items = [];
-        if (!empty($transaction->items_summary)) {
-            $parts = explode(', ', $transaction->items_summary);
+        $transaction->loadMissing('cashier', 'installments');
+        $items    = $this->parseReceiptItems($transaction);
+        $settings = \App\Models\Setting::pluck('value', 'key')->all();
 
-            // ── Pre-load semua produk yang mungkin dibutuhkan dalam 1 query ──
-            $namesToLookup = [];
-            foreach ($parts as $part) {
-                // Hanya items format lama yang butuh lookup produk (tanpa harga eksplisit)
-                if (!preg_match('/^.*?\s*\(\d+(?:\.\d+)?\s*\w+\s*x\s*\d+(?:\.\d+)?\)$/', $part)) {
-                    if (preg_match('/^(.*?)\s*\(\d+(?:\.\d+)?\s*\w+\)$/', $part, $m)) {
-                        $namesToLookup[] = trim($m[1]);
-                    } else {
-                        $namesToLookup[] = trim($part);
-                    }
-                }
+        return view('kasir.receipt', compact('transaction', 'items', 'settings'));
+    }
+
+    /**
+     * Serve public signed digital receipt PDF for customers.
+     */
+    public function digitalReceipt(Request $request, Transaction $transaction)
+    {
+        $transaction->loadMissing('cashier', 'installments');
+        $items    = $this->parseReceiptItems($transaction);
+        $settings = \App\Models\Setting::pluck('value', 'key')->all();
+        $filename = 'Struk-' . $transaction->transaction_code . '.pdf';
+
+        try {
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('receipts.digital_pdf', compact('transaction', 'items', 'settings'));
+            $pdf->setPaper('a5', 'portrait');
+
+            if ($request->boolean('download')) {
+                return $pdf->download($filename);
             }
-            $preloadedProducts = !empty($namesToLookup)
-                ? \App\Models\Product::whereIn('name', $namesToLookup)->get()->keyBy('name')
-                : collect();
 
-            foreach ($parts as $part) {
-                // Try to parse format with explicit price: Name (Qty Unit x Price)
-                if (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*(\w+)\s*x\s*(\d+(?:\.\d+)?)\)$/', $part, $matches)) {
-                    $name      = trim($matches[1]);
-                    $qty       = floatval($matches[2]);
-                    $unit      = $matches[3];
-                    $unitPrice = floatval($matches[4]);
-
-                    if ($unit === 'gram' && $qty >= 1000) {
-                        $qty       = $qty / 1000;
-                        $unit      = 'kg';
-                        $unitPrice = $unitPrice * 1000;
-                    }
-
-                    $items[] = [
-                        'name'        => $name,
-                        'qty'         => $qty,
-                        'unit'        => $unit,
-                        'unit_price'  => $unitPrice,
-                        'total_price' => round(($unitPrice * $qty) / 500) * 500,
-                    ];
-                } elseif (preg_match('/^(.*?)\s*\((\d+(?:\.\d+)?)\s*(\w+)\)$/', $part, $matches)) {
-                    // Fallback for old transactions: Name (Qty Unit)
-                    $name = trim($matches[1]);
-                    $qty  = floatval($matches[2]);
-                    $unit = $matches[3];
-
-                    // Gunakan produk yang sudah di-preload (bukan query per item)
-                    $product   = $preloadedProducts->get($name);
-                    $unitPrice = $product ? $product->getPriceForQuantity($qty) : null;
-
-                    if ($unit === 'gram' && $qty >= 1000) {
-                        $qty  = $qty / 1000;
-                        $unit = 'kg';
-                        if ($unitPrice !== null) {
-                            $unitPrice = $unitPrice * 1000;
-                        }
-                    }
-
-                    $items[] = [
-                        'name'        => $name,
-                        'qty'         => $qty,
-                        'unit'        => $unit,
-                        'unit_price'  => $unitPrice,
-                        'total_price' => $unitPrice ? round(($unitPrice * $qty) / 500) * 500 : null,
-                    ];
-                } else {
-                    $name      = trim($part);
-                    $product   = $preloadedProducts->get($name);
-                    $unitPrice = $product ? $product->getPriceForQuantity(1) : null;
-
-                    $items[] = [
-                        'name'        => $name,
-                        'qty'         => 1,
-                        'unit'        => 'pcs',
-                        'unit_price'  => $unitPrice,
-                        'total_price' => $unitPrice ? round($unitPrice / 500) * 500 : null,
-                    ];
-                }
-            }
+            return $pdf->stream($filename);
+        } catch (\Throwable $e) {
+            Log::warning('Digital receipt PDF generation failed, falling back to HTML: ' . $e->getMessage());
+            return view('receipts.digital', compact('transaction', 'items', 'settings'));
         }
-
-        return view('kasir.receipt', compact('transaction', 'items'));
     }
 
     /**
@@ -1588,6 +1710,7 @@ class TransactionController extends Controller
                                 );
                             } else {
                                 $product->decrement('stock', $deductQty);
+                                \App\Support\PosCache::flushProducts();
                             }
                         }
                     }
@@ -2501,6 +2624,30 @@ class TransactionController extends Controller
             ], 403);
         }
 
+        return $this->processInstallmentPayment($request, $transaction);
+    }
+
+    /**
+     * Store a DP installment / settlement payment from Kasir.
+     */
+    public function kasirStoreInstallment(Request $request, Transaction $transaction)
+    {
+        $user = auth()->user();
+        if (!$user->isAdmin() && !$user->isOwner() && $transaction->cashier_id !== $user->id && ($transaction->branch ?? '') !== ($user->branch ?? '')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk melunasi transaksi cabang lain.'
+            ], 403);
+        }
+
+        return $this->processInstallmentPayment($request, $transaction);
+    }
+
+    /**
+     * Shared atomic installment / DP settlement recorder.
+     */
+    private function processInstallmentPayment(Request $request, Transaction $transaction)
+    {
         $request->validate([
             'amount' => 'required|integer|min:1',
             'payment_method' => 'required|string',
@@ -2517,7 +2664,7 @@ class TransactionController extends Controller
         }
 
         try {
-            $isPaid = DB::transaction(function () use ($request, $transaction) {
+            $result = DB::transaction(function () use ($request, $transaction) {
                 $locked    = Transaction::where('id', $transaction->id)->lockForUpdate()->firstOrFail();
                 $paidSoFar = $locked->installments()->sum('amount');
                 $remaining = $locked->total_price - $paidSoFar;
@@ -2526,22 +2673,34 @@ class TransactionController extends Controller
                     throw new \RuntimeException('Jumlah pembayaran melebihi sisa tagihan! Sisa tagihan saat ini: Rp ' . number_format($remaining, 0, ',', '.'));
                 }
 
-                $locked->installments()->create([
+                $inst = $locked->installments()->create([
                     'amount'         => $request->amount,
                     'payment_method' => $request->payment_method,
                     'note'           => $request->note,
                 ]);
 
                 $totalPaid = $locked->installments()->sum('amount');
-                if ($totalPaid >= $locked->total_price) {
+                $isPaid = $totalPaid >= $locked->total_price;
+                if ($isPaid) {
                     $locked->update(['payment_status' => 'paid']);
-                    return true;
                 }
 
-                return false;
+                return [
+                    'is_paid'          => $isPaid,
+                    'paid_amount'      => (int) round($totalPaid),
+                    'remaining_amount' => (int) max(0, $locked->total_price - $totalPaid),
+                    'payment_status'   => $isPaid ? 'paid' : ($locked->payment_status ?? 'unpaid'),
+                    'installment'      => [
+                        'id'             => $inst->id,
+                        'amount'         => (int) $inst->amount,
+                        'payment_method' => $inst->payment_method,
+                        'note'           => $inst->note,
+                        'date'           => $inst->created_at->translatedFormat('d M Y H:i'),
+                    ],
+                ];
             });
         } catch (\Throwable $e) {
-            Log::error('storeInstallment failed (rolled back): ' . $e->getMessage());
+            Log::error('processInstallmentPayment failed (rolled back): ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -2551,10 +2710,16 @@ class TransactionController extends Controller
         }
 
         return response()->json([
-            'success'        => true,
-            'is_paid'        => $isPaid,
-            'transaction_id' => $transaction->id,
-            'message'        => 'Pembayaran cicilan berhasil disimpan!'
+            'success'             => true,
+            'is_paid'             => $result['is_paid'],
+            'paid_amount'         => $result['paid_amount'],
+            'remaining_amount'    => $result['remaining_amount'],
+            'payment_status'               => $result['payment_status'],
+            'installment'                  => $result['installment'],
+            'digital_receipt_url'          => URL::signedRoute('receipt.digital', ['transaction' => $transaction->id]),
+            'digital_receipt_download_url' => URL::signedRoute('receipt.digital', ['transaction' => $transaction->id, 'download' => 1]),
+            'transaction_id'               => $transaction->id,
+            'message'             => $result['is_paid'] ? 'Pembayaran lunas berhasil dicatat!' : 'Pembayaran DP/cicilan berhasil disimpan!',
         ]);
     }
 

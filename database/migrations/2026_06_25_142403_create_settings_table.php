@@ -21,12 +21,12 @@ return new class extends Migration
 
         // Seed default values
         $defaults = [
-            'shop_name' => 'Pusat Kurma',
-            'shop_tagline' => 'Cianjur ✦ Premium Dates',
-            'shop_whatsapp' => '6281234567890',
+            'shop_name' => 'PUSAT KURMA PREMIUM CIANJUR',
+            'shop_tagline' => 'Cianjur - Premium Dates',
+            'shop_whatsapp' => '082396572250',
             'shop_description' => 'Distributor kurma premium terpercaya sejak 2010. Langsung dari importir, kualitas terjamin, harga bersaing untuk ritel dan grosir.',
-            'shop_address' => "Jl. Contoh No. 123,\nCianjur, Jawa Barat 43200",
-            'shop_phone' => '+62 812-3456-7890',
+            'shop_address' => 'Jl. Dr. Muwardi No.48, Muka, Kec. Cianjur, Kabupaten Cianjur, Jawa Barat 43215',
+            'shop_phone' => '082396572250',
             'shop_operational_hours' => 'Senin–Sabtu: 08.00–17.00',
             'shop_social_instagram' => '#',
             'shop_social_facebook' => '#',

@@ -42,9 +42,11 @@ Route::middleware('auth')->group(function () {
     // Kasir routes (Accessible by kasir and admin)
     Route::middleware('role:kasir,admin')->prefix('kasir')->name('kasir.')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'kasir'])->name('dashboard');
+        Route::get('/products-sync', [\App\Http\Controllers\DashboardController::class, 'kasirProductsSync'])->name('products.sync');
         Route::get('/transactions', [\App\Http\Controllers\TransactionController::class, 'index'])->name('transactions.index');
         Route::get('/transactions/export', [\App\Http\Controllers\TransactionController::class, 'exportKasir'])->name('transactions.export');
         Route::post('/transactions', [\App\Http\Controllers\TransactionController::class, 'store'])->name('transactions.store');
+        Route::post('/transactions/{transaction}/installments', [\App\Http\Controllers\TransactionController::class, 'kasirStoreInstallment'])->name('transactions.installment');
         Route::get('/transactions/{transaction}/print', [\App\Http\Controllers\TransactionController::class, 'print'])->name('transactions.print');
 
         // Expense management routes
@@ -218,6 +220,10 @@ require __DIR__.'/auth.php';
 
 // Fallback untuk memuat gambar produk dari storage
 // Security: cek file lokal terlebih dahulu & cegah redirect loop tak terbatas di production
+Route::get('/struk/{transaction}', [\App\Http\Controllers\TransactionController::class, 'digitalReceipt'])
+    ->middleware('signed')
+    ->name('receipt.digital');
+
 Route::get('storage/products/{filename}', function ($filename) {
     if (!preg_match('/\.(jpg|jpeg|png|webp|gif|avif)$/i', $filename)) {
         abort(404);

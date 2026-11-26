@@ -203,12 +203,25 @@
             @php
                 $logoPath = public_path('images/logo.png');
                 $logoBase64 = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : null;
+                $rawAddr     = (string) ($settings['shop_address'] ?? '');
+                $isDummySeed = str_contains($rawAddr, 'Jl. Contoh No. 123');
+                $shopName    = ($isDummySeed || empty($settings['shop_name'])) ? 'PUSAT KURMA PREMIUM CIANJUR' : $settings['shop_name'];
+                $shopAddress = ($isDummySeed || $rawAddr === '') ? 'Jl. Dr. Muwardi No.48, Muka, Kec. Cianjur, Kabupaten Cianjur, Jawa Barat 43215' : $rawAddr;
+                $shopPhone   = ($isDummySeed || empty($settings['shop_whatsapp']) || $settings['shop_whatsapp'] === '6281234567890')
+                    ? '082396572250'
+                    : $settings['shop_whatsapp'];
             @endphp
             @if($logoBase64)
                 <img src="data:image/png;base64,{{ $logoBase64 }}" style="height: 40px; width: auto; display: block; margin: 0 auto 4px auto;" alt="Logo">
             @endif
-            <div class="brand-title">Pusat Kurma Al karim</div>
+            <div class="brand-title">{{ $shopName }}</div>
             <div class="brand-subtitle">{{ $transaction->branch ?? 'Cabang Cianjur' }}</div>
+            @if(!empty($shopAddress))
+                <div class="brand-subtitle" style="font-weight: normal; font-size: 7.5px;">{{ str_replace(["\r\n", "\r", "\n"], ', ', $shopAddress) }}</div>
+            @endif
+            @if(!empty($shopPhone))
+                <div class="brand-subtitle" style="font-weight: normal; font-size: 7.5px;">Telp/WA: {{ $shopPhone }}</div>
+            @endif
         </div>
         
         <div class="divider"></div>
@@ -230,6 +243,18 @@
                 <td>Metode   :</td>
                 <td class="text-right font-bold uppercase">{{ $transaction->payment_method }}</td>
             </tr>
+            @if(!empty($transaction->customer_name))
+                <tr>
+                    <td>Pemesan  :</td>
+                    <td class="text-right font-bold">{{ $transaction->customer_name }}</td>
+                </tr>
+            @endif
+            @if(!empty($transaction->customer_phone))
+                <tr>
+                    <td>No. HP   :</td>
+                    <td class="text-right">{{ $transaction->customer_phone }}</td>
+                </tr>
+            @endif
         </table>
         
         <div class="divider"></div>
@@ -291,6 +316,22 @@
                 <td class="font-bold">TOTAL BELANJA:</td>
                 <td class="text-right font-bold">Rp {{ number_format($total, 0, ',', '.') }}</td>
             </tr>
+            @if($transaction->payment_method === 'DP' || $transaction->installments->isNotEmpty() || ($transaction->payment_status ?? 'paid') === 'unpaid')
+                @php
+                    $paidAmt = (int) round($transaction->paid_amount);
+                    $remAmt  = (int) round($transaction->remaining_amount);
+                @endphp
+                <tr>
+                    <td class="font-bold">Dibayar (DP):</td>
+                    <td class="text-right font-bold">Rp {{ number_format($paidAmt, 0, ',', '.') }}</td>
+                </tr>
+                <tr>
+                    <td class="font-bold">Sisa Tagihan:</td>
+                    <td class="text-right font-bold">
+                        {{ $remAmt > 0 ? 'Rp ' . number_format($remAmt, 0, ',', '.') : 'LUNAS' }}
+                    </td>
+                </tr>
+            @endif
         </table>
         
         <div class="footer">

@@ -682,6 +682,7 @@ class StockService
                             $this->syncGlobalStock($product);
                         } else {
                             $product->increment('stock', $qtyToReturn);
+                            \App\Support\PosCache::flushProducts();
                         }
                         $restoredCount++;
                     }

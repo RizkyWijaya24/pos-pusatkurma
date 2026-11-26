@@ -43,6 +43,13 @@ class Product extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        $flush = static fn () => \App\Support\PosCache::flushProducts();
+        static::saved($flush);
+        static::deleted($flush);
+    }
+
     /**
      * Scope query untuk hanya mengambil produk aktif.
      */

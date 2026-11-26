@@ -27,6 +27,7 @@ class ShopSettingController extends Controller
             Product::whereIn('id', $activeIds)->update(['is_active_in_shop' => true]);
             // Set is_active_in_shop = false untuk produk yang tidak dicentang
             Product::whereNotIn('id', $activeIds)->update(['is_active_in_shop' => false]);
+            \App\Support\PosCache::flushProducts();
 
             // Hapus keys ini agar tidak tersimpan di tabel settings
             unset($settings['active_product_ids_submitted']);

@@ -93,26 +93,31 @@ class DashboardController extends Controller
         return view('admin.dashboard', compact('products', 'cashiers', 'categories', 'settings', 'wholesaleTransactions', 'wholesaleCustomers'));
     }
 
-    public function kasir(Request $request)
+    /**
+     * Build the active kasir catalog payload using a versioned cache key so any product/stock/category
+     * change immediately invalidates stale entries without waiting for TTL expiry.
+     */
+    private function getKasirCatalogPayload($user, ?string $category = null): array
     {
-        $category = $request->input('category');
-        $kasir    = auth()->user();
-        $myLocation = \App\Models\StockLocation::findByBranchName($kasir->branch ?? '');
+        $myLocation = \App\Models\StockLocation::findByBranchName($user->branch ?? '');
         $locationId = $myLocation ? $myLocation->id : null;
+        $version    = \App\Support\PosCache::productsVersion();
 
-        $query = Product::where('is_active', true)->with(['productStocks', 'bundleItems.product.productStocks']);
+        $cacheCategoryKey = ($category && !in_array(strtolower(trim($category)), ['semua', 'all', '']))
+            ? preg_replace('/[^a-zA-Z0-9]/', '', $category)
+            : 'all';
 
-        // Proteksi Strict Mode Database cPanel:
-        // Jika parameter kategori diisi dan nilainya bukan "Semua"/"all"/"empty", lakukan filter WHERE
-        if ($category && !in_array(strtolower(trim($category)), ['semua', 'all', ''])) {
-            $query->where('category', $category);
-        }
+        $cacheKey = "kasir_products_v{$version}_loc_" . ($locationId ?? 'all') . "_" . $cacheCategoryKey;
 
-        // Ambil data produk (di-cache 120 detik per lokasi & kategori agar saat kasir refresh/buka halaman tidak membebani CPU database)
-        $cacheCategoryKey = $category ? preg_replace('/[^a-zA-Z0-9]/', '', $category) : 'all';
-        $cacheKey = "kasir_products_loc_" . ($locationId ?? 'all') . "_" . $cacheCategoryKey;
+        $products = Cache::remember($cacheKey, 120, function () use ($category, $locationId) {
+            $query = Product::where('is_active', true)->with(['productStocks', 'bundleItems.product.productStocks']);
 
-        $products = \Illuminate\Support\Facades\Cache::remember($cacheKey, 120, function () use ($query, $locationId) {
+            // Proteksi Strict Mode Database cPanel:
+            // Jika parameter kategori diisi dan nilainya bukan "Semua"/"all"/"empty", lakukan filter WHERE
+            if ($category && !in_array(strtolower(trim($category)), ['semua', 'all', ''])) {
+                $query->where('category', $category);
+            }
+
             $productsFromDb = $query->get();
 
             return $productsFromDb->map(function ($product) use ($locationId) {
@@ -153,8 +158,53 @@ class DashboardController extends Controller
                     'stock' => $stock,
                     'price_tiers' => $product->price_tiers ?? []
                 ];
-            });
+            })->values();
         });
+
+        $categories = Cache::remember('categories_for_kasir', 1800,
+            fn() => \App\Models\Category::select('id', 'name')->get()
+        );
+
+        return [
+            'version'    => $version,
+            'products'   => $products,
+            'categories' => $categories,
+        ];
+    }
+
+    /**
+     * Lightweight endpoint for Kasir Dashboard to check and fetch catalog updates immediately.
+     */
+    public function kasirProductsSync(Request $request)
+    {
+        $clientVersion  = (string) $request->query('version', '');
+        $currentVersion = \App\Support\PosCache::productsVersion();
+
+        if ($clientVersion !== '' && $clientVersion === $currentVersion && !$request->boolean('force')) {
+            return response()->json([
+                'success' => true,
+                'changed' => false,
+                'version' => $currentVersion,
+            ]);
+        }
+
+        $catalog = $this->getKasirCatalogPayload(auth()->user(), $request->query('category'));
+
+        return response()->json([
+            'success'    => true,
+            'changed'    => true,
+            'version'    => $catalog['version'],
+            'products'   => $catalog['products'],
+            'categories' => $catalog['categories'],
+        ]);
+    }
+
+    public function kasir(Request $request)
+    {
+        $catalog         = $this->getKasirCatalogPayload(auth()->user(), $request->input('category'));
+        $products        = $catalog['products'];
+        $categories      = $catalog['categories'];
+        $productsVersion = $catalog['version'];
 
 
         $todayStart = \Carbon\Carbon::today()->startOfDay();
@@ -163,18 +213,30 @@ class DashboardController extends Controller
         // Fetch transactions created today matching the logged-in cashier's ID (optimized whereBetween instead of whereDate for index usage)
         $todayTransactions = \App\Models\Transaction::where('cashier_id', auth()->id())
             ->whereBetween('created_at', [$todayStart, $todayEnd])
+            ->with('installments:id,transaction_id,amount,payment_method,note,created_at')
             ->latest('id')
-            ->select('id', 'created_at', 'transaction_code', 'items_summary', 'payment_method', 'total_price')
+            ->select('id', 'created_at', 'transaction_code', 'items_summary', 'payment_method', 'payment_status', 'customer_name', 'customer_phone', 'total_price', 'discount', 'branch')
             ->get();
 
         $todayTransactionsMapped = $todayTransactions->map(function($trx) {
+            $bd = $trx->payment_breakdown;
+
             return [
                 'id' => $trx->id,
                 'time' => $trx->created_at->format('H:i'),
                 'transaction_code' => $trx->transaction_code,
                 'items_summary' => $trx->items_summary,
                 'payment_method' => $trx->payment_method,
-                'total_price' => $trx->total_price,
+                'payment_status' => $trx->payment_status ?? 'paid',
+                'customer_name' => $trx->customer_name,
+                'customer_phone' => $trx->customer_phone,
+                'total_price' => (int) $trx->total_price,
+                'discount' => (int) ($trx->discount ?? 0),
+                'paid_amount' => (int) round($trx->paid_amount),
+                'remaining_amount' => (int) round($trx->remaining_amount),
+                'cash_in_amount'               => (float) ($bd['cash'] ?? 0),
+                'digital_receipt_url'          => \Illuminate\Support\Facades\URL::signedRoute('receipt.digital', ['transaction' => $trx->id]),
+                'digital_receipt_download_url' => \Illuminate\Support\Facades\URL::signedRoute('receipt.digital', ['transaction' => $trx->id, 'download' => 1]),
             ];
         });
 
@@ -196,18 +258,71 @@ class DashboardController extends Controller
             ];
         });
 
-        // Cache kategori 30 menit — data jarang berubah
-        $categories = Cache::remember('categories_for_kasir', 1800,
-            fn() => \App\Models\Category::select('id', 'name')->get()
-        );
-
         // Ambil daftar agen B2B / Tour Leader aktif untuk pilihan komisi afiliasi di kasir
         $affiliates = \App\Models\Affiliate::active()
             ->select('id', 'name', 'code', 'agency_name', 'commission_rate_percentage')
             ->orderBy('name', 'asc')
             ->get();
 
-        return view('kasir.dashboard', compact('products', 'todayTransactionsMapped', 'todayExpensesMapped', 'categories', 'affiliates'));
+        // Daftar pesanan DP yang belum lunas (lintas hari) untuk pelunasan cepat di dashboard kasir
+        $kasirUser   = auth()->user();
+        $kasirBranch = $kasirUser->branch ?? '';
+        $unpaidDpMapped = \App\Models\Transaction::where('payment_method', 'DP')
+            ->where('payment_status', 'unpaid')
+            ->where(function ($q) use ($kasirUser, $kasirBranch) {
+                $q->where('cashier_id', $kasirUser->id);
+                if ($kasirBranch !== '') {
+                    $q->orWhere('branch', $kasirBranch);
+                }
+            })
+            ->with('installments:id,transaction_id,amount,payment_method,note,created_at')
+            ->latest('id')
+            ->get()
+            ->map(function ($trx) {
+                return [
+                    'id'                           => $trx->id,
+                    'transaction_code'             => $trx->transaction_code,
+                    'created_at_formatted'         => $trx->created_at->translatedFormat('d M Y - H:i'),
+                    'customer_name'                => $trx->customer_name ?? 'Pelanggan Umum',
+                    'customer_phone'               => $trx->customer_phone ?? '',
+                    'items_summary'                => $trx->items_summary,
+                    'total_price'                  => (int) $trx->total_price,
+                    'discount'                     => (int) ($trx->discount ?? 0),
+                    'paid_amount'                  => (int) round($trx->paid_amount),
+                    'remaining_amount'             => (int) round($trx->remaining_amount),
+                    'digital_receipt_url'          => \Illuminate\Support\Facades\URL::signedRoute('receipt.digital', ['transaction' => $trx->id]),
+                    'digital_receipt_download_url' => \Illuminate\Support\Facades\URL::signedRoute('receipt.digital', ['transaction' => $trx->id, 'download' => 1]),
+                    'installments'                 => $trx->installments->map(fn($inst) => [
+                        'id'             => $inst->id,
+                        'amount'         => (int) $inst->amount,
+                        'payment_method' => $inst->payment_method,
+                        'note'           => $inst->note,
+                        'date'           => $inst->created_at->translatedFormat('d M Y H:i'),
+                    ])->values(),
+                ];
+            })->values();
+
+        // Pelunasan tunai hari ini untuk transaksi DP dari hari sebelumnya
+        $extraDpCashToday = (float) \App\Models\InstallmentPayment::whereBetween('installment_payments.created_at', [$todayStart, $todayEnd])
+            ->whereIn('payment_method', ['Cash', 'Tunai'])
+            ->whereHas('transaction', function ($q) use ($kasirUser, $todayStart) {
+                $q->where('cashier_id', $kasirUser->id)
+                  ->where('payment_method', 'DP')
+                  ->where('created_at', '<', $todayStart)
+                  ->where('payment_status', '!=', 'cancelled');
+            })
+            ->sum('amount');
+
+        return view('kasir.dashboard', compact(
+            'products',
+            'todayTransactionsMapped',
+            'todayExpensesMapped',
+            'categories',
+            'affiliates',
+            'productsVersion',
+            'unpaidDpMapped',
+            'extraDpCashToday'
+        ));
     }
 
     /**
@@ -323,52 +438,43 @@ class DashboardController extends Controller
         $comparisonTransactionsCount = (int) ($comparisonStats->count ?? 0);
         $comparisonAov = (float) ($comparisonStats->aov ?? 0);
 
-        // Realisasi Kas Masuk (Kas Riil) & Piutang Tempo Berjalan
-        // A. Transaksi non-tempo yang langsung lunas (retail & wholesale tunai/transfer)
+        // Realisasi Kas Masuk (Kas Riil) & Piutang Tempo / DP Berjalan
+        // A. Transaksi non-tempo/non-DP yang langsung lunas (retail & wholesale tunai/QRIS/Debit/transfer)
         $directCash = (float) $baseQuery()
             ->where('payment_status', '!=', 'cancelled')
-            ->where(function ($q) {
-                $q->where('transaction_type', '!=', 'wholesale')
-                  ->orWhere('payment_method', '!=', 'Piutang / Tempo');
-            })
+            ->whereNotIn('payment_method', ['Piutang / Tempo', 'DP'])
             ->where('payment_status', 'paid')
             ->whereBetween('created_at', [$start, $end])
             ->sum('total_price');
 
-        // B. Penerimaan cicilan & DP dari transaksi tempo yang masuk pada rentang filter ini (hanya wholesale)
-        if ($selectedChannel === 'retail') {
-            $installmentCash = 0.0;
-            $compInstallmentCash = 0.0;
-        } else {
-            $installmentCashQuery = \App\Models\InstallmentPayment::whereBetween('installment_payments.created_at', [$start, $end])
-                ->whereHas('transaction', function ($q) use ($selectedBranch) {
-                    $q->where('payment_method', 'Piutang / Tempo')
-                      ->where('payment_status', '!=', 'cancelled');
-                    if ($selectedBranch && $selectedBranch !== '') {
-                        $q->where('branch', $selectedBranch);
-                    }
-                });
-            $installmentCash = (float) $installmentCashQuery->sum('amount');
+        // B. Penerimaan cicilan & DP (wholesale Tempo maupun DP kasir) yang masuk pada rentang filter ini
+        $installmentCashQuery = \App\Models\InstallmentPayment::whereBetween('installment_payments.created_at', [$start, $end])
+            ->whereHas('transaction', function ($q) use ($selectedBranch, $selectedChannel) {
+                $q->whereIn('payment_method', ['Piutang / Tempo', 'DP'])
+                  ->where('payment_status', '!=', 'cancelled');
+                if ($selectedBranch && $selectedBranch !== '') {
+                    $q->where('branch', $selectedBranch);
+                }
+                $this->applyChannelScope($q, $selectedChannel);
+            });
+        $installmentCash = (float) $installmentCashQuery->sum('amount');
 
-            $compInstallmentCashQuery = \App\Models\InstallmentPayment::whereBetween('installment_payments.created_at', [$comparisonStart, $comparisonEnd])
-                ->whereHas('transaction', function ($q) use ($selectedBranch) {
-                    $q->where('payment_method', 'Piutang / Tempo')
-                      ->where('payment_status', '!=', 'cancelled');
-                    if ($selectedBranch && $selectedBranch !== '') {
-                        $q->where('branch', $selectedBranch);
-                    }
-                });
-            $compInstallmentCash = (float) $compInstallmentCashQuery->sum('amount');
-        }
+        $compInstallmentCashQuery = \App\Models\InstallmentPayment::whereBetween('installment_payments.created_at', [$comparisonStart, $comparisonEnd])
+            ->whereHas('transaction', function ($q) use ($selectedBranch, $selectedChannel) {
+                $q->whereIn('payment_method', ['Piutang / Tempo', 'DP'])
+                  ->where('payment_status', '!=', 'cancelled');
+                if ($selectedBranch && $selectedBranch !== '') {
+                    $q->where('branch', $selectedBranch);
+                }
+                $this->applyChannelScope($q, $selectedChannel);
+            });
+        $compInstallmentCash = (float) $compInstallmentCashQuery->sum('amount');
         $realizedCash = $directCash + $installmentCash;
 
         // Perhitungan perbandingan kas masuk untuk periode lalu
         $compDirectCash = (float) $baseQuery()
             ->where('payment_status', '!=', 'cancelled')
-            ->where(function ($q) {
-                $q->where('transaction_type', '!=', 'wholesale')
-                  ->orWhere('payment_method', '!=', 'Piutang / Tempo');
-            })
+            ->whereNotIn('payment_method', ['Piutang / Tempo', 'DP'])
             ->where('payment_status', 'paid')
             ->whereBetween('created_at', [$comparisonStart, $comparisonEnd])
             ->sum('total_price');
@@ -381,29 +487,22 @@ class DashboardController extends Controller
             $cashGrowthPercent = 100;
         }
 
-        // C. Piutang tempo yang belum cair (seluruh transaksi wholesale tempo unpaid)
-        if ($selectedChannel === 'retail') {
-            $outstandingReceivables = 0.0;
-            $activePeriodReceivables = 0.0;
-        } else {
-            $unpaidTempoTrxQuery = $baseQuery()
-                ->where('transaction_type', 'wholesale')
-                ->where('payment_method', 'Piutang / Tempo')
-                ->where('payment_status', 'unpaid');
-            $unpaidTempoTotal = (float) (clone $unpaidTempoTrxQuery)->sum('total_price');
-            $unpaidTempoPaid = (float) \App\Models\InstallmentPayment::whereIn('transaction_id', (clone $unpaidTempoTrxQuery)->select('id'))->sum('amount');
-            $outstandingReceivables = max(0, $unpaidTempoTotal - $unpaidTempoPaid);
+        // C. Piutang tempo & sisa DP yang belum cair (seluruh transaksi unpaid pada channel terpilih)
+        $unpaidTempoTrxQuery = $baseQuery()
+            ->whereIn('payment_method', ['Piutang / Tempo', 'DP'])
+            ->where('payment_status', 'unpaid');
+        $unpaidTempoTotal = (float) (clone $unpaidTempoTrxQuery)->sum('total_price');
+        $unpaidTempoPaid = (float) \App\Models\InstallmentPayment::whereIn('transaction_id', (clone $unpaidTempoTrxQuery)->select('id'))->sum('amount');
+        $outstandingReceivables = max(0, $unpaidTempoTotal - $unpaidTempoPaid);
 
-            // Piutang yang belum cair khusus dari transaksi yang terjadi di periode aktif yang dipilih:
-            $activePeriodTempoQuery = $baseQuery()
-                ->where('transaction_type', 'wholesale')
-                ->where('payment_method', 'Piutang / Tempo')
-                ->where('payment_status', 'unpaid')
-                ->whereBetween('created_at', [$start, $end]);
-            $activePeriodTempoTotal = (float) (clone $activePeriodTempoQuery)->sum('total_price');
-            $activePeriodTempoPaid = (float) \App\Models\InstallmentPayment::whereIn('transaction_id', (clone $activePeriodTempoQuery)->select('id'))->sum('amount');
-            $activePeriodReceivables = max(0, $activePeriodTempoTotal - $activePeriodTempoPaid);
-        }
+        // Piutang / sisa DP yang belum cair khusus dari transaksi yang terjadi di periode aktif yang dipilih:
+        $activePeriodTempoQuery = $baseQuery()
+            ->whereIn('payment_method', ['Piutang / Tempo', 'DP'])
+            ->where('payment_status', 'unpaid')
+            ->whereBetween('created_at', [$start, $end]);
+        $activePeriodTempoTotal = (float) (clone $activePeriodTempoQuery)->sum('total_price');
+        $activePeriodTempoPaid = (float) \App\Models\InstallmentPayment::whereIn('transaction_id', (clone $activePeriodTempoQuery)->select('id'))->sum('amount');
+        $activePeriodReceivables = max(0, $activePeriodTempoTotal - $activePeriodTempoPaid);
 
         // Calculate growth percentages
         $revenueGrowthPercent = 0;

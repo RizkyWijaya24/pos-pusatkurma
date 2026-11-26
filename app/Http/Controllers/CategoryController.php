@@ -47,6 +47,7 @@ class CategoryController extends Controller
         // Safely update all products currently having the old category name string
         if ($oldName !== $category->name) {
             Product::where('category', $oldName)->update(['category' => $category->name]);
+            \App\Support\PosCache::flushProducts();
         }
 
         // Include product count for the dynamic UI

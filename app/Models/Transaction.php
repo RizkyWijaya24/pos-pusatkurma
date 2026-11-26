@@ -123,6 +123,22 @@ class Transaction extends Model
             $breakdown['qris'] = $total;
         } elseif ($method === 'Debit') {
             $breakdown['debit'] = $total;
+        } elseif ($method === 'DP') {
+            $installments = $this->relationLoaded('installments')
+                ? $this->installments
+                : $this->installments()->get();
+
+            foreach ($installments as $inst) {
+                $instMethod = strtolower(trim($inst->payment_method ?? 'Cash'));
+                $amount = (float) $inst->amount;
+                if (in_array($instMethod, ['cash', 'tunai', ''], true)) {
+                    $breakdown['cash'] += $amount;
+                } elseif ($instMethod === 'qris') {
+                    $breakdown['qris'] += $amount;
+                } else {
+                    $breakdown['debit'] += $amount;
+                }
+            }
         } elseif (str_starts_with($method, 'SPLIT:')) {
             $breakdown['is_split'] = true;
 
@@ -142,6 +158,35 @@ class Transaction extends Model
         }
 
         return $breakdown;
+    }
+
+    /**
+     * Total nominal yang sudah dibayarkan untuk transaksi ini.
+     */
+    public function getPaidAmountAttribute(): float
+    {
+        if (in_array($this->payment_method, ['DP', 'Piutang / Tempo'], true) || ($this->payment_status ?? 'paid') === 'unpaid') {
+            $installments = $this->relationLoaded('installments')
+                ? $this->installments
+                : $this->installments()->get();
+
+            $paid = (float) $installments->sum('amount');
+            return min((float) $this->total_price, $paid);
+        }
+
+        return ($this->payment_status ?? 'paid') === 'cancelled' ? 0.0 : (float) $this->total_price;
+    }
+
+    /**
+     * Sisa tagihan yang belum dibayar.
+     */
+    public function getRemainingAmountAttribute(): float
+    {
+        if (($this->payment_status ?? 'paid') === 'paid' || ($this->payment_status ?? 'paid') === 'cancelled') {
+            return 0.0;
+        }
+
+        return max(0.0, (float) $this->total_price - $this->paid_amount);
     }
 
     /**

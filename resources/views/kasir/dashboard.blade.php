@@ -52,6 +52,7 @@
         <script type="application/json" id="expenses-data">@json($todayExpensesMapped)</script>
         <script type="application/json" id="categories-data">@json($categories)</script>
         <script type="application/json" id="affiliates-data">@json($affiliates)</script>
+        <script type="application/json" id="unpaid-dp-data">@json($unpaidDpMapped ?? [])</script>
 
         <!-- Alpine.js POS State Definition -->
         <script>
@@ -61,7 +62,11 @@
                 activeCategory: 'Semua',
                 
                 products: JSON.parse(document.getElementById('products-data').textContent),
+            productsVersion: @json($productsVersion ?? '1'),
+            isSyncingProducts: false,
             todayTransactions: JSON.parse(document.getElementById('transactions-data').textContent),
+            unpaidDpTransactions: JSON.parse(document.getElementById('unpaid-dp-data')?.textContent || '[]'),
+            extraDpCashToday: {{ (float) ($extraDpCashToday ?? 0) }},
             expenses: JSON.parse(document.getElementById('expenses-data').textContent),
             categories: JSON.parse(document.getElementById('categories-data').textContent),
             affiliates: JSON.parse(document.getElementById('affiliates-data')?.textContent || '[]'),
@@ -75,6 +80,15 @@
             showExpenseModal: false,
             newExpense: { amount: '', category: 'Operasional Toko', description: '' },
             pendingDeleteExpenseId: null,
+
+            showDpModal: false,
+            dpSearch: '',
+            selectedDpTrx: null,
+            dpSettleAmount: '',
+            dpSettleMethod: 'Cash',
+            dpSettleNote: '',
+            isSettlingDp: false,
+            settledDpResult: null,
             
             showWaModal: false,
             waNumber: '{{ config('app.whatsapp_report_number', '') }}',
@@ -107,6 +121,14 @@
             splitCashAmount: '',
             splitNonCashMethod: 'QRIS', // 'QRIS' or 'Debit'
             splitNonCashAmount: 0,
+            customerName: '',
+            customerPhone: '',
+            dpAmount: '',
+            dpPaymentMethod: 'Cash',
+            dpNote: '',
+            showCustomerFields: false,
+            waCustomerPhone: '',
+            isSharingPdf: false,
             printMethod: 'iframe',
 
             checkoutStage: 0, // 0 = closed, 1 = details entry, 2 = loading/processing, 3 = success/receipt
@@ -127,6 +149,68 @@
                         localStorage.setItem('pos_kasir_discount', val || '');
                     } catch(e) {}
                 });
+
+                // Sinkronkan produk & stok secara otomatis saat tab aktif atau setiap 15 detik
+                document.addEventListener('visibilitychange', () => {
+                    if (!document.hidden) {
+                        this.syncProductsCatalog(false);
+                    }
+                });
+                window.addEventListener('focus', () => {
+                    this.syncProductsCatalog(false);
+                });
+                setInterval(() => {
+                    if (!document.hidden) {
+                        this.syncProductsCatalog(false);
+                    }
+                }, 15000);
+            },
+
+            async syncProductsCatalog(manual = false) {
+                if (this.isSyncingProducts) return;
+                this.isSyncingProducts = true;
+                try {
+                    const params = new URLSearchParams({
+                        version: this.productsVersion || '',
+                    });
+                    if (manual) {
+                        params.set('force', '1');
+                    }
+
+                    const res = await fetch('{{ route("kasir.products.sync") }}?' + params.toString(), {
+                        headers: { 'Accept': 'application/json' },
+                    });
+                    if (!res.ok) return;
+
+                    const data = await res.json();
+                    if (!data.success) return;
+
+                    if (data.changed) {
+                        const prevIds = new Set((this.products || []).map(p => p.id));
+                        const nextProducts = Array.isArray(data.products) ? data.products : [];
+                        const addedCount = nextProducts.filter(p => !prevIds.has(p.id)).length;
+
+                        this.products = nextProducts;
+                        if (Array.isArray(data.categories)) {
+                            this.categories = data.categories;
+                        }
+                        this.productsVersion = data.version || this.productsVersion;
+
+                        if (addedCount > 0) {
+                            this.showToast(addedCount + ' produk baru masuk ke kasir!', 'success');
+                        } else if (manual) {
+                            this.showToast('Katalog produk & stok berhasil diperbarui.', 'success');
+                        }
+                    } else if (manual) {
+                        this.showToast('Katalog produk sudah terbaru.', 'info');
+                    }
+                } catch (e) {
+                    if (manual) {
+                        this.showToast('Gagal menyinkronkan katalog produk.', 'warning');
+                    }
+                } finally {
+                    this.isSyncingProducts = false;
+                }
             },
 
             showToast(message, type = 'success') {
@@ -523,7 +607,7 @@
                     if (qty <= 0) {
                         this.cart = this.cart.filter(c => c.cart_id !== cart_id);
                         this.showToast(item.name + ' dihapus dari keranjang.', 'info');
-                    } else if (qty <= product.stock) {
+                    } else if (!product || qty <= product.stock) {
                         item.qty = parseFloat(qty);
                     } else {
                         this.showToast('Stok tidak mencukupi!', 'warning');
@@ -582,8 +666,11 @@
             },
 
             get todayNetCash() {
-                // Hitung total tunai fisik masuk (termasuk porsi Cash dari transaksi SPLIT)
+                // Hitung total tunai fisik masuk (termasuk porsi Cash dari transaksi SPLIT, DP hari ini, dan pelunasan DP Cash untuk order hari sebelumnya)
                 const cashSales = this.todayTransactions.reduce((sum, t) => {
+                    if (t.cash_in_amount !== undefined && t.cash_in_amount !== null) {
+                        return sum + parseFloat(t.cash_in_amount);
+                    }
                     const method = t.payment_method || 'Cash';
                     if (method === 'Cash') {
                         return sum + parseFloat(t.total_price);
@@ -595,7 +682,7 @@
                         }
                     }
                     return sum;
-                }, 0);
+                }, 0) + (parseFloat(this.extraDpCashToday) || 0);
                 return cashSales - this.todayExpensesTotal;
             },
 
@@ -608,6 +695,13 @@
                 this.cashReceived = '';
                 this.splitCashAmount = '';
                 this.splitNonCashMethod = 'QRIS';
+                this.customerName = '';
+                this.customerPhone = '';
+                this.dpAmount = '';
+                this.dpPaymentMethod = 'Cash';
+                this.dpNote = '';
+                this.waCustomerPhone = '';
+                this.showCustomerFields = (method === 'DP');
                 this.cardDigits = '';
                 this.latestTransaction = null;
                 if (method === 'QRIS' || method === 'Debit') {
@@ -619,6 +713,18 @@
 
             finishTransaction() {
                 if (this.cart.length === 0 || this.isSubmitting) return;
+
+                if (this.paymentMethod === 'DP') {
+                    if (!this.customerName.trim()) {
+                        this.showToast('Nama pemesan wajib diisi untuk transaksi DP!', 'warning');
+                        return;
+                    }
+                    const dpVal = parseInt(this.dpAmount || 0, 10);
+                    if (!dpVal || dpVal <= 0 || dpVal >= this.total) {
+                        this.showToast('Nominal DP harus lebih dari Rp 0 dan kurang dari total tagihan!', 'warning');
+                        return;
+                    }
+                }
 
                 let finalPaymentMethod = this.paymentMethod;
                 if (this.paymentMethod === 'SPLIT') {
@@ -644,6 +750,11 @@
                         total_price: this.total,
                         discount: this.discountAmount,
                         payment_method: finalPaymentMethod,
+                        customer_name: this.customerName.trim() || null,
+                        customer_phone: this.customerPhone.trim() || null,
+                        dp_amount: this.paymentMethod === 'DP' ? parseInt(this.dpAmount || 0, 10) : null,
+                        dp_payment_method: this.paymentMethod === 'DP' ? this.dpPaymentMethod : null,
+                        dp_note: this.paymentMethod === 'DP' ? (this.dpNote.trim() || null) : null,
                         affiliate_id: this.selectedAffiliateId || null,
                         pax_count: this.paxCount ? parseInt(this.paxCount) : 0,
                         items: this.cart.map(item => ({
@@ -674,12 +785,55 @@
                             transaction_code: data.transaction.transaction_code,
                             items_summary: data.transaction.items_summary,
                             payment_method: data.transaction.payment_method,
+                            payment_status: data.transaction.payment_status,
+                            customer_name: data.transaction.customer_name,
+                            customer_phone: data.transaction.customer_phone,
                             total_price: data.transaction.total_price,
-                            discount: data.transaction.discount
+                            discount: data.transaction.discount,
+                            paid_amount: data.transaction.paid_amount,
+                            remaining_amount: data.transaction.remaining_amount,
+                            cash_in_amount: data.transaction.cash_in_amount,
+                            digital_receipt_url: data.transaction.digital_receipt_url,
+                            digital_receipt_download_url: data.transaction.digital_receipt_download_url
                         });
+
+                        if (data.transaction.payment_method === 'DP' && data.transaction.payment_status === 'unpaid') {
+                            this.unpaidDpTransactions.unshift({
+                                id: data.transaction.id,
+                                created_at_formatted: data.transaction.time || 'Baru saja',
+                                transaction_code: data.transaction.transaction_code,
+                                items_summary: data.transaction.items_summary,
+                                customer_name: data.transaction.customer_name || '-',
+                                customer_phone: data.transaction.customer_phone || '-',
+                                total_price: parseFloat(data.transaction.total_price || 0),
+                                paid_amount: Math.round(data.transaction.paid_amount || 0),
+                                remaining_amount: Math.round(data.transaction.remaining_amount || 0),
+                                payment_status: data.transaction.payment_status,
+                                digital_receipt_url: data.transaction.digital_receipt_url,
+                                digital_receipt_download_url: data.transaction.digital_receipt_download_url,
+                                installments: [{
+                                    id: Date.now(),
+                                    amount: Math.round(data.transaction.paid_amount || 0),
+                                    payment_method: this.dpPaymentMethod || 'Cash',
+                                    note: this.dpNote ? this.dpNote.trim() : 'DP Awal (Kasir)',
+                                    date: data.transaction.time || 'Hari ini'
+                                }]
+                            });
+                        }
+
+                        // Sync local product stock immediately
+                        if (Array.isArray(data.transaction.items_sold)) {
+                            data.transaction.items_sold.forEach(sold => {
+                                const prod = this.products.find(p => p.id === sold.id);
+                                if (prod) {
+                                    prod.stock = Math.max(0, parseFloat(prod.stock || 0) - parseFloat(sold.qty || 0));
+                                }
+                            });
+                        }
                         
                         // Save latest transaction details for receipt screen
                         this.latestTransaction = data.transaction;
+                        this.waCustomerPhone = data.transaction.customer_phone || this.customerPhone || '';
                         
                         // Reset cart, keep staging info
                         this.cart = [];
@@ -719,6 +873,13 @@
                 this.splitCashAmount = '';
                 this.splitNonCashMethod = 'QRIS';
                 this.paymentMethod = '';
+                this.customerName = '';
+                this.customerPhone = '';
+                this.dpAmount = '';
+                this.dpPaymentMethod = 'Cash';
+                this.dpNote = '';
+                this.showCustomerFields = false;
+                this.waCustomerPhone = '';
                 this.cardDigits = '';
                 this.selectedAffiliateId = '';
                 this.paxCount = '';
@@ -732,8 +893,107 @@
                 this.splitCashAmount = '';
                 this.splitNonCashMethod = 'QRIS';
                 this.paymentMethod = '';
+                this.customerName = '';
+                this.customerPhone = '';
+                this.dpAmount = '';
+                this.dpPaymentMethod = 'Cash';
+                this.dpNote = '';
+                this.showCustomerFields = false;
+                this.waCustomerPhone = '';
                 this.cardDigits = '';
                 this.latestTransaction = null;
+            },
+
+            normalizeWaPhone(raw) {
+                if (!raw) return '';
+                let digits = String(raw).replace(/[^0-9]/g, '');
+                if (digits.startsWith('0')) {
+                    digits = '62' + digits.substring(1);
+                } else if (digits.startsWith('8')) {
+                    digits = '62' + digits;
+                }
+                return digits;
+            },
+
+            async shareDigitalReceiptPdf(trx) {
+                if (!trx || !trx.digital_receipt_url || this.isSharingPdf) return;
+                this.isSharingPdf = true;
+                const fileName = 'Struk-' + trx.transaction_code + '.pdf';
+
+                try {
+                    const res = await fetch(trx.digital_receipt_url, { headers: { 'Accept': 'application/pdf' } });
+                    if (!res.ok) throw new Error('Gagal mengunduh file PDF.');
+                    const blob = await res.blob();
+                    const pdfFile = new File([blob], fileName, { type: 'application/pdf' });
+
+                    if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+                        await navigator.share({
+                            title: 'Struk Digital ' + trx.transaction_code,
+                            files: [pdfFile],
+                        });
+                        this.showToast('File Struk PDF siap dikirim!', 'success');
+                        return;
+                    }
+
+                    // Fallback desktop: download PDF langsung agar siap dilampirkan ke WA / email
+                    const blobUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = blobUrl;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+                    this.showToast('PDF diunduh (' + fileName + '). Silakan lampirkan file ke chat customer.', 'success');
+                } catch (err) {
+                    if (err && err.name === 'AbortError') return;
+                    window.open(trx.digital_receipt_download_url || trx.digital_receipt_url, '_blank');
+                } finally {
+                    this.isSharingPdf = false;
+                }
+            },
+
+            openCustomerWaChat(trx, phoneOverride = null) {
+                if (!trx) return;
+                const cleanPhone = this.normalizeWaPhone(phoneOverride !== null ? phoneOverride : (this.waCustomerPhone || trx.customer_phone));
+                const greeting = trx.customer_name
+                    ? `Halo Kak ${trx.customer_name}, berikut kami kirimkan struk PDF resmi untuk transaksi #${trx.transaction_code}.`
+                    : `Halo Kak, berikut kami kirimkan struk PDF resmi untuk transaksi #${trx.transaction_code}.`;
+                const url = cleanPhone
+                    ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(greeting)}`
+                    : `https://wa.me/?text=${encodeURIComponent(greeting)}`;
+                window.open(url, '_blank');
+            },
+
+            copyDigitalReceiptLink(trx) {
+                if (!trx || !trx.digital_receipt_url) {
+                    this.showToast('Link struk digital belum tersedia.', 'warning');
+                    return;
+                }
+                const text = trx.digital_receipt_url;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text)
+                        .then(() => this.showToast('Link struk digital berhasil disalin!', 'success'))
+                        .catch(() => this.fallbackCopyText(text));
+                } else {
+                    this.fallbackCopyText(text);
+                }
+            },
+
+            fallbackCopyText(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    this.showToast('Link struk digital berhasil disalin!', 'success');
+                } catch (e) {
+                    this.showToast('Gagal menyalin link struk.', 'error');
+                }
+                document.body.removeChild(ta);
             },
 
             printReceiptAction(transaction) {
@@ -874,14 +1134,17 @@
                 msg += `--------------------------------------\n\n`;
                 
                 msg += `*RINCIAN METODE PEMBAYARAN*\n`;
-                const methods = { 'Cash': 0, 'QRIS': 0, 'Debit': 0, 'Split': 0 };
-                const methodCounts = { 'Cash': 0, 'QRIS': 0, 'Debit': 0, 'Split': 0 };
+                const methods = { 'Cash': 0, 'QRIS': 0, 'Debit': 0, 'Split': 0, 'DP': 0 };
+                const methodCounts = { 'Cash': 0, 'QRIS': 0, 'Debit': 0, 'Split': 0, 'DP': 0 };
                 
                 this.todayTransactions.forEach(t => {
                     const m = t.payment_method || 'Cash';
                     if (m === 'Cash' || m === 'QRIS' || m === 'Debit') {
                         methods[m] += parseFloat(t.total_price);
                         methodCounts[m]++;
+                    } else if (m === 'DP') {
+                        methods['DP'] += parseFloat(t.paid_amount ?? t.total_price ?? 0);
+                        methodCounts['DP']++;
                     } else if (m.startsWith('SPLIT:')) {
                         methods['Split'] += parseFloat(t.total_price);
                         methodCounts['Split']++;
@@ -912,6 +1175,9 @@
                 msg += `• *Tunai (Cash):* ${this.formatRupiah(methods['Cash'])}\n`;
                 msg += `• *QRIS:* ${this.formatRupiah(methods['QRIS'])}\n`;
                 msg += `• *Debit:* ${this.formatRupiah(methods['Debit'])}\n`;
+                if (methodCounts['DP'] > 0) {
+                    msg += `• *DP (Uang Muka):* ${methodCounts['DP']} trx (Masuk ${this.formatRupiah(methods['DP'])})\n`;
+                }
                 if (methodCounts['Split'] > 0) {
                     msg += `• *Transaksi Split (Kombinasi):* ${methodCounts['Split']} trx (${this.formatRupiah(methods['Split'])})\n`;
                 }
@@ -1005,6 +1271,129 @@
                 }
                 window.open(url, '_blank');
                 this.showWaModal = false;
+            },
+
+            get filteredUnpaidDp() {
+                const q = (this.dpSearch || '').toLowerCase().trim();
+                if (!q) return this.unpaidDpTransactions;
+                return this.unpaidDpTransactions.filter(trx => {
+                    return (trx.transaction_code || '').toLowerCase().includes(q)
+                        || (trx.customer_name || '').toLowerCase().includes(q)
+                        || (trx.customer_phone || '').toLowerCase().includes(q)
+                        || (trx.items_summary || '').toLowerCase().includes(q);
+                });
+            },
+
+            openDpModal() {
+                this.dpSearch = '';
+                this.selectedDpTrx = null;
+                this.settledDpResult = null;
+                this.showDpModal = true;
+            },
+
+            selectDpTransaction(trx) {
+                this.settledDpResult = null;
+                this.selectedDpTrx = trx;
+                this.dpSettleAmount = Math.max(1, Math.round(trx.remaining_amount || 0));
+                this.dpSettleMethod = 'Cash';
+                this.dpSettleNote = '';
+            },
+
+            async submitDpSettlement() {
+                if (!this.selectedDpTrx || this.isSettlingDp) return;
+                const amount = parseInt(this.dpSettleAmount || 0, 10);
+                const remaining = Math.round(this.selectedDpTrx.remaining_amount || 0);
+                if (!amount || amount <= 0) {
+                    this.showToast('Nominal pelunasan harus lebih dari 0.', 'warning');
+                    return;
+                }
+                if (amount > remaining) {
+                    this.showToast('Nominal melebihi sisa tagihan (' + this.formatRupiah(remaining) + ').', 'warning');
+                    return;
+                }
+
+                this.isSettlingDp = true;
+                const csrfToken = document.querySelector('meta[name=csrf-token]').getAttribute('content');
+                const trxSnapshot = this.selectedDpTrx;
+                const method = this.dpSettleMethod || 'Cash';
+
+                try {
+                    const res = await fetch(`/kasir/transactions/${trxSnapshot.id}/installments`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            amount: amount,
+                            payment_method: method,
+                            note: this.dpSettleNote ? this.dpSettleNote.trim() : null
+                        })
+                    });
+                    const data = await res.json();
+                    if (!res.ok || !data.success) {
+                        this.showToast(data.message || 'Gagal mencatat pembayaran sisa DP.', 'error');
+                        return;
+                    }
+
+                    // Update todayTransactions if this DP order belongs to today's list; else add Cash portion to extraDpCashToday
+                    const todayMatch = this.todayTransactions.find(t => t.id === trxSnapshot.id);
+                    if (todayMatch) {
+                        todayMatch.paid_amount = data.paid_amount;
+                        todayMatch.remaining_amount = data.remaining_amount;
+                        todayMatch.payment_status = data.payment_status;
+                        todayMatch.digital_receipt_url = data.digital_receipt_url || todayMatch.digital_receipt_url;
+                        todayMatch.digital_receipt_download_url = data.digital_receipt_download_url || todayMatch.digital_receipt_download_url;
+                        if (method === 'Cash') {
+                            todayMatch.cash_in_amount = (parseFloat(todayMatch.cash_in_amount || 0) + amount);
+                        }
+                    } else if (method === 'Cash') {
+                        this.extraDpCashToday = (parseFloat(this.extraDpCashToday) || 0) + amount;
+                    }
+
+                    const updatedInstallments = [...(trxSnapshot.installments || [])];
+                    if (data.installment) {
+                        updatedInstallments.push(data.installment);
+                    }
+
+                    if (data.is_paid) {
+                        this.unpaidDpTransactions = this.unpaidDpTransactions.filter(t => t.id !== trxSnapshot.id);
+                    } else {
+                        const idx = this.unpaidDpTransactions.findIndex(t => t.id === trxSnapshot.id);
+                        if (idx !== -1) {
+                            this.unpaidDpTransactions[idx] = {
+                                ...this.unpaidDpTransactions[idx],
+                                paid_amount: data.paid_amount,
+                                remaining_amount: data.remaining_amount,
+                                payment_status: data.payment_status,
+                                installments: updatedInstallments,
+                                digital_receipt_url: data.digital_receipt_url || this.unpaidDpTransactions[idx].digital_receipt_url,
+                                digital_receipt_download_url: data.digital_receipt_download_url || this.unpaidDpTransactions[idx].digital_receipt_download_url
+                            };
+                        }
+                    }
+
+                    this.settledDpResult = {
+                        ...trxSnapshot,
+                        paid_amount: data.paid_amount,
+                        remaining_amount: data.remaining_amount,
+                        payment_status: data.payment_status,
+                        is_paid: data.is_paid,
+                        last_payment_amount: amount,
+                        last_payment_method: method,
+                        installments: updatedInstallments,
+                        digital_receipt_url: data.digital_receipt_url || trxSnapshot.digital_receipt_url,
+                        digital_receipt_download_url: data.digital_receipt_download_url || trxSnapshot.digital_receipt_download_url
+                    };
+                    this.selectedDpTrx = null;
+                    this.showToast(data.message || 'Pembayaran sisa tagihan DP berhasil dicatat!', 'success');
+                } catch (e) {
+                    console.error(e);
+                    this.showToast('Terjadi kesalahan jaringan saat memproses pelunasan.', 'error');
+                } finally {
+                    this.isSettlingDp = false;
+                }
             }
         };
     }
@@ -1060,6 +1449,19 @@
                         Catat Pengeluaran
                     </button>
 
+                    <!-- Button Pelunasan DP -->
+                    <button type="button"
+                            @click="openDpModal()"
+                            class="shrink-0 px-4 py-2 text-xs font-bold rounded-xl bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 transition duration-150 flex items-center gap-1.5 shadow-sm">
+                        <svg class="h-4 w-4 shrink-0 text-amber-600" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75" />
+                        </svg>
+                        <span>Pelunasan DP</span>
+                        <span x-show="unpaidDpTransactions.length > 0"
+                              x-text="unpaidDpTransactions.length"
+                              class="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-amber-600 text-white"></span>
+                    </button>
+
                     <!-- Button Laporan WA -->
                     <button type="button" 
                             @click="generateWaMessage(); showWaModal = true;"
@@ -1070,24 +1472,35 @@
                         Laporan WA
                     </button>
 
-                    <!-- Search box -->
-                    <div class="relative w-full sm:w-64">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                        </span>
-                        <input type="text" 
-                            x-model.debounce.150ms="search"
-                            placeholder="Cari kurma atau SKU..." 
-                            class="w-full pl-9 pr-8 py-2 text-sm border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner">
-                        <button type="button" 
-                            x-show="search" 
-                            @click="search = ''" 
-                            class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-rose-600 transition" 
-                            title="Hapus pencarian">
-                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    <!-- Search box & Sync button -->
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <div class="relative w-full sm:w-64">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </span>
+                            <input type="text" 
+                                x-model.debounce.150ms="search"
+                                placeholder="Cari kurma atau SKU..." 
+                                class="w-full pl-9 pr-8 py-2 text-sm border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-emerald-500 shadow-inner">
+                            <button type="button" 
+                                x-show="search" 
+                                @click="search = ''" 
+                                class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-rose-600 transition" 
+                                title="Hapus pencarian">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <button type="button"
+                            @click="syncProductsCatalog(true)"
+                            :disabled="isSyncingProducts"
+                            title="Sinkronkan produk & stok terbaru"
+                            class="shrink-0 p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-200 text-slate-600 hover:text-emerald-700 transition duration-150 disabled:opacity-50">
+                            <svg class="h-4 w-4" :class="isSyncingProducts ? 'animate-spin text-emerald-600' : ''" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
                             </svg>
                         </button>
                     </div>
@@ -1241,10 +1654,10 @@
                     </div>
 
                     <!-- Big Touch-Friendly Checkout Buttons -->
-                    <div class="grid grid-cols-4 gap-2">
+                    <div class="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
                         <button type="button" 
                                 @click="processCheckout('Cash')"
-                                class="py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl font-extrabold text-[11px] tracking-wide uppercase transition duration-150 flex flex-col items-center gap-1 shadow-md shadow-emerald-700/10">
+                                class="py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl font-extrabold text-[10px] tracking-wide uppercase transition duration-150 flex flex-col items-center gap-1 shadow-md shadow-emerald-700/10">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H3m0 0h-.375c-.621 0-1.125.504-1.125 1.125V18m0 0H3.375c.621 0 1.125-.504 1.125-1.125V18M3 18.75h-.375A1.125 1.125 0 011.5 17.625V6M2.25 18.75h2.25m-2.25 0v-4.5m18 4.5v-4.5m-18 4.5h18" />
                             </svg>
@@ -1252,7 +1665,7 @@
                         </button>
                         <button type="button" 
                                 @click="processCheckout('QRIS')"
-                                class="py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-extrabold text-[11px] tracking-wide uppercase transition duration-150 flex flex-col items-center gap-1 shadow-md shadow-teal-600/10">
+                                class="py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-extrabold text-[10px] tracking-wide uppercase transition duration-150 flex flex-col items-center gap-1 shadow-md shadow-teal-600/10">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 15h.008v.008H15V15zm0 2.25h.008v.008H15v-.008zm-2.25-2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H15v-.008zm-2.25 0h.008v.008h-.008v-.008zm4.5 4.5h.008v.008H17.25V15zm0 2.25h.008v.008H17.25v-.008z" />
@@ -1261,7 +1674,7 @@
                         </button>
                         <button type="button" 
                                 @click="processCheckout('Debit')"
-                                class="py-3 bg-sky-600 hover:bg-sky-700 text-white rounded-2xl font-extrabold text-[11px] tracking-wide uppercase transition duration-150 flex flex-col items-center gap-1 shadow-md shadow-sky-600/10">
+                                class="py-3 bg-sky-600 hover:bg-sky-700 text-white rounded-2xl font-extrabold text-[10px] tracking-wide uppercase transition duration-150 flex flex-col items-center gap-1 shadow-md shadow-sky-600/10">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-19.5 5.25h12.75A1.125 1.125 0 0016.5 13.125v-1.5a1.125 1.125 0 00-1.125-1.125H3.75A1.125 1.125 0 002.625 11.625v1.5a1.125 1.125 0 001.125 1.125z" />
                             </svg>
@@ -1269,12 +1682,21 @@
                         </button>
                         <button type="button" 
                                 @click="processCheckout('SPLIT')"
-                                class="py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-2xl font-extrabold text-[11px] tracking-wide uppercase transition duration-150 flex flex-col items-center gap-1 shadow-md shadow-violet-600/10"
+                                class="py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-2xl font-extrabold text-[10px] tracking-wide uppercase transition duration-150 flex flex-col items-center gap-1 shadow-md shadow-violet-600/10"
                                 title="Bayar sebagian tunai dan sebagian QRIS/Debit">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
                             </svg>
                             SPLIT
+                        </button>
+                        <button type="button" 
+                                @click="processCheckout('DP')"
+                                class="py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-2xl font-extrabold text-[10px] tracking-wide uppercase transition duration-150 flex flex-col items-center gap-1 shadow-md shadow-amber-600/10"
+                                title="Pembayaran Uang Muka (DP) beserta identitas pemesan">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            DP
                         </button>
                     </div>
                 </div>
@@ -1286,7 +1708,7 @@
                 style="display: none;"
                 @keydown.escape.window="if (checkoutStage === 1) cancelCheckout()">
                 
-                <div class="bg-white rounded-3xl p-6 w-full max-w-md border border-slate-100 shadow-2xl flex flex-col gap-5">
+                <div class="bg-white rounded-3xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto border border-slate-100 shadow-2xl flex flex-col gap-5">
                     
                     <!-- ================= STAGE 1: payment details entry ================= -->
                     <template x-if="checkoutStage === 1">
@@ -1338,6 +1760,43 @@
                                                placeholder="Pax" 
                                                title="Jumlah Jamaah / Pax dalam Rombongan"
                                                class="w-full text-xs font-bold py-2 px-2 border border-slate-200 dark:border-dp-600 rounded-xl bg-white dark:bg-dp-900 text-slate-800 dark:text-purple-100 text-center focus:border-emerald-500 focus:ring-emerald-500">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Identitas Pemesan / Customer (Wajib untuk DP, Opsional untuk metode lain agar bisa kirim Struk Digital) -->
+                            <div :class="paymentMethod === 'DP' ? 'bg-amber-50/70 border-amber-200' : 'bg-slate-50 border-slate-200'"
+                                 class="border rounded-2xl p-3 flex flex-col gap-2.5">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-[11px] font-extrabold text-slate-700 flex items-center gap-1.5">
+                                        <span>Identitas Pemesan</span>
+                                        <span x-show="paymentMethod === 'DP'" class="text-[9px] font-black px-1.5 py-0.5 bg-amber-200/80 text-amber-900 rounded">Wajib DP</span>
+                                        <span x-show="paymentMethod !== 'DP'" class="text-[9px] font-bold px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded">Opsional</span>
+                                    </span>
+                                    <button type="button"
+                                            x-show="paymentMethod !== 'DP'"
+                                            @click="showCustomerFields = !showCustomerFields"
+                                            class="text-[10px] font-extrabold text-emerald-700 hover:underline cursor-pointer"
+                                            x-text="showCustomerFields ? 'Sembunyikan' : '+ Isi Identitas / WA'">
+                                    </button>
+                                </div>
+
+                                <div x-show="paymentMethod === 'DP' || showCustomerFields" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <div class="flex flex-col gap-1">
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase">
+                                            Nama Pemesan <span x-show="paymentMethod === 'DP'" class="text-rose-600">*</span>
+                                        </label>
+                                        <input type="text"
+                                               x-model="customerName"
+                                               placeholder="Contoh: Ibu Siti / Pak Budi"
+                                               class="w-full text-xs font-semibold py-2 px-3 border border-slate-200 rounded-xl bg-white text-slate-800 focus:border-emerald-500 focus:ring-emerald-500">
+                                    </div>
+                                    <div class="flex flex-col gap-1">
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase">No. WhatsApp / HP</label>
+                                        <input type="text"
+                                               x-model="customerPhone"
+                                               placeholder="08xxxxxxxxxx"
+                                               class="w-full text-xs font-semibold py-2 px-3 border border-slate-200 rounded-xl bg-white text-slate-800 focus:border-emerald-500 focus:ring-emerald-500">
                                     </div>
                                 </div>
                             </div>
@@ -1484,6 +1943,62 @@
                                 </div>
                             </template>
 
+                            <!-- DP (Down Payment) payment logic -->
+                            <template x-if="paymentMethod === 'DP'">
+                                <div class="flex flex-col gap-3">
+                                    <div class="flex flex-col gap-1.5">
+                                        <div class="flex justify-between items-center">
+                                            <label class="text-xs font-bold text-slate-600 uppercase tracking-wider">Nominal DP Diterima (Rp) <span class="text-rose-600">*</span></label>
+                                            <span class="text-[10px] text-amber-700 font-bold">Harus &lt; Total Tagihan</span>
+                                        </div>
+                                        <input type="number"
+                                            x-model="dpAmount"
+                                            min="1"
+                                            :max="Math.max(1, total - 1)"
+                                            placeholder="Masukkan nominal DP..."
+                                            class="w-full py-2.5 px-4 border-amber-200 rounded-xl text-center font-extrabold text-lg text-slate-800 focus:border-amber-500 focus:ring-amber-500 shadow-inner">
+                                        <div class="grid grid-cols-3 gap-1.5">
+                                            <button type="button" @click="dpAmount = Math.round((total * 0.3) / 500) * 500 || 1" class="py-1.5 text-[11px] font-extrabold bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg border border-amber-200 transition">DP 30%</button>
+                                            <button type="button" @click="dpAmount = Math.round((total * 0.5) / 500) * 500 || 1" class="py-1.5 text-[11px] font-extrabold bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg border border-amber-200 transition">DP 50%</button>
+                                            <button type="button" @click="dpAmount = Math.round((total * 0.7) / 500) * 500 || 1" class="py-1.5 text-[11px] font-extrabold bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg border border-amber-200 transition">DP 70%</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex flex-col gap-1.5">
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">DP Dibayar Melalui</label>
+                                        <div class="grid grid-cols-4 gap-1.5">
+                                            <template x-for="m in ['Cash', 'QRIS', 'Debit', 'Transfer']" :key="m">
+                                                <button type="button"
+                                                    @click="dpPaymentMethod = m"
+                                                    :class="dpPaymentMethod === m ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'"
+                                                    class="py-1.5 rounded-xl border text-[11px] font-extrabold transition"
+                                                    x-text="m === 'Cash' ? 'Tunai' : m">
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex flex-col gap-1">
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Catatan / Jadwal Pelunasan (Opsional)</label>
+                                        <input type="text"
+                                            x-model="dpNote"
+                                            placeholder="Contoh: Diambil besok sore / titip kemasan hampers"
+                                            class="w-full py-2 px-3 border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:border-amber-500 focus:ring-amber-500 shadow-inner">
+                                    </div>
+
+                                    <div class="p-3 rounded-2xl bg-amber-50 border border-amber-200 flex justify-between items-center text-xs">
+                                        <span class="font-bold text-amber-900">Sisa Pelunasan Nanti:</span>
+                                        <span class="text-base font-black text-amber-800" x-text="formatRupiah(Math.max(0, total - (parseInt(dpAmount || 0, 10) || 0)))"></span>
+                                    </div>
+
+                                    <template x-if="dpAmount && parseInt(dpAmount, 10) >= total">
+                                        <div class="bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-bold p-2.5 rounded-xl">
+                                            Nominal DP harus lebih kecil dari Total Tagihan. Jika sudah lunas penuh, pilih metode Tunai / QRIS / Debit.
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+
                             <!-- Confirm & Cancel Actions -->
                             <div class="grid grid-cols-2 gap-3 pt-2">
                                 <button type="button" @click="cancelCheckout()" class="py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold transition duration-150">Batal</button>
@@ -1491,10 +2006,12 @@
                                     @click="finishTransaction()" 
                                     :disabled="isSubmitting || (paymentMethod === 'Cash' && (!cashReceived || parseFloat(cashReceived) < total)) || 
                                                (paymentMethod === 'Debit' && cardDigits.length !== 4) ||
-                                               (paymentMethod === 'SPLIT' && ((parseFloat(splitCashAmount) || 0) <= 0 || (parseFloat(splitCashAmount) || 0) >= total || (splitNonCashMethod === 'Debit' && cardDigits.length !== 4)))"
+                                               (paymentMethod === 'SPLIT' && ((parseFloat(splitCashAmount) || 0) <= 0 || (parseFloat(splitCashAmount) || 0) >= total || (splitNonCashMethod === 'Debit' && cardDigits.length !== 4))) ||
+                                               (paymentMethod === 'DP' && (!customerName.trim() || !(parseInt(dpAmount || 0, 10) > 0) || parseInt(dpAmount || 0, 10) >= total))"
                                     :class="(isSubmitting || (paymentMethod === 'Cash' && (!cashReceived || parseFloat(cashReceived) < total)) || 
                                             (paymentMethod === 'Debit' && cardDigits.length !== 4) ||
-                                            (paymentMethod === 'SPLIT' && ((parseFloat(splitCashAmount) || 0) <= 0 || (parseFloat(splitCashAmount) || 0) >= total || (splitNonCashMethod === 'Debit' && cardDigits.length !== 4)))) 
+                                            (paymentMethod === 'SPLIT' && ((parseFloat(splitCashAmount) || 0) <= 0 || (parseFloat(splitCashAmount) || 0) >= total || (splitNonCashMethod === 'Debit' && cardDigits.length !== 4))) ||
+                                            (paymentMethod === 'DP' && (!customerName.trim() || !(parseInt(dpAmount || 0, 10) > 0) || parseInt(dpAmount || 0, 10) >= total))) 
                                             ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-md shadow-emerald-700/10'"
                                     class="py-3 rounded-2xl font-bold transition duration-150 flex items-center justify-center gap-2">
                                     <span x-show="!isSubmitting">Proses Transaksi</span>
@@ -1558,6 +2075,27 @@
                                     <span>Total Tagihan:</span>
                                     <span class="text-emerald-800" x-text="formatRupiah(latestTransaction.total_price)"></span>
                                 </div>
+
+                                <template x-if="latestTransaction.customer_name || latestTransaction.customer_phone">
+                                    <div class="flex justify-between border-b border-slate-50 pb-1.5 text-slate-700">
+                                        <span>Pemesan:</span>
+                                        <span class="font-bold text-slate-900" x-text="(latestTransaction.customer_name || '-') + (latestTransaction.customer_phone ? ' (' + latestTransaction.customer_phone + ')' : '')"></span>
+                                    </div>
+                                </template>
+
+                                <!-- DP details when paymentMethod === 'DP' -->
+                                <template x-if="latestTransaction.payment_method === 'DP'">
+                                    <div class="flex flex-col gap-1.5 pt-1 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900">
+                                        <div class="flex justify-between">
+                                            <span>DP Dibayar (<span x-text="latestTransaction.dp_payment_method || 'Cash'"></span>):</span>
+                                            <span class="font-extrabold text-emerald-700" x-text="formatRupiah(latestTransaction.paid_amount)"></span>
+                                        </div>
+                                        <div class="flex justify-between font-black text-sm text-amber-800">
+                                            <span>Sisa Pelunasan:</span>
+                                            <span x-text="formatRupiah(latestTransaction.remaining_amount)"></span>
+                                        </div>
+                                    </div>
+                                </template>
                                 
                                 <!-- Paid Details for cash only -->
                                 <template x-if="latestTransaction.payment_method === 'Cash'">
@@ -1572,6 +2110,47 @@
                                         </div>
                                     </div>
                                 </template>
+                            </div>
+
+                            <!-- Struk Digital Resmi (PDF) untuk Customer -->
+                            <div class="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-200 flex flex-col gap-2.5">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-[10px] font-black text-emerald-800 uppercase tracking-wider">Struk Digital Resmi (PDF)</span>
+                                    <div class="flex items-center gap-2.5">
+                                        <a :href="latestTransaction.digital_receipt_url" target="_blank" class="text-[11px] font-extrabold text-emerald-700 hover:underline">
+                                            Pratinjau PDF
+                                        </a>
+                                        <button type="button"
+                                                @click="copyDigitalReceiptLink(latestTransaction)"
+                                                class="text-[11px] font-extrabold text-slate-600 hover:text-emerald-700 hover:underline">
+                                            Salin Link
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <a :href="latestTransaction.digital_receipt_download_url || latestTransaction.digital_receipt_url"
+                                       class="py-2.5 px-3 bg-white hover:bg-slate-50 border border-emerald-300 text-emerald-800 rounded-xl font-extrabold text-xs transition flex items-center justify-center gap-1.5 shadow-xs">
+                                        Unduh Struk PDF
+                                    </a>
+                                    <button type="button"
+                                            @click="shareDigitalReceiptPdf(latestTransaction)"
+                                            :disabled="isSharingPdf"
+                                            class="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl font-extrabold text-xs transition flex items-center justify-center gap-1.5 shadow-sm">
+                                        <span x-show="!isSharingPdf">Bagikan File PDF</span>
+                                        <span x-show="isSharingPdf">Menyiapkan PDF...</span>
+                                    </button>
+                                </div>
+                                <div class="flex items-center gap-2 pt-0.5">
+                                    <input type="text"
+                                           x-model="waCustomerPhone"
+                                           placeholder="No. WhatsApp Customer (opsional: 08...)"
+                                           class="w-full py-1.5 px-3 text-xs font-semibold border-slate-200 rounded-xl bg-white text-slate-800 focus:border-emerald-500 focus:ring-emerald-500">
+                                    <button type="button"
+                                            @click="openCustomerWaChat(latestTransaction, waCustomerPhone)"
+                                            class="shrink-0 px-3 py-1.5 bg-white hover:bg-emerald-50 border border-slate-200 text-emerald-700 rounded-xl text-xs font-bold transition whitespace-nowrap">
+                                        Chat WA
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Pilihan Metode Cetak -->
@@ -1891,6 +2470,248 @@
                 </div>
             </div>
 
+            <!-- PELUNASAN DP MODAL (KASIR) -->
+            <div x-show="showDpModal"
+                 x-cloak
+                 class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm"
+                 style="display: none;"
+                 @keydown.escape.window="showDpModal = false">
+
+                <div class="bg-white rounded-3xl p-6 w-full max-w-2xl border border-slate-100 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto"
+                     @click.away="showDpModal = false">
+
+                    <!-- Modal Header -->
+                    <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+                        <div>
+                            <h3 class="font-extrabold text-slate-800 text-lg">Pelunasan Tagihan DP</h3>
+                            <p class="text-xs text-slate-400 font-semibold mt-0.5">Cari pesanan DP dari hari ini atau hari sebelumnya dan catat pembayaran sisa tagihan</p>
+                        </div>
+                        <button type="button" @click="showDpModal = false" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition">
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- VIEW A: SUKSES PEMBAYARAN / STRUK TERBARU -->
+                    <template x-if="settledDpResult">
+                        <div class="space-y-4">
+                            <div class="p-4 rounded-2xl border text-center space-y-1.5"
+                                 :class="settledDpResult.is_paid ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'">
+                                <div class="text-xs font-black uppercase tracking-wider"
+                                     :class="settledDpResult.is_paid ? 'text-emerald-700' : 'text-amber-700'"
+                                     x-text="settledDpResult.is_paid ? 'TAGIHAN SUDAH LUNAS' : 'PEMBAYARAN CICILAN DP TERCATAT'"></div>
+                                <div class="text-xl font-black text-slate-900" x-text="'+' + formatRupiah(settledDpResult.last_payment_amount)"></div>
+                                <div class="text-xs font-semibold text-slate-600">
+                                    <span x-text="settledDpResult.transaction_code"></span> • <span x-text="settledDpResult.customer_name || '-'"></span> • Metode: <strong x-text="settledDpResult.last_payment_method"></strong>
+                                </div>
+                                <div class="text-xs font-bold pt-1"
+                                     :class="settledDpResult.is_paid ? 'text-emerald-700' : 'text-amber-800'">
+                                    Total Terbayar: <span x-text="formatRupiah(settledDpResult.paid_amount)"></span> |
+                                    Sisa Tagihan: <span x-text="formatRupiah(settledDpResult.remaining_amount)"></span>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                <button type="button"
+                                        @click="shareDigitalReceiptPdf(settledDpResult)"
+                                        :disabled="isSharingPdf"
+                                        class="py-3 px-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl font-bold text-xs shadow-sm transition flex items-center justify-center gap-1.5">
+                                    <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" /></svg>
+                                    <span x-text="isSharingPdf ? 'Menyiapkan...' : 'Bagikan File PDF'"></span>
+                                </button>
+                                <a :href="settledDpResult.digital_receipt_download_url || settledDpResult.digital_receipt_url"
+                                   target="_blank"
+                                   class="py-3 px-3 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded-2xl font-bold text-xs transition flex items-center justify-center gap-1.5">
+                                    <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                                    <span>Unduh Struk PDF</span>
+                                </a>
+                                <button type="button"
+                                        @click="printReceiptAction(settledDpResult)"
+                                        class="py-3 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-2xl font-bold text-xs transition flex items-center justify-center gap-1.5">
+                                    <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" /></svg>
+                                    <span>Cetak Struk</span>
+                                </button>
+                            </div>
+
+                            <div class="flex justify-between gap-2 pt-2">
+                                <button type="button" @click="settledDpResult = null" class="px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl font-bold text-xs border border-amber-200 transition">
+                                    Kembali ke Daftar DP
+                                </button>
+                                <button type="button" @click="showDpModal = false" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-xs transition">
+                                    Selesai & Tutup
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- VIEW B: FORM BAYAR SISA DP -->
+                    <template x-if="!settledDpResult && selectedDpTrx">
+                        <div class="space-y-4">
+                            <button type="button" @click="selectedDpTrx = null" class="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
+                                Kembali ke Daftar Pesanan DP
+                            </button>
+
+                            <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-2 text-xs">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-mono font-bold text-emerald-700" x-text="selectedDpTrx.transaction_code"></span>
+                                    <span class="text-slate-500 font-semibold" x-text="selectedDpTrx.created_at_formatted"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-600">Pemesan:</span>
+                                    <span class="font-extrabold text-slate-900">
+                                        <span x-text="selectedDpTrx.customer_name || '-'"></span>
+                                        <template x-if="selectedDpTrx.customer_phone && selectedDpTrx.customer_phone !== '-'">
+                                            <span class="text-slate-500 font-semibold" x-text="' (' + selectedDpTrx.customer_phone + ')'"></span>
+                                        </template>
+                                    </span>
+                                </div>
+                                <div class="text-slate-600 bg-white/80 p-2 rounded-xl border border-amber-100" x-text="selectedDpTrx.items_summary"></div>
+                                <div class="grid grid-cols-3 gap-2 pt-1 text-center">
+                                    <div class="bg-white rounded-xl p-2 border border-amber-100">
+                                        <div class="text-[10px] text-slate-400 font-bold uppercase">Total</div>
+                                        <div class="font-extrabold text-slate-800" x-text="formatRupiah(selectedDpTrx.total_price)"></div>
+                                    </div>
+                                    <div class="bg-white rounded-xl p-2 border border-emerald-100">
+                                        <div class="text-[10px] text-emerald-600 font-bold uppercase">Sudah Masuk</div>
+                                        <div class="font-extrabold text-emerald-700" x-text="formatRupiah(selectedDpTrx.paid_amount)"></div>
+                                    </div>
+                                    <div class="bg-amber-600 text-white rounded-xl p-2 shadow-sm">
+                                        <div class="text-[10px] text-amber-100 font-bold uppercase">Sisa Tagihan</div>
+                                        <div class="font-black text-sm" x-text="formatRupiah(selectedDpTrx.remaining_amount)"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <template x-if="selectedDpTrx.installments && selectedDpTrx.installments.length > 0">
+                                <div class="space-y-1.5">
+                                    <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Riwayat Pembayaran Masuk</div>
+                                    <div class="max-h-28 overflow-y-auto space-y-1">
+                                        <template x-for="inst in selectedDpTrx.installments" :key="inst.id">
+                                            <div class="flex justify-between items-center text-xs bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5">
+                                                <div>
+                                                    <span class="font-bold text-slate-700" x-text="inst.payment_method"></span>
+                                                    <span class="text-slate-400 ml-1.5" x-text="inst.date"></span>
+                                                    <template x-if="inst.note">
+                                                        <span class="text-slate-500 ml-1" x-text="'• ' + inst.note"></span>
+                                                    </template>
+                                                </div>
+                                                <span class="font-extrabold text-emerald-700" x-text="formatRupiah(inst.amount)"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Nominal Pembayaran (Rp)</label>
+                                        <button type="button" @click="dpSettleAmount = Math.round(selectedDpTrx.remaining_amount || 0)" class="text-[11px] font-extrabold text-amber-700 hover:underline">
+                                            Isi Lunas
+                                        </button>
+                                    </div>
+                                    <input type="number"
+                                           x-model="dpSettleAmount"
+                                           min="1"
+                                           :max="selectedDpTrx.remaining_amount"
+                                           class="w-full py-2.5 px-3.5 border-slate-200 rounded-xl text-sm font-extrabold focus:border-amber-500 focus:ring-amber-500 shadow-inner">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Metode Pembayaran</label>
+                                    <select x-model="dpSettleMethod"
+                                            class="w-full py-2.5 px-3.5 border-slate-200 rounded-xl text-sm font-bold focus:border-amber-500 focus:ring-amber-500 shadow-inner">
+                                        <option value="Cash">Tunai (Cash)</option>
+                                        <option value="QRIS">QRIS</option>
+                                        <option value="Debit">Debit</option>
+                                        <option value="Transfer">Transfer</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Catatan (Opsional)</label>
+                                <input type="text"
+                                       x-model="dpSettleNote"
+                                       placeholder="Misal: Pelunasan diambil sore hari..."
+                                       class="w-full py-2 px-3.5 border-slate-200 rounded-xl text-sm focus:border-amber-500 focus:ring-amber-500 shadow-inner">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3 pt-2">
+                                <button type="button" @click="selectedDpTrx = null" class="py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold text-xs transition">
+                                    Batal
+                                </button>
+                                <button type="button"
+                                        @click="submitDpSettlement()"
+                                        :disabled="isSettlingDp"
+                                        class="py-3 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-2xl font-extrabold text-xs shadow-md transition">
+                                    <span x-text="isSettlingDp ? 'Menyimpan...' : 'Simpan Pembayaran Sisa DP'"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- VIEW C: DAFTAR PESANAN DP BELUM LUNAS -->
+                    <template x-if="!settledDpResult && !selectedDpTrx">
+                        <div class="space-y-3">
+                            <div class="relative">
+                                <input type="text"
+                                       x-model="dpSearch"
+                                       placeholder="Cari nama pemesan, no HP, kode struk, atau produk..."
+                                       class="w-full pl-9 pr-4 py-2.5 text-sm border-slate-200 rounded-xl focus:border-amber-500 focus:ring-amber-500 shadow-inner">
+                                <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                                </svg>
+                            </div>
+
+                            <div class="max-h-[52vh] overflow-y-auto space-y-2.5 pr-1">
+                                <template x-if="filteredUnpaidDp.length === 0">
+                                    <div class="py-10 text-center text-slate-400 text-sm font-semibold border border-dashed border-slate-200 rounded-2xl">
+                                        Tidak ada tagihan DP belum lunas yang cocok.
+                                    </div>
+                                </template>
+
+                                <template x-for="trx in filteredUnpaidDp" :key="trx.id">
+                                    <div class="p-3.5 rounded-2xl border border-slate-200 hover:border-amber-300 bg-slate-50/70 hover:bg-amber-50/40 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        <div class="space-y-1 min-w-0">
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <span class="font-mono text-xs font-extrabold text-emerald-700" x-text="trx.transaction_code"></span>
+                                                <span class="text-[11px] font-semibold text-slate-400" x-text="trx.created_at_formatted"></span>
+                                            </div>
+                                            <div class="text-sm font-extrabold text-slate-900">
+                                                <span x-text="trx.customer_name || 'Tanpa Nama'"></span>
+                                                <template x-if="trx.customer_phone && trx.customer_phone !== '-'">
+                                                    <span class="text-xs font-semibold text-slate-500 ml-1" x-text="'• ' + trx.customer_phone"></span>
+                                                </template>
+                                            </div>
+                                            <div class="text-xs text-slate-500 truncate" x-text="trx.items_summary"></div>
+                                            <div class="text-xs font-bold text-slate-600 flex items-center gap-3 flex-wrap pt-0.5">
+                                                <span>Total: <strong x-text="formatRupiah(trx.total_price)"></strong></span>
+                                                <span class="text-emerald-700">Masuk: <strong x-text="formatRupiah(trx.paid_amount)"></strong></span>
+                                                <span class="text-amber-700">Sisa: <strong x-text="formatRupiah(trx.remaining_amount)"></strong></span>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2 shrink-0">
+                                            <a :href="trx.digital_receipt_url"
+                                               target="_blank"
+                                               class="px-3 py-2 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition">
+                                                PDF
+                                            </a>
+                                            <button type="button"
+                                                    @click="selectDpTransaction(trx)"
+                                                    class="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-extrabold shadow-sm transition active:scale-95">
+                                                Bayar Sisa / Lunasi
+                                            </button>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
 
 
         </div>
@@ -2002,6 +2823,12 @@
                     
                     escpos += `Tanggal  : ${formattedDate} ${formattedTime}\n`;
                     escpos += `Metode   : ${transaction.payment_method.toUpperCase()}\n`;
+                    if (transaction.customer_name) {
+                        escpos += `Pemesan  : ${transaction.customer_name}\n`;
+                    }
+                    if (transaction.customer_phone) {
+                        escpos += `No. HP   : ${transaction.customer_phone}\n`;
+                    }
                     escpos += '--------------------------------\n';
                     
                     // Items summary
@@ -2023,6 +2850,10 @@
                         escpos += `Diskon    : -${formatRupiahRaw(discount)}\n`;
                     }
                     escpos += ESC_BOLD_ON + `TOTAL     : ${formatRupiahRaw(total)}\n` + ESC_BOLD_OFF;
+                    if (transaction.payment_method === 'DP' || Number(transaction.remaining_amount || 0) > 0) {
+                        escpos += `Dibayar   : ${formatRupiahRaw(transaction.paid_amount || 0)}\n`;
+                        escpos += ESC_BOLD_ON + `Sisa      : ${formatRupiahRaw(transaction.remaining_amount || 0)}\n` + ESC_BOLD_OFF;
+                    }
                     escpos += '================================\n';
                     
                     escpos += ESC_ALIGN_CENTER;
