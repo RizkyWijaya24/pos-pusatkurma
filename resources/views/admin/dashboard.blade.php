@@ -291,6 +291,7 @@
         customerSuggestionsOpen: false,
         wholesalePriceMemories: {},
         wholesalePriceMemoryCache: {},
+        isSubmittingWholesale: false,
         wholesaleForm: {
             customer_name: '',
             customer_phone: '',
@@ -469,12 +470,14 @@
                 amount: '',
                 payment_method: 'Tunai',
                 note: '',
-                max_amount: trx.outstanding_amount
+                max_amount: trx.outstanding_amount,
+                submitting: false
             };
             this.showInstallmentModal = true;
         },
 
         submitInstallment() {
+            if (this.installmentForm.submitting) return;
             const amount = parseInt(this.installmentForm.amount);
             if (!amount || amount <= 0) {
                 this.showToast('Nominal pembayaran cicilan harus valid!', 'warning');
@@ -485,6 +488,7 @@
                 return;
             }
 
+            this.installmentForm.submitting = true;
             const csrfToken = document.querySelector('meta[name=csrf-token]').getAttribute('content');
 
             fetch(`/admin/transactions/${this.installmentForm.transaction_id}/installments`, {
@@ -500,13 +504,18 @@
                     note: this.installmentForm.note
                 })
             })
-            .then(res => {
-                if (!res.ok) {
-                    return res.json().then(err => { throw err; });
+            .then(async res => {
+                let data = {};
+                try {
+                    data = await res.json();
+                } catch (e) {
+                    data = { success: false, message: 'Respon server tidak valid (' + res.status + ')' };
                 }
-                return res.json();
+                if (!res.ok) throw data;
+                return data;
             })
             .then(data => {
+                this.installmentForm.submitting = false;
                 if (data.success) {
                     this.showToast(data.message, 'success');
                     this.showInstallmentModal = false;
@@ -528,6 +537,7 @@
                 }
             })
             .catch(err => {
+                this.installmentForm.submitting = false;
                 this.showToast(err.message || 'Gagal menyimpan cicilan!', 'error');
             });
         },
@@ -547,6 +557,7 @@
         },
 
         submitManualReceivable() {
+            if (this.manualReceivableForm.submitting) return;
             if (!this.manualReceivableForm.customer_name.trim()) {
                 this.showToast('Nama pelanggan wajib diisi!', 'warning');
                 return;
@@ -585,11 +596,15 @@
                     transaction_date: this.manualReceivableForm.transaction_date
                 })
             })
-            .then(res => {
-                if (!res.ok) {
-                    return res.json().then(err => { throw err; });
+            .then(async res => {
+                let data = {};
+                try {
+                    data = await res.json();
+                } catch (e) {
+                    data = { success: false, message: 'Respon server tidak valid (' + res.status + ')' };
                 }
-                return res.json();
+                if (!res.ok) throw data;
+                return data;
             })
             .then(data => {
                 this.manualReceivableForm.submitting = false;
@@ -1966,10 +1981,17 @@
                 return;
             }
 
+            if (this.isSubmittingWholesale) {
+                this.showToast('Nota partai sedang disimpan, mohon tunggu...', 'warning');
+                return;
+            }
+
             this.showConfirm(
                 'Simpan & Cetak Nota?',
                 'Apakah Anda yakin ingin menyimpan transaksi partai ini dan mencetak nota?',
                 () => {
+                    if (this.isSubmittingWholesale) return;
+                    this.isSubmittingWholesale = true;
                     const csrfToken = document.querySelector('meta[name=csrf-token]').getAttribute('content');
                     
                     const itemsData = this.wholesaleForm.items
@@ -2003,13 +2025,20 @@
                         },
                         body: JSON.stringify(payload)
                     })
-                    .then(response => {
-                        if (!response.ok) {
-                            return response.json().then(err => { throw err; });
+                    .then(async response => {
+                        let data = {};
+                        try {
+                            data = await response.json();
+                        } catch (e) {
+                            data = { success: false, message: 'Respon server tidak valid (' + response.status + ')' };
                         }
-                        return response.json();
+                        if (!response.ok) {
+                            throw data;
+                        }
+                        return data;
                     })
                     .then(data => {
+                        this.isSubmittingWholesale = false;
                         if (data.success) {
                             this.showToast(data.message, 'success');
                             const savedCustKey = (this.wholesaleForm.customer_name || '').trim().toLowerCase();
@@ -2035,11 +2064,19 @@
 
                             const printUrl = `/admin/wholesale-transactions/${data.transaction.id}/print`;
                             window.open(printUrl, '_blank');
+                        } else {
+                            this.showToast(data.message || 'Gagal menyimpan transaksi partai.', 'error');
                         }
                     })
                     .catch(err => {
+                        this.isSubmittingWholesale = false;
                         console.error(err);
-                        this.showToast(err.message || 'Gagal menyimpan transaksi partai.', 'error');
+                        let errMsg = err.message || 'Gagal menyimpan transaksi partai.';
+                        if (err.errors && typeof err.errors === 'object') {
+                            const vals = Object.values(err.errors).flat();
+                            if (vals.length > 0) errMsg = vals[0];
+                        }
+                        this.showToast(errMsg, 'error');
                     });
                 },
                 'warning',
@@ -3154,11 +3191,13 @@
                         <!-- Simpan & Cetak -->
                         <button type="button" 
                                 @click="saveWholesale()"
-                                class="w-full py-3.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl font-extrabold text-xs tracking-wide uppercase transition duration-150 flex items-center justify-center gap-1.5 shadow-md shadow-emerald-700/10 active:scale-98">
+                                :disabled="isSubmittingWholesale"
+                                :class="isSubmittingWholesale ? 'opacity-60 cursor-not-allowed' : 'hover:bg-emerald-800 active:scale-98'"
+                                class="w-full py-3.5 bg-emerald-700 text-white rounded-2xl font-extrabold text-xs tracking-wide uppercase transition duration-150 flex items-center justify-center gap-1.5 shadow-md shadow-emerald-700/10">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 8.25H7.5a2.25 2.25 0 00-2.25 2.25v9a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25H15M9 12l3 3m0 0l3-3m-3 3V2.25" />
                             </svg>
-                            Simpan & Cetak Nota
+                            <span x-text="isSubmittingWholesale ? 'Menyimpan Nota...' : 'Simpan & Cetak Nota'">Simpan & Cetak Nota</span>
                         </button>
                     </div>
 
@@ -3915,8 +3954,10 @@
                         </button>
                         <button type="button" 
                                 @click="submitInstallment()"
-                                class="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl font-extrabold text-xs tracking-wide uppercase transition duration-150 shadow-md shadow-emerald-700/10">
-                            Simpan Pembayaran
+                                :disabled="installmentForm.submitting"
+                                :class="installmentForm.submitting ? 'opacity-60 cursor-not-allowed' : 'hover:bg-emerald-800'"
+                                class="px-5 py-2.5 bg-emerald-700 text-white rounded-2xl font-extrabold text-xs tracking-wide uppercase transition duration-150 shadow-md shadow-emerald-700/10">
+                            <span x-text="installmentForm.submitting ? 'Menyimpan...' : 'Simpan Pembayaran'">Simpan Pembayaran</span>
                         </button>
                     </div>
                 </div>

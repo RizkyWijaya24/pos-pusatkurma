@@ -87,7 +87,19 @@ class OrderController extends Controller
             }
         }
 
-        $order->update($updates);
+        try {
+            $freshOrder = \Illuminate\Support\Facades\DB::transaction(function () use ($order, $updates) {
+                $locked = Order::where('id', $order->id)->lockForUpdate()->firstOrFail();
+                $locked->update($updates);
+                return $locked->fresh();
+            });
+        } catch (\Throwable $e) {
+            Log::error("Order #{$order->order_code} updateStatus failed: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memperbarui status pesanan: ' . $e->getMessage(),
+            ], 422);
+        }
 
         Log::info("Order #{$order->order_code} status updated to " . json_encode($updates) . " by admin " . auth()->id());
 
@@ -101,14 +113,14 @@ class OrderController extends Controller
             'failed'     => 'Gagal',
         ];
 
-        $displayLabel = $statusLabels[$order->fresh()->status] ?? strtoupper($order->fresh()->status);
+        $displayLabel = $statusLabels[$freshOrder->status] ?? strtoupper($freshOrder->status);
 
         return response()->json([
             'success'        => true,
             'message'        => 'Status pesanan berhasil diperbarui menjadi "' . $displayLabel . '".',
-            'new_status'     => $order->fresh()->status,
-            'payment_status' => $order->fresh()->payment_status,
-            'step_number'    => $order->fresh()->step_number,
+            'new_status'     => $freshOrder->status,
+            'payment_status' => $freshOrder->payment_status,
+            'step_number'    => $freshOrder->step_number,
         ]);
     }
 
@@ -126,7 +138,21 @@ class OrderController extends Controller
         }
 
         $code = $order->order_code;
-        $order->delete();
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($order) {
+                $locked = Order::where('id', $order->id)->lockForUpdate()->firstOrFail();
+                if ($locked->payment_status === 'paid') {
+                    throw new \RuntimeException('Pesanan yang sudah LUNAS tidak dapat dihapus.');
+                }
+                $locked->delete();
+            });
+        } catch (\Throwable $e) {
+            Log::error("Order #{$code} destroy failed: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus pesanan: ' . $e->getMessage(),
+            ], 422);
+        }
 
         Log::info("Order #{$code} deleted by admin " . auth()->id());
 

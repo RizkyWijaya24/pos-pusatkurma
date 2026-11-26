@@ -6,6 +6,9 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Models\InstallmentPayment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class TransactionController extends Controller
@@ -877,43 +880,55 @@ class TransactionController extends Controller
             }
         }
 
-        // ── Bungkus dalam DB::transaction agar data selalu konsisten ─────────
-        $transaction = \Illuminate\Support\Facades\DB::transaction(function () use (
-            $request, $itemsSummary, $cashierBranch, $totalCost, $resolveProduct
-        ) {
-            $trx = Transaction::create([
-                'cashier_id'       => auth()->id(),
-                'affiliate_id'     => $request->input('affiliate_id'),
-                'pax_count'        => $request->input('pax_count', 0),
-                'transaction_code' => 'TRX-' . Carbon::now()->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6)),
-                'items_summary'    => $itemsSummary,
-                'total_price'      => $request->total_price,
-                'discount'         => $request->input('discount', 0),
-                'total_cost'       => $totalCost,
-                'payment_method'   => $request->payment_method,
-                'branch'           => $cashierBranch,
-            ]);
+        $lockKey = 'pos_submit_lock_' . (auth()->id() ?? 'guest') . '_' . md5(json_encode([
+            'total'  => $request->total_price,
+            'method' => $request->payment_method,
+            'items'  => $request->items,
+        ]));
+        $lock = Cache::lock($lockKey, 4);
+        if (!$lock->get()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Transaksi sedang diproses. Mohon tunggu sebentar agar tidak terjadi pencatatan ganda.'
+            ], 429);
+        }
 
-            // Hitung & catat potongan komisi dari omset ke komisi_ledger jika berafiliasi
-            if ($request->filled('affiliate_id')) {
-                app(\App\Services\AffiliateService::class)->recordCommission(
-                    $trx,
-                    $request->input('affiliate_id'),
-                    (int) $request->input('pax_count', 0)
-                );
-            }
+        // ── Bungkus dalam DB::transaction agar data selalu konsisten (All-or-Nothing) ──
+        try {
+            $transaction = DB::transaction(function () use (
+                $request, $itemsSummary, $cashierBranch, $totalCost, $resolveProduct
+            ) {
+                $trx = Transaction::create([
+                    'cashier_id'       => auth()->id(),
+                    'affiliate_id'     => $request->input('affiliate_id'),
+                    'pax_count'        => $request->input('pax_count', 0),
+                    'transaction_code' => 'TRX-' . Carbon::now()->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6)),
+                    'items_summary'    => $itemsSummary,
+                    'total_price'      => $request->total_price,
+                    'discount'         => $request->input('discount', 0),
+                    'total_cost'       => $totalCost,
+                    'payment_method'   => $request->payment_method,
+                    'branch'           => $cashierBranch,
+                ]);
 
-            // Kurangi stok per cabang kasir via StockService
-            $stockService   = app(\App\Services\StockService::class);
-            $branchLocation = \App\Models\StockLocation::findByBranchName($cashierBranch);
+                // Hitung & catat potongan komisi dari omset ke komisi_ledger jika berafiliasi
+                if ($request->filled('affiliate_id')) {
+                    app(\App\Services\AffiliateService::class)->recordCommission(
+                        $trx,
+                        $request->input('affiliate_id'),
+                        (int) $request->input('pax_count', 0)
+                    );
+                }
 
-            foreach ($request->items as $item) {
-                $product = $resolveProduct($item);
+                // Kurangi stok per cabang kasir via StockService
+                $stockService   = app(\App\Services\StockService::class);
+                $branchLocation = \App\Models\StockLocation::findByBranchName($cashierBranch);
 
-                if ($product) {
-                    if ($branchLocation) {
-                        // Gunakan StockService untuk kurangi stok cabang & catat log mutasi
-                        try {
+                foreach ($request->items as $item) {
+                    $product = $resolveProduct($item);
+
+                    if ($product) {
+                        if ($branchLocation) {
                             $stockService->deductSaleStock(
                                 $product,
                                 $branchLocation,
@@ -921,19 +936,27 @@ class TransactionController extends Controller
                                 $trx->id,
                                 auth()->user()
                             );
-                        } catch (\Exception $e) {
-                            // Fallback ke global jika error
+                        } else {
+                            // Fallback: lokasi cabang belum terdaftar di sistem
                             $product->decrement('stock', floatval($item['qty']));
                         }
-                    } else {
-                        // Fallback: lokasi cabang belum terdaftar di sistem
-                        $product->decrement('stock', floatval($item['qty']));
                     }
                 }
-            }
 
-            return $trx;
-        });
+                return $trx;
+            });
+        } catch (\Throwable $e) {
+            Log::error('POS Transaction store failed (rolled back): ' . $e->getMessage(), [
+                'user_id' => auth()->id(),
+                'trace'   => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Transaksi gagal diproses dan dibatalkan otomatis (tidak ada data yang masuk): ' . $e->getMessage(),
+            ], 422);
+        } finally {
+            $lock->release();
+        }
 
         return response()->json([
             'success' => true,
@@ -973,23 +996,33 @@ class TransactionController extends Controller
         $oldStatus = $transaction->payment_status ?? 'paid';
         $newStatus = $validated['payment_status'] ?? $oldStatus;
 
-        $transaction->update($validated);
+        try {
+            DB::transaction(function () use ($transaction, $validated, $oldStatus, $newStatus) {
+                $transaction->update($validated);
 
-        // Jika status diubah menjadi cancelled, kembalikan stok
-        if ($newStatus === 'cancelled' && $oldStatus !== 'cancelled') {
-            app(\App\Services\StockService::class)->restoreTransactionStock(
-                $transaction,
-                "Pengembalian stok: Status transaksi #{$transaction->transaction_code} diubah menjadi dibatalkan"
-            );
-            if ($transaction->komisiLedger) {
-                $transaction->komisiLedger->delete();
-            }
-        } elseif ($oldStatus === 'cancelled' && in_array($newStatus, ['paid', 'unpaid'])) {
-            // Jika diaktifkan kembali dari cancelled, potong ulang stok
-            app(\App\Services\StockService::class)->reDeductTransactionStock(
-                $transaction,
-                "Potong ulang stok: Transaksi #{$transaction->transaction_code} diaktifkan kembali"
-            );
+                // Jika status diubah menjadi cancelled, kembalikan stok
+                if ($newStatus === 'cancelled' && $oldStatus !== 'cancelled') {
+                    app(\App\Services\StockService::class)->restoreTransactionStock(
+                        $transaction,
+                        "Pengembalian stok: Status transaksi #{$transaction->transaction_code} diubah menjadi dibatalkan"
+                    );
+                    if ($transaction->komisiLedger) {
+                        $transaction->komisiLedger->delete();
+                    }
+                } elseif ($oldStatus === 'cancelled' && in_array($newStatus, ['paid', 'unpaid'])) {
+                    // Jika diaktifkan kembali dari cancelled, potong ulang stok
+                    app(\App\Services\StockService::class)->reDeductTransactionStock(
+                        $transaction,
+                        "Potong ulang stok: Transaksi #{$transaction->transaction_code} diaktifkan kembali"
+                    );
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::error('Transaction update failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memperbarui transaksi (data dikembalikan seperti semula): ' . $e->getMessage(),
+            ], 422);
         }
 
         return response()->json([
@@ -1041,17 +1074,27 @@ class TransactionController extends Controller
     {
         $code = $transaction->transaction_code;
 
-        // Kembalikan stok produk jika belum dibatalkan/dikembalikan sebelumnya
-        app(\App\Services\StockService::class)->restoreTransactionStock(
-            $transaction,
-            "Pengembalian stok: Transaksi #{$code} dihapus oleh admin"
-        );
+        try {
+            DB::transaction(function () use ($transaction, $code) {
+                // Kembalikan stok produk jika belum dibatalkan/dikembalikan sebelumnya
+                app(\App\Services\StockService::class)->restoreTransactionStock(
+                    $transaction,
+                    "Pengembalian stok: Transaksi #{$code} dihapus oleh admin"
+                );
 
-        if ($transaction->komisiLedger) {
-            $transaction->komisiLedger->delete();
+                if ($transaction->komisiLedger) {
+                    $transaction->komisiLedger->delete();
+                }
+
+                $transaction->delete();
+            });
+        } catch (\Throwable $e) {
+            Log::error('Transaction destroy failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus transaksi: ' . $e->getMessage(),
+            ], 422);
         }
-
-        $transaction->delete();
 
         return response()->json([
             'success' => true,
@@ -1386,193 +1429,217 @@ class TransactionController extends Controller
 
         $skipStock = $request->boolean('skip_stock_deduction');
 
-        // Validate stock for each item (aggregated by product name to avoid multi-item bypass)
-        $aggregatedItems = [];
-        foreach ($request->items as $item) {
-            $product = \App\Models\Product::where('name', $item['name'])->first();
-            if (!$product && !$skipStock) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Produk "' . $item['name'] . '" tidak ditemukan di database.'
-                ], 422);
-            }
-            if ($product) {
-                $pName = $product->name;
-                if (!isset($aggregatedItems[$pName])) {
-                    $aggregatedItems[$pName] = [
-                        'product' => $product,
-                        'qty' => 0.0,
-                    ];
-                }
-
-                // Konversi satuan jika produk berbasis gram tetapi diorder dalam kg
-                $itemUnit = strtolower(trim($item['price_unit'] ?? ''));
-                $productUnit = strtolower(trim($product->price_unit ?? ''));
-                $convertedQty = floatval($item['qty']);
-
-                if ($productUnit === 'gram' && in_array($itemUnit, ['kg', 'kilogram'])) {
-                    $convertedQty *= 1000;
-                } elseif (in_array($productUnit, ['kg', 'kilogram']) && $itemUnit === 'gram') {
-                    $convertedQty /= 1000;
-                }
-
-                $aggregatedItems[$pName]['qty'] += $convertedQty;
-            }
+        $lockKey = 'wholesale_submit_lock_' . (auth()->id() ?? 'guest') . '_' . md5(json_encode([
+            'customer' => strtolower(trim($request->customer_name)),
+            'method'   => $request->payment_method,
+            'items'    => $request->items,
+        ]));
+        $lock = Cache::lock($lockKey, 4);
+        if (!$lock->get()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nota partai sedang diproses. Mohon tunggu sebentar agar tidak terjadi pencatatan ganda.'
+            ], 429);
         }
 
-        if (!$skipStock) {
-            $branchLocation = \App\Models\StockLocation::findByBranchName('Cabang Rumah');
-            foreach ($aggregatedItems as $agg) {
-                $product = $agg['product'];
-                $qtyRequested = $agg['qty'];
-                
-                $availableStock = $branchLocation 
-                    ? $product->getStockAtLocation($branchLocation->id) 
-                    : $product->stock;
-
-                if ($availableStock < $qtyRequested) {
-                    $availFormatted = ($product->price_unit === 'gram' && $availableStock >= 1000)
-                        ? ($availableStock / 1000) . ' kg (' . $availableStock . ' gram)'
-                        : $availableStock . ' ' . $product->price_unit;
-                    $reqFormatted = ($product->price_unit === 'gram' && $qtyRequested >= 1000)
-                        ? ($qtyRequested / 1000) . ' kg (' . $qtyRequested . ' gram)'
-                        : $qtyRequested . ' ' . $product->price_unit;
-
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Stok produk "' . $product->name . '" tidak mencukupi! Tersedia: ' . $availFormatted . ', diminta: ' . $reqFormatted
-                    ], 422);
-                }
-            }
-        }
-
-        $totalPrice = 0;
-        $totalCost = 0;
-        
-        $itemsSummary = collect($request->items)->map(function ($item) use (&$totalPrice, &$totalCost) {
-            $qty = floatval($item['qty']);
-            $sellPrice = intval($item['selling_price']);
-            $costPrice = isset($item['cost_price']) && $item['cost_price'] !== '' ? intval($item['cost_price']) : 0;
-            
-            $totalPrice += round($sellPrice * $qty);
-            $totalCost += round($costPrice * $qty);
-            
-            return $item['name'] . ' (' . $qty . ' ' . $item['price_unit'] . ' x ' . $sellPrice . ')';
-        })->join(', ');
-
-        if ($skipStock) {
-            $itemsSummary .= ', [Stok Sudah Didata]';
-        }
-
-        $discount = intval($request->input('discount', 0));
-        $shippingCost = intval($request->input('shipping_cost', 0));
-        $grandTotal = max(0, $totalPrice - $discount + $shippingCost);
-
-        $received = $request->payment_method === 'Piutang / Tempo' 
-            ? intval($request->input('payment_received', 0)) 
-            : $grandTotal;
-
-        $paymentStatus = $request->payment_method === 'Piutang / Tempo' ? 'unpaid' : 'paid';
-        if ($request->payment_method === 'Piutang / Tempo' && $received >= $grandTotal) {
-            $paymentStatus = 'paid';
-        }
-
-        $txDate = $request->filled('transaction_date') 
-            ? Carbon::parse($request->transaction_date) 
-            : Carbon::now();
-
-        $trxCodePrefix = $skipStock ? 'PRT-NS-' : 'PRT-';
-        $transaction = Transaction::create([
-            'cashier_id'       => auth()->id(),
-            'affiliate_id'     => $request->input('affiliate_id'),
-            'pax_count'        => $request->input('pax_count', 0),
-            'transaction_code' => $trxCodePrefix . $txDate->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6)),
-            'transaction_type' => 'wholesale',
-            'customer_name'    => $request->customer_name,
-            'customer_phone'   => $request->customer_phone,
-            'items_summary'    => $itemsSummary,
-            'total_price'      => $grandTotal,
-            'discount'         => $discount,
-            'shipping_cost'    => $shippingCost,
-            'total_cost'       => $totalCost,
-            'payment_method'   => $request->payment_method,
-            'branch'           => 'Cabang Rumah', // Defaults to Pusat
-            'payment_status'   => $paymentStatus,
-            'created_at'       => $txDate,
-            'updated_at'       => $txDate,
-        ]);
-
-        if (!$skipStock) {
-            // Kurangi stok cabang & catat log mutasi via StockService
-            $stockService = app(\App\Services\StockService::class);
-            $wholesaleLocation = \App\Models\StockLocation::where('name', 'Cabang Rumah')->first()
-                ?? \App\Models\StockLocation::gudang()->first()
-                ?? \App\Models\StockLocation::first();
-
-            // Pre-load seluruh produk terkait dalam 1 query (mencegah N+1 query ke database)
-            $itemNames = collect($request->items)->pluck('name')->values()->toArray();
-            $productsByName = \App\Models\Product::whereIn('name', $itemNames)->get()->keyBy('name');
-
-            foreach ($request->items as $item) {
-                $product = $productsByName->get($item['name']);
-                if ($product) {
-                    $itemUnit = strtolower(trim($item['price_unit'] ?? ''));
-                    $productUnit = strtolower(trim($product->price_unit ?? ''));
-                    $deductQty = floatval($item['qty']);
-
-                    if ($productUnit === 'gram' && in_array($itemUnit, ['kg', 'kilogram'])) {
-                        $deductQty *= 1000;
-                    } elseif (in_array($productUnit, ['kg', 'kilogram']) && $itemUnit === 'gram') {
-                        $deductQty /= 1000;
+        try {
+            $transaction = DB::transaction(function () use ($request, $skipStock) {
+                // 1. Validate products & stock INSIDE DB::transaction (dengan lock stok)
+                $aggregatedItems = [];
+                foreach ($request->items as $item) {
+                    $product = \App\Models\Product::where('name', $item['name'])->lockForUpdate()->first();
+                    if (!$product && !$skipStock) {
+                        throw new \RuntimeException('Produk "' . $item['name'] . '" tidak ditemukan di database.');
                     }
-
-                    if ($wholesaleLocation) {
-                        try {
-                            $stockService->deductSaleStock(
-                                $product,
-                                $wholesaleLocation,
-                                $deductQty,
-                                $transaction->id,
-                                auth()->user() ?? \App\Models\User::first(),
-                                "Penjualan Nota Partai #{$transaction->transaction_code}"
-                            );
-                        } catch (\Exception $e) {
-                            $product->decrement('stock', $deductQty);
+                    if ($product) {
+                        $pName = $product->name;
+                        if (!isset($aggregatedItems[$pName])) {
+                            $aggregatedItems[$pName] = [
+                                'product' => $product,
+                                'qty'     => 0.0,
+                            ];
                         }
-                    } else {
-                        $product->decrement('stock', $deductQty);
+
+                        // Konversi satuan jika produk berbasis gram tetapi diorder dalam kg
+                        $itemUnit     = strtolower(trim($item['price_unit'] ?? ''));
+                        $productUnit  = strtolower(trim($product->price_unit ?? ''));
+                        $convertedQty = floatval($item['qty']);
+
+                        if ($productUnit === 'gram' && in_array($itemUnit, ['kg', 'kilogram'])) {
+                            $convertedQty *= 1000;
+                        } elseif (in_array($productUnit, ['kg', 'kilogram']) && $itemUnit === 'gram') {
+                            $convertedQty /= 1000;
+                        }
+
+                        $aggregatedItems[$pName]['qty'] += $convertedQty;
                     }
                 }
-            }
 
-            \App\Models\StockAdjustmentLog::where('reference_type', Transaction::class)
-                ->where('reference_id', $transaction->id)
-                ->update(['created_at' => $txDate]);
-        }
+                $wholesaleLocation = \App\Models\StockLocation::where('name', 'Cabang Rumah')->first()
+                    ?? \App\Models\StockLocation::gudang()->first()
+                    ?? \App\Models\StockLocation::first();
 
-        if ($request->filled('affiliate_id')) {
-            app(\App\Services\AffiliateService::class)->recordCommission(
-                $transaction,
-                $request->input('affiliate_id'),
-                (int) $request->input('pax_count', 0)
-            );
-        }
+                if (!$skipStock) {
+                    foreach ($aggregatedItems as $agg) {
+                        $product      = $agg['product'];
+                        $qtyRequested = $agg['qty'];
 
-        if ($received > 0) {
-            $transaction->installments()->create([
-                'amount' => $received,
-                'payment_method' => $request->payment_method === 'Piutang / Tempo' ? 'Tunai' : $request->payment_method,
-                'note' => $request->payment_method === 'Piutang / Tempo' ? 'Uang Muka / DP' : 'Pembayaran Lunas Awal',
-                'created_at' => $txDate,
-                'updated_at' => $txDate,
+                        $availableStock = $wholesaleLocation
+                            ? $product->getStockAtLocation($wholesaleLocation->id)
+                            : $product->stock;
+
+                        if ($availableStock < $qtyRequested) {
+                            $availFormatted = ($product->price_unit === 'gram' && $availableStock >= 1000)
+                                ? ($availableStock / 1000) . ' kg (' . $availableStock . ' gram)'
+                                : $availableStock . ' ' . $product->price_unit;
+                            $reqFormatted = ($product->price_unit === 'gram' && $qtyRequested >= 1000)
+                                ? ($qtyRequested / 1000) . ' kg (' . $qtyRequested . ' gram)'
+                                : $qtyRequested . ' ' . $product->price_unit;
+
+                            throw new \RuntimeException('Stok produk "' . $product->name . '" tidak mencukupi! Tersedia: ' . $availFormatted . ', diminta: ' . $reqFormatted);
+                        }
+                    }
+                }
+
+                // 2. Hitung total & summary
+                $totalPrice = 0;
+                $totalCost  = 0;
+
+                $itemsSummary = collect($request->items)->map(function ($item) use (&$totalPrice, &$totalCost) {
+                    $qty       = floatval($item['qty']);
+                    $sellPrice = intval($item['selling_price']);
+                    $costPrice = isset($item['cost_price']) && $item['cost_price'] !== '' ? intval($item['cost_price']) : 0;
+
+                    $totalPrice += round($sellPrice * $qty);
+                    $totalCost  += round($costPrice * $qty);
+
+                    return $item['name'] . ' (' . $qty . ' ' . $item['price_unit'] . ' x ' . $sellPrice . ')';
+                })->join(', ');
+
+                if ($skipStock) {
+                    $itemsSummary .= ', [Stok Sudah Didata]';
+                }
+
+                $discount     = intval($request->input('discount', 0));
+                $shippingCost = intval($request->input('shipping_cost', 0));
+                $grandTotal   = max(0, $totalPrice - $discount + $shippingCost);
+
+                $received = $request->payment_method === 'Piutang / Tempo'
+                    ? intval($request->input('payment_received', 0))
+                    : $grandTotal;
+
+                $paymentStatus = $request->payment_method === 'Piutang / Tempo' ? 'unpaid' : 'paid';
+                if ($request->payment_method === 'Piutang / Tempo' && $received >= $grandTotal) {
+                    $paymentStatus = 'paid';
+                }
+
+                $txDate = $request->filled('transaction_date')
+                    ? Carbon::parse($request->transaction_date)
+                    : Carbon::now();
+
+                $trxCodePrefix = $skipStock ? 'PRT-NS-' : 'PRT-';
+                $trx = Transaction::create([
+                    'cashier_id'       => auth()->id(),
+                    'affiliate_id'     => $request->input('affiliate_id'),
+                    'pax_count'        => $request->input('pax_count', 0),
+                    'transaction_code' => $trxCodePrefix . $txDate->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6)),
+                    'transaction_type' => 'wholesale',
+                    'customer_name'    => $request->customer_name,
+                    'customer_phone'   => $request->customer_phone,
+                    'items_summary'    => $itemsSummary,
+                    'total_price'      => $grandTotal,
+                    'discount'         => $discount,
+                    'shipping_cost'    => $shippingCost,
+                    'total_cost'       => $totalCost,
+                    'payment_method'   => $request->payment_method,
+                    'branch'           => 'Cabang Rumah',
+                    'payment_status'   => $paymentStatus,
+                    'created_at'       => $txDate,
+                    'updated_at'       => $txDate,
+                ]);
+
+                // 3. Potong stok cabang & catat log mutasi (di dalam transaksi yang sama)
+                if (!$skipStock) {
+                    $stockService = app(\App\Services\StockService::class);
+                    $itemNames    = collect($request->items)->pluck('name')->values()->toArray();
+                    $productsByName = \App\Models\Product::whereIn('name', $itemNames)->get()->keyBy('name');
+
+                    foreach ($request->items as $item) {
+                        $product = $productsByName->get($item['name']);
+                        if ($product) {
+                            $itemUnit    = strtolower(trim($item['price_unit'] ?? ''));
+                            $productUnit = strtolower(trim($product->price_unit ?? ''));
+                            $deductQty   = floatval($item['qty']);
+
+                            if ($productUnit === 'gram' && in_array($itemUnit, ['kg', 'kilogram'])) {
+                                $deductQty *= 1000;
+                            } elseif (in_array($productUnit, ['kg', 'kilogram']) && $itemUnit === 'gram') {
+                                $deductQty /= 1000;
+                            }
+
+                            if ($wholesaleLocation) {
+                                $stockService->deductSaleStock(
+                                    $product,
+                                    $wholesaleLocation,
+                                    $deductQty,
+                                    $trx->id,
+                                    auth()->user() ?? \App\Models\User::first(),
+                                    "Penjualan Nota Partai #{$trx->transaction_code}"
+                                );
+                            } else {
+                                $product->decrement('stock', $deductQty);
+                            }
+                        }
+                    }
+
+                    \App\Models\StockAdjustmentLog::where('reference_type', Transaction::class)
+                        ->where('reference_id', $trx->id)
+                        ->update(['created_at' => $txDate]);
+                }
+
+                // 4. Catat komisi afiliasi jika ada
+                if ($request->filled('affiliate_id')) {
+                    app(\App\Services\AffiliateService::class)->recordCommission(
+                        $trx,
+                        $request->input('affiliate_id'),
+                        (int) $request->input('pax_count', 0)
+                    );
+                }
+
+                // 5. Catat pembayaran awal / DP
+                if ($received > 0) {
+                    $trx->installments()->create([
+                        'amount'         => $received,
+                        'payment_method' => $request->payment_method === 'Piutang / Tempo' ? 'Tunai' : $request->payment_method,
+                        'note'           => $request->payment_method === 'Piutang / Tempo' ? 'Uang Muka / DP' : 'Pembayaran Lunas Awal',
+                        'created_at'     => $txDate,
+                        'updated_at'     => $txDate,
+                    ]);
+                }
+
+                // 6. Sinkronkan memori harga jual per pelanggan
+                $this->syncWholesalePriceMemory($request->customer_name, $request->items, $txDate);
+
+                return $trx;
+            });
+        } catch (\Throwable $e) {
+            Log::error('Wholesale store failed (rolled back): ' . $e->getMessage(), [
+                'user_id'  => auth()->id(),
+                'customer' => $request->customer_name,
             ]);
+            return response()->json([
+                'success' => false,
+                'message' => $e instanceof \RuntimeException
+                    ? $e->getMessage()
+                    : 'Nota partai gagal disimpan dan dibatalkan otomatis (tidak ada data yang masuk): ' . $e->getMessage(),
+            ], 422);
+        } finally {
+            $lock->release();
         }
-
-        $this->syncWholesalePriceMemory($request->customer_name, $request->items, $txDate);
 
         return response()->json([
-            'success' => true,
-            'message' => 'Nota partai berhasil dicatat!',
+            'success'     => true,
+            'message'     => 'Nota partai berhasil dicatat!',
             'transaction' => $transaction
         ]);
     }
@@ -1718,156 +1785,150 @@ class TransactionController extends Controller
             'items.*.cost_price' => 'nullable|integer|min:0',
         ]);
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $transaction) {
-            $stockService = app(\App\Services\StockService::class);
-            $wholesaleLocation = \App\Models\StockLocation::where('name', 'Cabang Rumah')->first()
-                ?? \App\Models\StockLocation::gudang()->first()
-                ?? \App\Models\StockLocation::first();
+        try {
+            $updatedTransaction = DB::transaction(function () use ($request, $transaction) {
+                $stockService = app(\App\Services\StockService::class);
+                $wholesaleLocation = \App\Models\StockLocation::where('name', 'Cabang Rumah')->first()
+                    ?? \App\Models\StockLocation::gudang()->first()
+                    ?? \App\Models\StockLocation::first();
 
-            $newSkipStock = $request->boolean('skip_stock_deduction');
-            $wasSkipped = $transaction->isStockDeductionSkipped();
+                $newSkipStock = $request->boolean('skip_stock_deduction');
+                $wasSkipped = $transaction->isStockDeductionSkipped();
 
-            // 1. KEMBALIKAN STOK LAMA SEBELUM MENERAPKAN PERUBAHAN BARU
-            if (!$wasSkipped) {
-                $oldSaleLogs = \App\Models\StockAdjustmentLog::where('reference_type', Transaction::class)
-                    ->where('reference_id', $transaction->id)
-                    ->where('type', 'sale')
-                    ->get();
+                // 1. KEMBALIKAN STOK LAMA SEBELUM MENERAPKAN PERUBAHAN BARU
+                if (!$wasSkipped) {
+                    $oldSaleLogs = \App\Models\StockAdjustmentLog::where('reference_type', Transaction::class)
+                        ->where('reference_id', $transaction->id)
+                        ->where('type', 'sale')
+                        ->get();
 
-                if ($oldSaleLogs->isNotEmpty()) {
-                    foreach ($oldSaleLogs as $log) {
-                        $qtyToReturn = abs((float) $log->quantity_change);
-                        if ($qtyToReturn > 0) {
-                            $prod = \App\Models\Product::find($log->product_id);
-                            if ($prod) {
-                                $ps = \App\Models\ProductStock::getOrCreate($prod->id, $log->location_id);
-                                $ps->increment('stock', $qtyToReturn);
+                    if ($oldSaleLogs->isNotEmpty()) {
+                        foreach ($oldSaleLogs as $log) {
+                            $qtyToReturn = abs((float) $log->quantity_change);
+                            if ($qtyToReturn > 0) {
+                                $prod = \App\Models\Product::find($log->product_id);
+                                if ($prod) {
+                                    $ps = \App\Models\ProductStock::getOrCreate($prod->id, $log->location_id);
+                                    $ps->increment('stock', $qtyToReturn);
+                                    $stockService->syncGlobalStock($prod);
+                                }
+                            }
+                        }
+                        // Hapus log penjualan lama karena akan diganti log mutasi item baru
+                        \App\Models\StockAdjustmentLog::where('reference_type', Transaction::class)
+                            ->where('reference_id', $transaction->id)
+                            ->where('type', 'sale')
+                            ->delete();
+                    } else {
+                        // Fallback jika tidak ada StockAdjustmentLog (transaksi legacy)
+                        $oldItems = $transaction->parsed_items;
+                        foreach ($oldItems as $oItem) {
+                            $prod = \App\Models\Product::where('name', $oItem['name'])->first();
+                            if ($prod && $wholesaleLocation) {
+                                $oUnit = strtolower(trim($oItem['unit'] ?? ''));
+                                $pUnit = strtolower(trim($prod->price_unit ?? ''));
+                                $retQty = floatval($oItem['qty']);
+                                if ($pUnit === 'gram' && in_array($oUnit, ['kg', 'kilogram'])) {
+                                    $retQty *= 1000;
+                                }
+                                $ps = \App\Models\ProductStock::getOrCreate($prod->id, $wholesaleLocation->id);
+                                $ps->increment('stock', $retQty);
                                 $stockService->syncGlobalStock($prod);
                             }
                         }
                     }
-                    // Hapus log penjualan lama karena akan diganti log mutasi item baru
-                    \App\Models\StockAdjustmentLog::where('reference_type', Transaction::class)
-                        ->where('reference_id', $transaction->id)
-                        ->where('type', 'sale')
-                        ->delete();
-                } else {
-                    // Fallback jika tidak ada StockAdjustmentLog (transaksi legacy)
-                    $oldItems = $transaction->parsed_items;
-                    foreach ($oldItems as $oItem) {
-                        $prod = \App\Models\Product::where('name', $oItem['name'])->first();
-                        if ($prod && $wholesaleLocation) {
-                            $oUnit = strtolower(trim($oItem['unit'] ?? ''));
-                            $pUnit = strtolower(trim($prod->price_unit ?? ''));
-                            $retQty = floatval($oItem['qty']);
-                            if ($pUnit === 'gram' && in_array($oUnit, ['kg', 'kilogram'])) {
-                                $retQty *= 1000;
-                            }
-                            $ps = \App\Models\ProductStock::getOrCreate($prod->id, $wholesaleLocation->id);
-                            $ps->increment('stock', $retQty);
-                            $stockService->syncGlobalStock($prod);
-                        }
-                    }
                 }
-            }
 
-            // 2. VALIDASI STOK ITEM BARU (SETELAH STOK LAMA DIKEMBALIKAN)
-            $aggregatedItems = [];
-            foreach ($request->items as $item) {
-                $product = \App\Models\Product::where('name', $item['name'])->first();
-                if (!$product && !$newSkipStock) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Produk "' . $item['name'] . '" tidak ditemukan di database.'
-                    ], 422);
-                }
-                if ($product) {
-                    $pName = $product->name;
-                    if (!isset($aggregatedItems[$pName])) {
-                        $aggregatedItems[$pName] = [
-                            'product' => $product,
-                            'qty' => 0.0,
-                        ];
-                    }
-
-                    $itemUnit = strtolower(trim($item['price_unit'] ?? ''));
-                    $productUnit = strtolower(trim($product->price_unit ?? ''));
-                    $convertedQty = floatval($item['qty']);
-
-                    if ($productUnit === 'gram' && in_array($itemUnit, ['kg', 'kilogram'])) {
-                        $convertedQty *= 1000;
-                    } elseif (in_array($productUnit, ['kg', 'kilogram']) && $itemUnit === 'gram') {
-                        $convertedQty /= 1000;
-                    }
-
-                    $aggregatedItems[$pName]['qty'] += $convertedQty;
-                }
-            }
-
-            if (!$newSkipStock && $wholesaleLocation) {
-                foreach ($aggregatedItems as $agg) {
-                    $product = $agg['product'];
-                    $qtyRequested = $agg['qty'];
-                    $availableStock = $product->getStockAtLocation($wholesaleLocation->id);
-
-                    if ($availableStock < $qtyRequested) {
-                        $availFormatted = ($product->price_unit === 'gram' && $availableStock >= 1000)
-                            ? ($availableStock / 1000) . ' kg (' . $availableStock . ' gram)'
-                            : $availableStock . ' ' . $product->price_unit;
-                        $reqFormatted = ($product->price_unit === 'gram' && $qtyRequested >= 1000)
-                            ? ($qtyRequested / 1000) . ' kg (' . $qtyRequested . ' gram)'
-                            : $qtyRequested . ' ' . $product->price_unit;
-
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Stok produk "' . $product->name . '" tidak mencukupi! Tersedia: ' . $availFormatted . ', diminta: ' . $reqFormatted
-                        ], 422);
-                    }
-                }
-            }
-
-            // 3. HITUNG ULANG TOTAL & REKAP ITEMS SUMMARY
-            $totalPrice = 0;
-            $totalCost = 0;
-
-            $itemsSummary = collect($request->items)->map(function ($item) use (&$totalPrice, &$totalCost) {
-                $qty = floatval($item['qty']);
-                $sellPrice = intval($item['selling_price']);
-                $costPrice = isset($item['cost_price']) && $item['cost_price'] !== '' ? intval($item['cost_price']) : 0;
-
-                $totalPrice += round($sellPrice * $qty);
-                $totalCost += round($costPrice * $qty);
-
-                return $item['name'] . ' (' . $qty . ' ' . $item['price_unit'] . ' x ' . $sellPrice . ')';
-            })->join(', ');
-
-            if ($newSkipStock) {
-                $itemsSummary .= ', [Stok Sudah Didata]';
-            }
-
-            $discount = intval($request->input('discount', 0));
-            $shippingCost = intval($request->input('shipping_cost', 0));
-            $grandTotal = max(0, $totalPrice - $discount + $shippingCost);
-
-            // 4. POTONG STOK SESUAI ITEM BARU
-            if (!$newSkipStock && $wholesaleLocation) {
-                $itemNames = collect($request->items)->pluck('name')->values()->toArray();
-                $productsByName = \App\Models\Product::whereIn('name', $itemNames)->get()->keyBy('name');
-
+                // 2. VALIDASI STOK ITEM BARU (SETELAH STOK LAMA DIKEMBALIKAN)
+                $aggregatedItems = [];
                 foreach ($request->items as $item) {
-                    $product = $productsByName->get($item['name']);
+                    $product = \App\Models\Product::where('name', $item['name'])->lockForUpdate()->first();
+                    if (!$product && !$newSkipStock) {
+                        throw new \RuntimeException('Produk "' . $item['name'] . '" tidak ditemukan di database.');
+                    }
                     if ($product) {
+                        $pName = $product->name;
+                        if (!isset($aggregatedItems[$pName])) {
+                            $aggregatedItems[$pName] = [
+                                'product' => $product,
+                                'qty' => 0.0,
+                            ];
+                        }
+
                         $itemUnit = strtolower(trim($item['price_unit'] ?? ''));
                         $productUnit = strtolower(trim($product->price_unit ?? ''));
-                        $deductQty = floatval($item['qty']);
+                        $convertedQty = floatval($item['qty']);
 
                         if ($productUnit === 'gram' && in_array($itemUnit, ['kg', 'kilogram'])) {
-                            $deductQty *= 1000;
+                            $convertedQty *= 1000;
                         } elseif (in_array($productUnit, ['kg', 'kilogram']) && $itemUnit === 'gram') {
-                            $deductQty /= 1000;
+                            $convertedQty /= 1000;
                         }
 
-                        try {
+                        $aggregatedItems[$pName]['qty'] += $convertedQty;
+                    }
+                }
+
+                if (!$newSkipStock && $wholesaleLocation) {
+                    foreach ($aggregatedItems as $agg) {
+                        $product = $agg['product'];
+                        $qtyRequested = $agg['qty'];
+                        $availableStock = $product->getStockAtLocation($wholesaleLocation->id);
+
+                        if ($availableStock < $qtyRequested) {
+                            $availFormatted = ($product->price_unit === 'gram' && $availableStock >= 1000)
+                                ? ($availableStock / 1000) . ' kg (' . $availableStock . ' gram)'
+                                : $availableStock . ' ' . $product->price_unit;
+                            $reqFormatted = ($product->price_unit === 'gram' && $qtyRequested >= 1000)
+                                ? ($qtyRequested / 1000) . ' kg (' . $qtyRequested . ' gram)'
+                                : $qtyRequested . ' ' . $product->price_unit;
+
+                            throw new \RuntimeException('Stok produk "' . $product->name . '" tidak mencukupi! Tersedia: ' . $availFormatted . ', diminta: ' . $reqFormatted);
+                        }
+                    }
+                }
+
+                // 3. HITUNG ULANG TOTAL & REKAP ITEMS SUMMARY
+                $totalPrice = 0;
+                $totalCost = 0;
+
+                $itemsSummary = collect($request->items)->map(function ($item) use (&$totalPrice, &$totalCost) {
+                    $qty = floatval($item['qty']);
+                    $sellPrice = intval($item['selling_price']);
+                    $costPrice = isset($item['cost_price']) && $item['cost_price'] !== '' ? intval($item['cost_price']) : 0;
+
+                    $totalPrice += round($sellPrice * $qty);
+                    $totalCost += round($costPrice * $qty);
+
+                    return $item['name'] . ' (' . $qty . ' ' . $item['price_unit'] . ' x ' . $sellPrice . ')';
+                })->join(', ');
+
+                if ($newSkipStock) {
+                    $itemsSummary .= ', [Stok Sudah Didata]';
+                }
+
+                $discount = intval($request->input('discount', 0));
+                $shippingCost = intval($request->input('shipping_cost', 0));
+                $grandTotal = max(0, $totalPrice - $discount + $shippingCost);
+
+                // 4. POTONG STOK SESUAI ITEM BARU
+                if (!$newSkipStock && $wholesaleLocation) {
+                    $itemNames = collect($request->items)->pluck('name')->values()->toArray();
+                    $productsByName = \App\Models\Product::whereIn('name', $itemNames)->get()->keyBy('name');
+
+                    foreach ($request->items as $item) {
+                        $product = $productsByName->get($item['name']);
+                        if ($product) {
+                            $itemUnit = strtolower(trim($item['price_unit'] ?? ''));
+                            $productUnit = strtolower(trim($product->price_unit ?? ''));
+                            $deductQty = floatval($item['qty']);
+
+                            if ($productUnit === 'gram' && in_array($itemUnit, ['kg', 'kilogram'])) {
+                                $deductQty *= 1000;
+                            } elseif (in_array($productUnit, ['kg', 'kilogram']) && $itemUnit === 'gram') {
+                                $deductQty /= 1000;
+                            }
+
                             $stockService->deductSaleStock(
                                 $product,
                                 $wholesaleLocation,
@@ -1876,116 +1937,118 @@ class TransactionController extends Controller
                                 auth()->user() ?? \App\Models\User::first(),
                                 "Penjualan Nota Partai #{$transaction->transaction_code} (Diperbarui)"
                             );
-                        } catch (\Exception $e) {
-                            $product->decrement('stock', $deductQty);
                         }
                     }
                 }
-            }
 
-            // 5. UPDATE CICILAN & STATUS PEMBAYARAN
-            $oldPaymentMethod = $transaction->payment_method;
-            $newPaymentMethod = $request->input('payment_method');
-            $receivedInput = intval($request->input('payment_received', 0));
+                // 5. UPDATE CICILAN & STATUS PEMBAYARAN
+                $oldPaymentMethod = $transaction->payment_method;
+                $newPaymentMethod = $request->input('payment_method');
+                $receivedInput = intval($request->input('payment_received', 0));
 
-            if ($newPaymentMethod === 'Piutang / Tempo') {
-                if ($oldPaymentMethod !== 'Piutang / Tempo') {
-                    // Kasus A: Berubah dari Lunas (Tunai/Transfer) ke Piutang / Tempo
-                    // Hapus seluruh installment pelunasan otomatis sebelumnya
-                    $transaction->installments()->delete();
+                if ($newPaymentMethod === 'Piutang / Tempo') {
+                    if ($oldPaymentMethod !== 'Piutang / Tempo') {
+                        $transaction->installments()->delete();
 
-                    // Jika ada DP yang dibayarkan saat nota diubah ke tempo
-                    if ($receivedInput > 0) {
-                        $dpAmount = min($receivedInput, $grandTotal);
-                        $transaction->installments()->create([
-                            'amount' => $dpAmount,
-                            'payment_method' => 'Tunai',
-                            'note' => 'Uang Muka / DP'
-                        ]);
-                    }
-                } else {
-                    // Kasus B: Sebelumnya sudah Piutang / Tempo
-                    // Hapus installment lama bertanda "Lunas" jika ada sisa anomali sebelumnya
-                    $transaction->installments()
-                        ->where('note', 'like', '%Lunas%')
-                        ->delete();
-
-                    $firstInstallment = $transaction->installments()->oldest()->first();
-                    $otherInstallmentsSum = (float) $transaction->installments()
-                        ->when($firstInstallment, function ($q) use ($firstInstallment) {
-                            $q->where('id', '!=', $firstInstallment->id);
-                        })->sum('amount');
-
-                    if ($firstInstallment) {
                         if ($receivedInput > 0) {
-                            $firstInstallment->update([
-                                'amount' => min($receivedInput, max(0, $grandTotal - $otherInstallmentsSum)),
-                                'note' => $firstInstallment->note ?: 'Uang Muka / DP'
+                            $dpAmount = min($receivedInput, $grandTotal);
+                            $transaction->installments()->create([
+                                'amount' => $dpAmount,
+                                'payment_method' => 'Tunai',
+                                'note' => 'Uang Muka / DP'
                             ]);
-                        } else {
-                            // Jika DP diisi 0 dan installment ini adalah DP
-                            $firstInstallment->delete();
                         }
-                    } elseif ($receivedInput > 0) {
-                        $dpAmount = min($receivedInput, max(0, $grandTotal - $otherInstallmentsSum));
-                        $transaction->installments()->create([
-                            'amount' => $dpAmount,
-                            'payment_method' => 'Tunai',
-                            'note' => 'Uang Muka / DP'
-                        ]);
+                    } else {
+                        $transaction->installments()
+                            ->where('note', 'like', '%Lunas%')
+                            ->delete();
+
+                        $firstInstallment = $transaction->installments()->oldest()->first();
+                        $otherInstallmentsSum = (float) $transaction->installments()
+                            ->when($firstInstallment, function ($q) use ($firstInstallment) {
+                                $q->where('id', '!=', $firstInstallment->id);
+                            })->sum('amount');
+
+                        if ($firstInstallment) {
+                            if ($receivedInput > 0) {
+                                $firstInstallment->update([
+                                    'amount' => min($receivedInput, max(0, $grandTotal - $otherInstallmentsSum)),
+                                    'note' => $firstInstallment->note ?: 'Uang Muka / DP'
+                                ]);
+                            } else {
+                                $firstInstallment->delete();
+                            }
+                        } elseif ($receivedInput > 0) {
+                            $dpAmount = min($receivedInput, max(0, $grandTotal - $otherInstallmentsSum));
+                            $transaction->installments()->create([
+                                'amount' => $dpAmount,
+                                'payment_method' => 'Tunai',
+                                'note' => 'Uang Muka / DP'
+                            ]);
+                        }
                     }
+
+                    $totalPaid = (float) $transaction->installments()->sum('amount');
+                    $paymentStatus = ($totalPaid >= $grandTotal && $grandTotal > 0) ? 'paid' : 'unpaid';
+                } else {
+                    $paymentStatus = 'paid';
+
+                    $transaction->installments()->delete();
+                    $transaction->installments()->create([
+                        'amount' => $grandTotal,
+                        'payment_method' => $newPaymentMethod,
+                        'note' => 'Pembayaran Lunas saat Edit Nota'
+                    ]);
                 }
 
-                $totalPaid = (float) $transaction->installments()->sum('amount');
-                $paymentStatus = ($totalPaid >= $grandTotal && $grandTotal > 0) ? 'paid' : 'unpaid';
-            } else {
-                // Kasus C: Metode pembayaran Tunai / Transfer (Lunas Penuh)
-                $paymentStatus = 'paid';
-                
-                // Pastikan cicilan diset persis sama dengan grandTotal
-                $transaction->installments()->delete();
-                $transaction->installments()->create([
-                    'amount' => $grandTotal,
-                    'payment_method' => $newPaymentMethod,
-                    'note' => 'Pembayaran Lunas saat Edit Nota'
-                ]);
-            }
+                // 6. UPDATE DATA TRANSAKSI
+                $updateData = [
+                    'customer_name' => $request->customer_name,
+                    'customer_phone' => $request->customer_phone,
+                    'payment_method' => $request->payment_method,
+                    'payment_status' => $paymentStatus,
+                    'discount' => $discount,
+                    'shipping_cost' => $shippingCost,
+                    'total_price' => $grandTotal,
+                    'total_cost' => $totalCost,
+                    'items_summary' => $itemsSummary,
+                ];
 
-            // 6. UPDATE DATA TRANSAKSI
-            $updateData = [
-                'customer_name' => $request->customer_name,
-                'customer_phone' => $request->customer_phone,
-                'payment_method' => $request->payment_method,
-                'payment_status' => $paymentStatus,
-                'discount' => $discount,
-                'shipping_cost' => $shippingCost,
-                'total_price' => $grandTotal,
-                'total_cost' => $totalCost,
-                'items_summary' => $itemsSummary,
-            ];
+                if ($request->filled('transaction_date')) {
+                    $customDate = Carbon::parse($request->transaction_date);
+                    $updateData['created_at'] = $customDate;
+                    $transaction->installments()->update(['created_at' => $customDate]);
+                    \App\Models\StockAdjustmentLog::where('reference_type', Transaction::class)
+                        ->where('reference_id', $transaction->id)
+                        ->update(['created_at' => $customDate]);
+                }
 
-            if ($request->filled('transaction_date')) {
-                $customDate = Carbon::parse($request->transaction_date);
-                $updateData['created_at'] = $customDate;
-                $transaction->installments()->update(['created_at' => $customDate]);
-                \App\Models\StockAdjustmentLog::where('reference_type', Transaction::class)
-                    ->where('reference_id', $transaction->id)
-                    ->update(['created_at' => $customDate]);
-            }
+                $transaction->update($updateData);
 
-            $transaction->update($updateData);
+                $memoryDate = $request->filled('transaction_date')
+                    ? Carbon::parse($request->transaction_date)
+                    : $transaction->created_at;
+                $this->syncWholesalePriceMemory($request->customer_name, $request->items, $memoryDate);
 
-            $memoryDate = $request->filled('transaction_date')
-                ? Carbon::parse($request->transaction_date)
-                : $transaction->created_at;
-            $this->syncWholesalePriceMemory($request->customer_name, $request->items, $memoryDate);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Nota partai #' . $transaction->transaction_code . ' berhasil diperbarui!',
-                'transaction' => $transaction
+                return $transaction;
+            });
+        } catch (\Throwable $e) {
+            Log::error('updateWholesale failed (rolled back): ' . $e->getMessage(), [
+                'transaction_id' => $transaction->id,
             ]);
-        });
+            return response()->json([
+                'success' => false,
+                'message' => $e instanceof \RuntimeException
+                    ? $e->getMessage()
+                    : 'Gagal memperbarui nota partai (perubahan dibatalkan otomatis): ' . $e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Nota partai #' . $updatedTransaction->transaction_code . ' berhasil diperbarui!',
+            'transaction' => $updatedTransaction
+        ]);
     }
 
     /**
@@ -2253,17 +2316,28 @@ class TransactionController extends Controller
             ], 403);
         }
 
-        $transaction->update(['payment_status' => 'paid']);
+        try {
+            DB::transaction(function () use ($transaction) {
+                $locked = Transaction::where('id', $transaction->id)->lockForUpdate()->firstOrFail();
+                $locked->update(['payment_status' => 'paid']);
 
-        // Jika ada sisa piutang belum tercatat di installment, catat pelunasan otomatis agar sinkron
-        $paidSoFar = $transaction->installments()->sum('amount');
-        $remaining = $transaction->total_price - $paidSoFar;
-        if ($remaining > 0) {
-            $transaction->installments()->create([
-                'amount' => $remaining,
-                'payment_method' => 'Tunai',
-                'note' => 'Pelunasan langsung via Nota Partai'
-            ]);
+                // Jika ada sisa piutang belum tercatat di installment, catat pelunasan otomatis agar sinkron
+                $paidSoFar = $locked->installments()->sum('amount');
+                $remaining = $locked->total_price - $paidSoFar;
+                if ($remaining > 0) {
+                    $locked->installments()->create([
+                        'amount'         => $remaining,
+                        'payment_method' => 'Tunai',
+                        'note'           => 'Pelunasan langsung via Nota Partai',
+                    ]);
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::error('markAsPaid failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menandai lunas: ' . $e->getMessage(),
+            ], 422);
         }
 
         return response()->json([
@@ -2433,36 +2507,54 @@ class TransactionController extends Controller
             'note' => 'nullable|string|max:255',
         ]);
 
-        $paidSoFar = $transaction->installments()->sum('amount');
-        $remaining = $transaction->total_price - $paidSoFar;
-
-        if ($request->amount > $remaining) {
+        $lockKey = 'installment_lock_' . $transaction->id . '_' . intval($request->amount);
+        $lock = Cache::lock($lockKey, 3);
+        if (!$lock->get()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Jumlah pembayaran melebihi sisa tagihan! Sisa tagihan saat ini: Rp ' . number_format($remaining, 0, ',', '.')
-            ], 422);
+                'message' => 'Pembayaran cicilan sedang diproses. Mohon tunggu sebentar.'
+            ], 429);
         }
 
-        // Record installment
-        $transaction->installments()->create([
-            'amount' => $request->amount,
-            'payment_method' => $request->payment_method,
-            'note' => $request->note
-        ]);
+        try {
+            $isPaid = DB::transaction(function () use ($request, $transaction) {
+                $locked    = Transaction::where('id', $transaction->id)->lockForUpdate()->firstOrFail();
+                $paidSoFar = $locked->installments()->sum('amount');
+                $remaining = $locked->total_price - $paidSoFar;
 
-        // Check if fully paid
-        $totalPaid = $transaction->installments()->sum('amount');
-        $isPaid = false;
-        if ($totalPaid >= $transaction->total_price) {
-            $transaction->update(['payment_status' => 'paid']);
-            $isPaid = true;
+                if ($request->amount > $remaining) {
+                    throw new \RuntimeException('Jumlah pembayaran melebihi sisa tagihan! Sisa tagihan saat ini: Rp ' . number_format($remaining, 0, ',', '.'));
+                }
+
+                $locked->installments()->create([
+                    'amount'         => $request->amount,
+                    'payment_method' => $request->payment_method,
+                    'note'           => $request->note,
+                ]);
+
+                $totalPaid = $locked->installments()->sum('amount');
+                if ($totalPaid >= $locked->total_price) {
+                    $locked->update(['payment_status' => 'paid']);
+                    return true;
+                }
+
+                return false;
+            });
+        } catch (\Throwable $e) {
+            Log::error('storeInstallment failed (rolled back): ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } finally {
+            $lock->release();
         }
 
         return response()->json([
-            'success' => true,
-            'is_paid' => $isPaid,
+            'success'        => true,
+            'is_paid'        => $isPaid,
             'transaction_id' => $transaction->id,
-            'message' => 'Pembayaran cicilan berhasil disimpan!'
+            'message'        => 'Pembayaran cicilan berhasil disimpan!'
         ]);
     }
 
@@ -2549,31 +2641,54 @@ class TransactionController extends Controller
 
         $itemsSummary = trim($request->description) . ' (1 paket x ' . $grandTotal . '), [Stok Sudah Didata]';
 
-        $transaction = Transaction::create([
-            'cashier_id'       => auth()->id(),
-            'transaction_code' => 'PTM-' . $txDate->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6)),
-            'transaction_type' => 'wholesale',
-            'customer_name'    => trim($request->customer_name),
-            'customer_phone'   => $request->customer_phone,
-            'items_summary'    => $itemsSummary,
-            'total_price'      => $grandTotal,
-            'discount'         => 0,
-            'shipping_cost'    => 0,
-            'total_cost'       => 0,
-            'payment_method'   => 'Piutang / Tempo',
-            'branch'           => 'Cabang Rumah',
-            'payment_status'   => $paymentStatus,
-            'created_at'       => $txDate,
-            'updated_at'       => $txDate,
-        ]);
+        $lockKey = 'manual_receivable_lock_' . (auth()->id() ?? 'guest') . '_' . md5(strtolower(trim($request->customer_name)) . '|' . $grandTotal . '|' . $itemsSummary);
+        $lock = Cache::lock($lockKey, 4);
+        if (!$lock->get()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data piutang sedang diproses. Mohon tunggu sebentar.'
+            ], 429);
+        }
 
-        if ($received > 0) {
-            $transaction->installments()->create([
-                'amount'         => $received,
-                'payment_method' => 'Tunai',
-                'note'           => 'Uang Muka / DP Awal',
-                'created_at'     => $txDate,
-            ]);
+        try {
+            $transaction = DB::transaction(function () use ($request, $grandTotal, $received, $paymentStatus, $txDate, $itemsSummary) {
+                $trx = Transaction::create([
+                    'cashier_id'       => auth()->id(),
+                    'transaction_code' => 'PTM-' . $txDate->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6)),
+                    'transaction_type' => 'wholesale',
+                    'customer_name'    => trim($request->customer_name),
+                    'customer_phone'   => $request->customer_phone,
+                    'items_summary'    => $itemsSummary,
+                    'total_price'      => $grandTotal,
+                    'discount'         => 0,
+                    'shipping_cost'    => 0,
+                    'total_cost'       => 0,
+                    'payment_method'   => 'Piutang / Tempo',
+                    'branch'           => 'Cabang Rumah',
+                    'payment_status'   => $paymentStatus,
+                    'created_at'       => $txDate,
+                    'updated_at'       => $txDate,
+                ]);
+
+                if ($received > 0) {
+                    $trx->installments()->create([
+                        'amount'         => $received,
+                        'payment_method' => 'Tunai',
+                        'note'           => 'Uang Muka / DP Awal',
+                        'created_at'     => $txDate,
+                    ]);
+                }
+
+                return $trx;
+            });
+        } catch (\Throwable $e) {
+            Log::error('storeManualReceivable failed (rolled back): ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mencatat piutang manual (tidak ada data yang masuk): ' . $e->getMessage(),
+            ], 422);
+        } finally {
+            $lock->release();
         }
 
         return response()->json([

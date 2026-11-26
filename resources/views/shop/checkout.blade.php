@@ -1303,6 +1303,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         async submitOrder() {
+            if (this.submitting) return;
             if (!this.selectedShipping) {
                 alert('Pilih layanan ekspedisi terlebih dahulu.');
                 return;
@@ -1339,7 +1340,12 @@ document.addEventListener('alpine:init', () => {
                     body: JSON.stringify(payload),
                 });
 
-                const data = await response.json();
+                let data = {};
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    data = { status: 'error', message: 'Respon server tidak valid (' + response.status + '). Silakan coba lagi.' };
+                }
                 if (!response.ok || data.status === 'error') {
                     throw new Error(data.message || 'Terjadi kesalahan.');
                 }

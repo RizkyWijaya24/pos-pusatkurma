@@ -347,6 +347,15 @@ class CatalogController extends Controller
             'referral_code'         => 'nullable|string|max:30',
         ]);
 
+        $checkoutLockKey = 'shop_checkout_lock_' . md5($request->phone . '|' . json_encode($request->items) . '|' . $request->shipping_service);
+        $checkoutLock = \Illuminate\Support\Facades\Cache::lock($checkoutLockKey, 5);
+        if (!$checkoutLock->get()) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Pesanan Anda sedang diproses, mohon tunggu sebentar agar tidak terjadi pesanan ganda.',
+            ], 429);
+        }
+
         try {
             // Validate stock levels before placing the order (aggregated to handle duplicates)
             $onlineLocation = $this->getOnlineLocation();
@@ -554,27 +563,36 @@ class CatalogController extends Controller
                     $order->update(['snap_token' => $paymentUrl]);
                 }
 
-                // Kirim notifikasi ke admin & owner
-                $admins = \App\Models\User::whereIn('role', ['admin', 'owner'])->get();
-                foreach ($admins as $admin) {
-                    $admin->notify(new \App\Notifications\OrderNotification($order, 'created'));
-                }
-
                 // Store order code in session so only this browser session can view the success page
                 session(['last_order_code' => $order->order_code]);
 
-                return response()->json([
-                    'status'      => 'success',
-                    'payment_url' => $paymentUrl,
-                    'order_id'    => $order->id,
-                    'order_code'  => $order->order_code,
-                ]);
+                return ['order' => $order, 'payment_url' => $paymentUrl];
             });
-        } catch (\Exception $e) {
+
+            // Kirim notifikasi ke admin & owner di luar DB::transaction agar tidak menggagalkan transaksi
+            try {
+                $admins = \App\Models\User::whereIn('role', ['admin', 'owner'])->get();
+                foreach ($admins as $admin) {
+                    $admin->notify(new \App\Notifications\OrderNotification($result['order'], 'created'));
+                }
+            } catch (\Throwable $notifyErr) {
+                \Illuminate\Support\Facades\Log::warning('Notifikasi order baru gagal dikirim: ' . $notifyErr->getMessage());
+            }
+
+            return response()->json([
+                'status'      => 'success',
+                'payment_url' => $result['payment_url'],
+                'order_id'    => $result['order']->id,
+                'order_code'  => $result['order']->order_code,
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Shop checkout failed (rolled back): ' . $e->getMessage());
             return response()->json([
                 'status'  => 'error',
                 'message' => $e->getMessage()
             ], 500);
+        } finally {
+            $checkoutLock->release();
         }
     }
 

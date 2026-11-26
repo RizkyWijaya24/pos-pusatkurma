@@ -147,16 +147,20 @@ class StockTransferController extends Controller
         try {
             $this->stockService->approveTransfer($stockTransfer, auth()->user());
 
-            // Kirim notifikasi ke kasir pembuat request
-            if ($stockTransfer->requester) {
-                $stockTransfer->requester->notify(new \App\Notifications\StockTransferNotification($stockTransfer, 'approved', auth()->user()));
+            // Kirim notifikasi ke kasir pembuat request (non-blocking agar tidak memicu error palsu setelah DB commit)
+            try {
+                if ($stockTransfer->requester) {
+                    $stockTransfer->requester->notify(new \App\Notifications\StockTransferNotification($stockTransfer, 'approved', auth()->user()));
+                }
+            } catch (\Throwable $notifyErr) {
+                \Illuminate\Support\Facades\Log::warning('Notifikasi approve transfer gagal dikirim: ' . $notifyErr->getMessage());
             }
 
             return response()->json([
                 'success' => true,
                 'message' => "Transfer {$stockTransfer->transfer_code} berhasil disetujui! Stok telah dipindahkan.",
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -206,16 +210,20 @@ class StockTransferController extends Controller
             // Tentukan action type
             $actionType = $adjustmentSummary ? 'approved_adjusted' : 'approved';
 
-            // Kirim notifikasi ke kasir pembuat request
-            if ($stockTransfer->requester) {
-                $stockTransfer->requester->notify(
-                    new \App\Notifications\StockTransferNotification(
-                        $stockTransfer,
-                        $actionType,
-                        auth()->user(),
-                        $adjustmentSummary
-                    )
-                );
+            // Kirim notifikasi ke kasir pembuat request (non-blocking)
+            try {
+                if ($stockTransfer->requester) {
+                    $stockTransfer->requester->notify(
+                        new \App\Notifications\StockTransferNotification(
+                            $stockTransfer,
+                            $actionType,
+                            auth()->user(),
+                            $adjustmentSummary
+                        )
+                    );
+                }
+            } catch (\Throwable $notifyErr) {
+                \Illuminate\Support\Facades\Log::warning('Notifikasi approve-adjusted transfer gagal dikirim: ' . $notifyErr->getMessage());
             }
 
             $message = $adjustmentSummary
@@ -226,7 +234,7 @@ class StockTransferController extends Controller
                 'success' => true,
                 'message' => $message,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -252,16 +260,20 @@ class StockTransferController extends Controller
                 $request->input('rejection_reason', '')
             );
 
-            // Kirim notifikasi ke kasir pembuat request
-            if ($stockTransfer->requester) {
-                $stockTransfer->requester->notify(new \App\Notifications\StockTransferNotification($stockTransfer, 'rejected', auth()->user()));
+            // Kirim notifikasi ke kasir pembuat request (non-blocking)
+            try {
+                if ($stockTransfer->requester) {
+                    $stockTransfer->requester->notify(new \App\Notifications\StockTransferNotification($stockTransfer, 'rejected', auth()->user()));
+                }
+            } catch (\Throwable $notifyErr) {
+                \Illuminate\Support\Facades\Log::warning('Notifikasi reject transfer gagal dikirim: ' . $notifyErr->getMessage());
             }
 
             return response()->json([
                 'success' => true,
                 'message' => "Transfer {$stockTransfer->transfer_code} ditolak.",
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -285,19 +297,23 @@ class StockTransferController extends Controller
         try {
             $this->stockService->cancelTransfer($stockTransfer);
 
-            // Jika dibatalkan oleh kasir, kirim notifikasi ke Admin & Owner
-            if (auth()->user()->isKasir()) {
-                $adminOwners = \App\Models\User::whereIn('role', ['admin', 'owner'])->get();
-                foreach ($adminOwners as $recipient) {
-                    $recipient->notify(new \App\Notifications\StockTransferNotification($stockTransfer, 'cancelled', auth()->user()));
+            // Jika dibatalkan oleh kasir, kirim notifikasi ke Admin & Owner (non-blocking)
+            try {
+                if (auth()->user()->isKasir()) {
+                    $adminOwners = \App\Models\User::whereIn('role', ['admin', 'owner'])->get();
+                    foreach ($adminOwners as $recipient) {
+                        $recipient->notify(new \App\Notifications\StockTransferNotification($stockTransfer, 'cancelled', auth()->user()));
+                    }
                 }
+            } catch (\Throwable $notifyErr) {
+                \Illuminate\Support\Facades\Log::warning('Notifikasi cancel transfer gagal dikirim: ' . $notifyErr->getMessage());
             }
 
             return response()->json([
                 'success' => true,
                 'message' => "Transfer {$stockTransfer->transfer_code} dibatalkan.",
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -403,10 +419,14 @@ class StockTransferController extends Controller
         try {
             $transfer = $this->stockService->createTransfer($data, $kasir);
 
-            // Kirim notifikasi ke Admin & Owner
-            $adminOwners = \App\Models\User::whereIn('role', ['admin', 'owner'])->get();
-            foreach ($adminOwners as $recipient) {
-                $recipient->notify(new \App\Notifications\StockTransferNotification($transfer, 'created', $kasir));
+            // Kirim notifikasi ke Admin & Owner (non-blocking)
+            try {
+                $adminOwners = \App\Models\User::whereIn('role', ['admin', 'owner'])->get();
+                foreach ($adminOwners as $recipient) {
+                    $recipient->notify(new \App\Notifications\StockTransferNotification($transfer, 'created', $kasir));
+                }
+            } catch (\Throwable $notifyErr) {
+                \Illuminate\Support\Facades\Log::warning('Notifikasi request transfer gagal dikirim: ' . $notifyErr->getMessage());
             }
 
             return response()->json([
@@ -417,7 +437,7 @@ class StockTransferController extends Controller
                     'code' => $transfer->transfer_code,
                 ],
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
