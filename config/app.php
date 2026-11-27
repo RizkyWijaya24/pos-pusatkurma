@@ -130,4 +130,11 @@ return [
     */
     'whatsapp_report_number' => env('WHATSAPP_REPORT_NUMBER', ''),
 
+    /*
+    |--------------------------------------------------------------------------
+    | System Self-Repair Pre-Boot Rescue Key
+    |--------------------------------------------------------------------------
+    */
+    'repair_rescue_key' => env('REPAIR_RESCUE_KEY', ''),
+
 ];

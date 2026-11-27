@@ -207,6 +207,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/stock-transfers/{stockTransfer}/reject',  [\App\Http\Controllers\StockTransferController::class, 'reject'])->name('stock-transfers.reject');
         Route::get('/stock-transfers', [\App\Http\Controllers\StockTransferController::class, 'index'])->name('stock-transfers.index');
         Route::get('/stock-transfers/{stockTransfer}', [\App\Http\Controllers\StockTransferController::class, 'show'])->name('stock-transfers.show');
+
+        // ── Owner/Admin: Kesehatan & Self-Repair Sistem ─────────
+        Route::get('/system-repair', [\App\Http\Controllers\SystemRepairController::class, 'index'])->name('system-repair');
+        Route::post('/system-repair/diagnose', [\App\Http\Controllers\SystemRepairController::class, 'diagnose'])->name('system-repair.diagnose');
+        Route::post('/system-repair/run', [\App\Http\Controllers\SystemRepairController::class, 'run'])->name('system-repair.run');
+        Route::post('/system-repair/clear-logs', [\App\Http\Controllers\SystemRepairController::class, 'clearLogs'])->name('system-repair.clear-logs');
+        Route::post('/system-repair/rescue-key', [\App\Http\Controllers\SystemRepairController::class, 'generateRescueKey'])->name('system-repair.rescue-key');
     });
 
     Route::post('/leave-impersonate', [\App\Http\Controllers\CashierController::class, 'leaveImpersonate'])->name('admin.impersonate.leave');
