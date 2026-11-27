@@ -453,26 +453,29 @@
         </div>
     </div>
 
+    @php
+        $receiptPayload = [
+            'code' => $transaction->transaction_code,
+            'branch' => $transaction->branch ?? 'Pusat Cianjur',
+            'date' => $transaction->created_at->translatedFormat('d M Y, H:i'),
+            'cashier' => $transaction->cashier->name ?? 'Kasir',
+            'method' => strtoupper($transaction->payment_method),
+            'status' => $statusText,
+            'customerName' => $transaction->customer_name,
+            'customerPhone' => $transaction->customer_phone,
+            'items' => $items,
+            'subtotal' => $subtotal,
+            'discount' => $discount,
+            'shipping' => $shippingCost,
+            'total' => $total,
+            'paidAmount' => $paidAmount,
+            'remainingAmt' => $remainingAmt,
+            'isUnpaid' => $remainingAmt > 0,
+        ];
+    @endphp
     <script>
         function downloadReceiptImage() {
-            const data = @json([
-                'code' => $transaction->transaction_code,
-                'branch' => $transaction->branch ?? 'Pusat Cianjur',
-                'date' => $transaction->created_at->translatedFormat('d M Y, H:i'),
-                'cashier' => $transaction->cashier->name ?? 'Kasir',
-                'method' => strtoupper($transaction->payment_method),
-                'status' => $statusText,
-                'customerName' => $transaction->customer_name,
-                'customerPhone' => $transaction->customer_phone,
-                'items' => $items,
-                'subtotal' => $subtotal,
-                'discount' => $discount,
-                'shipping' => $shippingCost,
-                'total' => $total,
-                'paidAmount' => $paidAmount,
-                'remainingAmt' => $remainingAmt,
-                'isUnpaid' => $remainingAmt > 0,
-            ]);
+            const data = @json($receiptPayload);
 
             const fmt = (n) => 'Rp ' + Math.round(n || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
             const width = 720;
